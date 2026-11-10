@@ -1,158 +1,134 @@
-# Phase 8.4 — Extraction & Evaluation Implementation Plan
+# 8.4 — Extraction and Evaluation
 
 ## 1. Objective
 
 Implement the Memory Engine's extraction and evaluation pipeline.
 
-This pipeline consumes validated ingestion records from Phase 8.3 and identifies potentially useful information that can become structured memory.
+The pipeline converts eligible source content into structured memory candidates, evaluates their quality, and prepares them for the memory resolution process.
 
-It is responsible for:
+Supported source domains:
 
-- Determining whether incoming content is relevant for memory formation.
-- Extracting atomic facts.
-- Identifying explicit and inferred information.
-- Evaluating importance and confidence independently.
-- Preserving evidence and provenance.
-- Validating extracted facts.
-- Preparing memory candidates for downstream processing.
+1. Personal memory inputs, including user messages and conversation history.
+2. Explicitly authorized document-derived extraction.
 
-The pipeline must prioritize correctness and traceability over extraction volume.
+The extraction pipeline must distinguish between information contained in a document and information that represents durable personal context about the user.
+
+Uploading or indexing a document must never automatically create personal memories.
 
 ## 2. Architecture references
 
-Claude Code must review:
+Read the following before implementation:
 
-1. `PROJECT_ARCHITECTURE.md`
-2. `docs/architecture/` — Memory Engine architecture.
-3. `docs/data-models/` — approved Memory Engine data models.
-4. `docs/algorithms/memory/01-memory-ingestion-extraction.md`
-5. `docs/algorithms/shared/01-shared-algorithm-framework.md`
-6. `docs/technology/01-baseline-technology-stack.md`
-7. `docs/technology/05-nlp-and-machine-learning-stack.md`
-8. `docs/implementation-plans/phase-08-memory-engine/01-foundation-and-project-setup.md`
-9. `docs/implementation-plans/phase-08-memory-engine/02-database-and-persistence.md`
-10. `docs/implementation-plans/phase-08-memory-engine/03-ingestion-pipeline.md`
+- `PROJECT_ARCHITECTURE.md`
+- `docs/architecture/`
+- `docs/data-models/`
+- `docs/algorithms/`
+- `docs/technology/`
+- `docs/technical-decisions.md`
+- `docs/implementation-plans/phase-08-memory-engine/03-ingestion-pipeline.md`
+- `docs/implementation-plans/phase-08-memory-engine/05-entity-and-relationship-management.md`
+- `docs/implementation-plans/phase-08-memory-engine/06-memory-resolution.md`
+- `docs/implementation-plans/phase-08-memory-engine/12-document-rag-pipeline.md`
 
-The approved algorithms and data models are authoritative.
+Follow the approved extraction, provenance, and candidate models.
 
-Do not independently redefine memory categories, candidate states or confidence semantics.
+## 3. Extraction architecture
 
-## 3. Scope
+Implement the following pipeline:
 
-### Included
+1. Receive eligible source content.
+2. Validate source ownership and permissions.
+3. Apply the relevance gate.
+4. Extract atomic fact proposals.
+5. Normalize extracted facts.
+6. Classify the information.
+7. Determine explicit or inferred status.
+8. Evaluate importance and confidence independently.
+9. Attach provenance and supporting evidence.
+10. Validate the candidate.
+11. Persist eligible candidates.
+12. Hand off candidates for memory resolution.
 
-- Relevance Gate.
-- Content preprocessing for extraction.
-- Atomic fact extraction.
-- Fact classification.
-- Explicit and inferred memory identification.
-- Importance evaluation.
-- Confidence evaluation.
-- Evidence and provenance association.
-- Candidate generation.
-- Candidate validation.
-- Extraction quality tests.
+The pipeline must not directly activate a memory without the approved resolution process.
 
-### Excluded
+## 4. Supported extraction sources
 
-- Entity resolution and relationship management.
-- Duplicate and contradiction resolution.
-- Final memory activation.
-- Embedding generation.
-- Vector indexing.
-- Memory retrieval.
-- Consolidation and maintenance.
-- Forgetting and deletion execution.
-- Document RAG and document question answering.
+### 4.1 Personal memory sources
 
-These belong to subsequent milestones or the final Phase 8 architecture review.
+Examples:
 
-## 4. Extraction pipeline architecture
+- User-provided text.
+- Conversation messages.
+- Explicit remember instructions.
+- Eligible conversation history.
+- Other approved personal memory sources.
 
-Implement the following logical components.
+### 4.2 Document-derived sources
 
-### 4.1 Content Preprocessor
+Documents may provide evidence for personal memory extraction when an authorized extraction operation is explicitly requested or approved.
 
-Responsibilities:
+Examples:
 
-- Consume validated ingestion records.
-- Retrieve source content using authorized content references.
-- Normalize content for extraction.
-- Preserve source boundaries and metadata.
-- Identify relevant content segments.
-- Preserve speaker and timestamp information where available.
+- A user asks Raven to remember a preference described in an uploaded document.
+- A user asks Raven to extract their project goals from a project document.
+- A user explicitly requests that relevant personal commitments from a document be considered for memory.
 
-The preprocessor must not modify the authoritative original source.
+A document being available for search does not itself authorize personal memory extraction.
 
-### 4.2 Relevance Gate
+Document-derived extraction must use the document processing outputs created by plan 8.12.
 
-The Relevance Gate determines whether incoming information is worth processing further.
+## 5. Relevance gate
 
-It should distinguish:
+Apply a lightweight relevance gate before detailed extraction.
 
-- Potentially useful personal information.
-- Preferences.
-- Goals and intentions.
+The relevance gate determines whether source content is likely to contain information worth considering as personal memory.
+
+Potentially relevant information includes:
+
+- Personal preferences.
+- Goals.
 - Decisions.
 - Important events.
 - Relationships.
-- Knowledge.
+- Knowledge relevant to the user's ongoing context.
 - Projects.
 - Commitments.
-- Temporary or low-value conversational content.
-- Irrelevant or unusable content.
 
-Use the approved two-stage extraction approach:
+The relevance gate must distinguish:
 
-**Stage 1 — Lightweight relevance assessment**
+- Information about the user.
+- General factual information.
+- Information about third parties.
+- Hypothetical examples.
+- Instructions contained within untrusted documents.
+- Temporary or irrelevant content.
 
-Quickly assess whether the source contains potentially useful information.
+General information in a document must not be treated as a fact about the user merely because the user uploaded the document.
 
-**Stage 2 — Detailed extraction**
+## 6. Atomic fact extraction
 
-Only relevant content proceeds to detailed extraction and evaluation.
+Extract candidate facts in atomic form wherever practical.
 
-Explicit remember instructions should receive priority.
+Each candidate should express one independently understandable proposition.
 
-Explicit forget instructions must bypass ordinary extraction and relevance evaluation and be routed to the dedicated forgetting workflow.
+Preserve:
 
-Repetition alone must not make otherwise irrelevant content important.
+- Subject.
+- Predicate or relationship.
+- Object or value.
+- Relevant context.
+- Time information.
+- Source evidence.
+- Confidence.
+- Explicit or inferred classification.
 
-### 4.3 Atomic Fact Extractor
+Do not combine unrelated facts into one memory candidate.
 
-Extract information into small, independently understandable facts.
+Do not remove qualifications that change the meaning of the original statement.
 
-Each fact should express one meaningful proposition wherever possible.
+## 7. Memory classification
 
-For example:
-
-Input:
-
-"I am working on Raven, using Python and PostgreSQL, and I want to improve its memory retrieval."
-
-Potential atomic facts:
-
-- The user is working on a project named Raven.
-- The project uses Python.
-- The project uses PostgreSQL.
-- The user wants to improve Raven's memory retrieval.
-
-The example is illustrative. Actual extracted facts must be supported by source evidence.
-
-Requirements:
-
-- Avoid combining unrelated facts.
-- Preserve important qualifiers.
-- Preserve dates and temporal context.
-- Preserve negation.
-- Preserve uncertainty.
-- Avoid inventing missing information.
-- Avoid converting possibilities into confirmed facts.
-- Avoid removing context that changes meaning.
-
-### 4.4 Fact Classification
-
-Classify extracted facts using the approved memory categories:
+Support the approved memory categories:
 
 - Personal preferences.
 - Goals.
@@ -163,386 +139,279 @@ Classify extracted facts using the approved memory categories:
 - Projects.
 - Commitments.
 
-Support multiple category assignments where justified.
+Categories may be multi-label where the approved data model permits.
 
-Classification must not force a fact into an unsuitable category.
+Do not create a new category merely because information originated from a document.
 
-### 4.5 Explicit and Inferred Classification
+Source type and memory category represent different concepts.
 
-Distinguish information explicitly provided by the user from information inferred through processing.
+For example:
 
-**Explicit information**
+- Source type: document-derived.
+- Memory category: project.
 
-Information directly stated or intentionally provided.
+## 8. Explicit and inferred information
 
-**Inferred information**
+### 8.1 Explicit information
 
-Information derived from available evidence but not directly stated.
+Explicit information is directly stated by the user or explicitly selected by the user for memory extraction.
 
-Inferred memories must preserve:
+It must retain its source and evidence.
 
-- Evidence references.
+### 8.2 Inferred information
+
+Inferred information is derived from evidence but is not directly stated.
+
+It must include:
+
+- Inference status.
+- Supporting evidence.
+- Source references.
 - Confidence.
-- Inference method or basis.
-- Relevant source information.
+- Extraction method.
+- Relevant context.
 
-Use the approved candidate lifecycle:
+Inferred candidates must not be presented as confirmed facts.
 
-- `candidate`
-- `active`
-- `needs_review`
-- `rejected`
+Use the approved candidate lifecycle, including states such as:
 
-Do not automatically activate uncertain inferences.
+- Candidate.
+- Active.
+- Needs review.
+- Rejected.
 
-Repetition of an inference does not independently establish that it is true.
+Exact persisted state values must follow the Phase 5 data models.
 
-### 4.6 Importance Evaluation
+Weak inferences must remain candidates or be rejected.
 
-Importance and confidence must be evaluated independently.
+Repetition alone must not automatically promote an inference.
 
-Importance measures the potential long-term usefulness of a memory.
+## 9. Importance and confidence evaluation
 
-Consider:
+Importance and confidence must remain independent dimensions.
 
-- Long-term relevance.
-- User-stated importance.
-- Future usefulness.
-- Relationship to ongoing goals.
-- Commitments and decisions.
-- Relevance to recurring activities.
-- Potential impact on future interactions.
+### Importance
 
-Do not treat message length, emotional intensity or repetition as sufficient evidence of importance.
+Importance estimates how useful or consequential a memory may be for future interactions.
 
-Use the approved importance representation from the existing data model.
+### Confidence
 
-Do not introduce a competing scoring system without documenting the conflict.
+Confidence estimates how strongly the available evidence supports the extracted proposition.
 
-### 4.7 Confidence Evaluation
+Do not increase confidence merely because a memory appears important.
 
-Confidence measures how strongly the available evidence supports an extracted fact.
+Do not treat a highly confident but irrelevant fact as an important memory.
 
-Consider:
+Document-derived candidates must also account for:
 
-- Directness of the statement.
-- Source reliability.
-- Clarity of language.
-- Ambiguity.
-- Contradictory evidence.
-- Temporal context.
-- Whether the fact is explicitly stated or inferred.
+- Whether the document actually supports the claim.
+- Whether the document describes the user or a third party.
+- Whether the document is current.
+- Whether the relevant statement is qualified or hypothetical.
+- Whether the source is incomplete or ambiguous.
 
-Explicit statements should generally have stronger evidential support than weak inferences, but explicit statements can still be ambiguous or contradictory.
+## 10. Document evidence and provenance
 
-Do not automatically assign maximum confidence to every explicit statement.
+Every document-derived memory candidate must preserve enough information to trace the claim to its source.
 
-Preserve confidence independently from importance.
+Where available, preserve:
 
-### 4.8 Candidate Generator
+- `document_id`.
+- `document_version_id`.
+- `chunk_id`.
+- Page number.
+- Section or heading.
+- Character or structural location.
+- Source excerpt or evidence reference.
+- Extraction method.
+- Extraction timestamp.
+- Model or processing version, where applicable.
 
-Convert validated extraction results into memory candidates.
+These are logical provenance references. Exact field names must follow the approved Phase 5 data model and document-processing contracts.
 
-Responsibilities:
+The original document version remains the source of truth.
 
-- Construct candidate records.
-- Associate candidates with source records.
-- Attach evidence and provenance.
-- Preserve category assignments.
-- Store importance and confidence.
-- Preserve temporal information.
-- Record extraction metadata.
-- Assign the appropriate initial lifecycle state.
+Do not retain only a generated summary when the original evidence reference is available.
 
-Candidate generation must follow the approved Phase 5 data models.
+A candidate derived from a document must remain distinguishable from a candidate derived directly from a user message.
 
-Do not create authoritative active memories directly in this milestone.
+## 11. Document extraction authorization
 
-### 4.9 Candidate Validator
+Document-to-memory extraction must be controlled.
 
-Before persistence, validate:
+Before extraction:
 
-- Required fields.
-- Fact completeness.
-- Evidence references.
-- Source ownership.
-- Category validity.
-- Confidence representation.
-- Importance representation.
-- Temporal consistency.
-- Candidate lifecycle state.
+1. Verify the requesting user's identity.
+2. Verify ownership or authorized access to the document.
+3. Verify the requested extraction scope.
+4. Identify the applicable document version.
+5. Retrieve relevant extracted content and evidence.
+6. Apply the normal relevance and evaluation pipeline.
+7. Persist eligible memory candidates with provenance.
 
-Reject or flag invalid candidates instead of silently modifying their meaning.
+Do not automatically run personal memory extraction on every uploaded document.
 
-## 5. Processing approach
+Do not treat text inside a document as an instruction to change Raven's memory, access controls, or system behavior.
 
-Follow the approved hybrid processing architecture.
+Document contents are untrusted data.
 
-The extraction pipeline may use:
+## 12. Processing methods
+
+Use the approved hybrid processing approach:
 
 - Deterministic rules.
 - Conventional NLP.
-- Statistical classification.
-- Non-generative machine learning.
-- Linguistic pattern detection.
-- Entity and date recognition where relevant.
+- Statistical methods.
+- Conventional machine learning.
+- Embedding-based signals where appropriate.
+- Deterministic validation.
 
-Approved technology candidates include:
+The core Raven processing architecture must not depend on generative LLM APIs or locally hosted generative LLMs.
 
-- spaCy.
-- scikit-learn.
-- NumPy.
-- pandas.
-- RapidFuzz where applicable.
+Machine learning outputs must be treated as signals rather than authoritative decisions.
 
-Model and algorithm selection must be justified through evaluation.
+Critical validation and memory state transitions must remain deterministic and auditable.
 
-### Important constraints
+## 13. Candidate persistence and handoff
 
-- No generative LLM APIs.
-- No locally hosted generative LLMs.
-- No dependency on external generative AI services.
-- ML predictions are signals, not authoritative decisions.
-- Deterministic validation is required before candidate persistence.
-- Do not automatically train models on private user data.
+After evaluation:
 
-## 6. Extraction data flow
+1. Validate the candidate structure.
+2. Verify provenance.
+3. Verify user ownership.
+4. Check required fields.
+5. Apply confidence and quality rules.
+6. Persist eligible candidates.
+7. Record processing metadata.
+8. Hand off to the memory resolution process.
 
-Implement the following sequence:
+The extraction pipeline must not independently decide that a candidate replaces an existing memory.
 
-1. Receive a validated ingestion record.
-2. Retrieve its original content through an authorized reference.
-3. Preprocess the content.
-4. Run the lightweight Relevance Gate.
-5. Reject or skip irrelevant content with an auditable reason.
-6. Perform detailed extraction on relevant content.
-7. Generate atomic fact proposals.
-8. Classify each fact.
-9. Determine whether the fact is explicit or inferred.
-10. Evaluate importance.
-11. Evaluate confidence.
-12. Attach source evidence and provenance.
-13. Validate the candidate.
-14. Persist valid memory candidates.
-15. Register extraction results and processing status.
-16. Hand off candidates to the next appropriate processing stage.
+Duplicate detection, contradiction resolution, updates, and supersession belong to plan 8.6.
 
-A source may produce:
+## 14. Failure handling
 
-- Zero candidates.
-- One candidate.
-- Multiple candidates.
+Handle:
 
-Do not force the generation of a memory candidate from every source.
+- Empty or irrelevant content.
+- Unsupported source type.
+- Missing provenance.
+- Low-confidence extraction.
+- Conflicting evidence.
+- Malformed document extraction output.
+- Missing document version.
+- Unauthorized document access.
+- Deleted source document.
+- Interrupted extraction.
+- Duplicate extraction requests.
+- Extraction model or NLP component failure.
 
-## 7. Provenance and evidence
+Failed extraction must not produce an authoritative memory.
 
-Every candidate must be traceable to its originating source.
+Retries must be idempotent.
 
-Preserve relevant references such as:
+If the original document has been deleted or access has been revoked, do not continue processing stale content without validating the applicable lifecycle and authorization state.
 
-- Source identifier.
-- Ingestion identifier.
-- User identifier.
-- Source timestamp.
-- Evidence location, where available.
-- Original content reference.
-- Extraction method.
-- Processing timestamp.
+## 15. Testing requirements
 
-For conversation-derived facts, preserve speaker and message references where available.
+### Personal memory extraction tests
 
-For document-derived facts, preserve available source references and page information. Detailed document chunking and RAG are deferred to the final Phase 8 review.
+- Explicit preference.
+- Goal extraction.
+- Decision extraction.
+- Commitment extraction.
+- Multi-fact input.
+- Irrelevant content.
+- Hypothetical statements.
+- Third-party information.
+- Ambiguous statements.
+- Inferred versus explicit classification.
+- Importance and confidence independence.
 
-The system must be able to explain why a candidate was generated and what evidence supports it.
+### Document-derived extraction tests
 
-## 8. Persistence requirements
+- Authorized document extraction request.
+- Unauthorized document access.
+- Document with personal facts.
+- Document with general knowledge.
+- Document containing third-party information.
+- Hypothetical claims.
+- Conflicting statements.
+- Outdated document version.
+- Missing page or section provenance.
+- Deleted document.
+- Duplicate extraction operation.
+- Low-confidence candidate.
+- Document content containing malicious or misleading instructions.
 
-Use the approved persistence layer from Phase 8.2.
+### Integrity tests
 
-Persist candidates using the approved candidate data model.
+- Candidate provenance remains available.
+- Document chunks are not converted directly into personal memories.
+- Upload alone does not create personal memory.
+- Document extraction uses the normal candidate lifecycle.
+- Extraction does not bypass memory resolution.
+- Rejected candidates are not treated as active memories.
+- User ownership is enforced.
 
-Requirements:
+## 16. Acceptance criteria
 
-- Enforce user ownership.
-- Preserve source references.
-- Preserve category assignments.
-- Preserve confidence and importance independently.
-- Preserve explicit/inferred classification.
-- Maintain lifecycle state.
-- Record processing history.
-- Support transactional consistency for related database changes.
-- Ensure idempotent processing of repeated extraction jobs.
+This plan is complete when:
 
-Do not duplicate the original source content inside every candidate.
+1. The relevance gate works.
+2. Atomic fact candidates can be extracted.
+3. Memory categories are assigned correctly.
+4. Explicit and inferred information remain distinguishable.
+5. Importance and confidence are evaluated independently.
+6. Provenance is preserved.
+7. Document-derived extraction requires authorization.
+8. Document evidence is traceable to the correct document version and location.
+9. Candidates enter the normal memory resolution workflow.
+10. No automatic document-to-memory conversion occurs on upload.
+11. No generative LLM dependency is introduced.
+12. Required tests pass.
 
-Use references to authoritative source records.
+## 17. Out of scope
 
-## 9. Failure handling
+This plan does not implement:
 
-Handle the following scenarios:
+- Entity resolution.
+- Duplicate memory resolution.
+- Contradiction resolution.
+- Final memory activation.
+- Memory storage and indexing.
+- Personal memory retrieval.
+- Document parsing.
+- OCR.
+- Document chunking.
+- Document embedding generation.
+- Document hybrid retrieval.
+- Document answer assembly.
 
-| Scenario | Expected behavior |
-|---|---|
-| Empty source content | Skip or reject with a clear reason |
-| Irrelevant source | Record relevance decision and stop extraction |
-| Extraction produces no facts | Complete without creating candidates |
-| Ambiguous statement | Preserve uncertainty or flag for review |
-| Conflicting statements | Preserve evidence; defer resolution |
-| Low-confidence inference | Keep as candidate or require review |
-| Missing provenance | Reject candidate persistence |
-| Invalid candidate | Reject with validation details |
-| NLP model unavailable | Fail safely or use an approved fallback |
-| Duplicate processing job | Prevent unintended duplicate candidates |
-| Database failure | Preserve processing failure information and support retry |
+These responsibilities belong to their dedicated plans.
 
-Do not resolve contradictions or merge duplicate memories here. Those responsibilities belong to Phase 8.6.
+## 18. Claude Code execution instructions
 
-## 10. Testing requirements
+Before implementation:
 
-### Unit tests
+1. Inspect the existing extraction pipeline and relevant models.
+2. Read the approved algorithm and data-model specifications.
+3. Identify existing NLP and machine-learning dependencies.
+4. Reconcile document provenance requirements with the approved schemas.
+5. Report any missing or conflicting decisions.
+6. Propose the minimum required changes.
 
-Test:
+Do not silently add new model fields, extraction categories, or dependencies.
 
-- Content preprocessing.
-- Relevance classification.
-- Atomic fact generation.
-- Fact classification.
-- Explicit versus inferred detection.
-- Importance evaluation.
-- Confidence evaluation.
-- Candidate construction.
-- Candidate validation.
+After implementation, report:
 
-### Component tests
+- Files created or modified.
+- Extraction methods implemented.
+- Candidate lifecycle behavior.
+- Document provenance implementation.
+- Dependencies added.
+- Tests executed and results.
+- Acceptance criteria satisfied.
+- Known limitations.
 
-Test:
-
-- End-to-end extraction from an ingestion record.
-- Candidate persistence.
-- Provenance association.
-- User ownership validation.
-- Processing status transitions.
-- Idempotent extraction jobs.
-
-### Quality evaluation
-
-Create representative evaluation examples for:
-
-- Explicit preferences.
-- Goals.
-- Decisions.
-- Important events.
-- Relationships.
-- Knowledge.
-- Projects.
-- Commitments.
-- Temporary statements.
-- Ambiguous language.
-- Negation.
-- Tentative plans.
-- Corrections.
-- Inferred facts.
-- Contradictory information.
-
-Evaluate:
-
-- Extraction precision.
-- Extraction recall.
-- Atomicity.
-- Classification accuracy.
-- Confidence calibration.
-- Provenance completeness.
-- False memory creation.
-
-Quality thresholds should be defined using representative evaluation datasets rather than arbitrary assumptions.
-
-Do not claim extraction quality is production-ready solely because unit tests pass.
-
-## 11. Observability
-
-Record structured processing events for:
-
-- Extraction started.
-- Relevance assessment completed.
-- Source rejected as irrelevant.
-- Fact proposals generated.
-- Candidates validated.
-- Candidates persisted.
-- Candidate rejected.
-- Extraction failed.
-
-Track useful metrics:
-
-- Sources processed.
-- Relevance rejection rate.
-- Candidate generation rate.
-- Candidate validation failure rate.
-- Extraction processing latency.
-- Retry rate.
-- Duplicate processing rate.
-
-Do not log full source content or unnecessary sensitive information.
-
-## 12. Acceptance criteria
-
-Phase 8.4 is complete only when:
-
-- [ ] Validated ingestion records can enter the extraction pipeline.
-- [ ] The lightweight Relevance Gate is implemented.
-- [ ] Detailed extraction is performed only on relevant content.
-- [ ] Atomic facts are generated.
-- [ ] Facts are classified using approved categories.
-- [ ] Explicit and inferred information are distinguished.
-- [ ] Importance and confidence are evaluated independently.
-- [ ] Evidence and provenance are preserved.
-- [ ] Validated memory candidates are persisted.
-- [ ] Uncertain inferences are not automatically treated as authoritative memories.
-- [ ] Duplicate extraction jobs are handled safely.
-- [ ] Failures are recorded and recoverable.
-- [ ] Unit and component tests pass.
-- [ ] Extraction quality evaluation is available.
-- [ ] No out-of-scope memory resolution or retrieval functionality has been introduced.
-
-## 13. Implementation constraints
-
-Claude Code must:
-
-1. Inspect the existing repository before changes.
-2. Reuse Phase 8.1, 8.2 and 8.3 implementations.
-3. Follow approved architecture, models and algorithms.
-4. Avoid duplicate domain models.
-5. Keep extraction logic separate from persistence.
-6. Keep importance separate from confidence.
-7. Preserve explicit versus inferred distinctions.
-8. Avoid generative LLM functionality.
-9. Avoid implementing document RAG in this milestone.
-10. Place implementation code inside `memory-engine/`.
-11. Place tests inside `tests/`.
-12. Do not proceed to Phase 8.5 automatically.
-
-If existing architecture documents leave an implementation-critical detail unresolved, report it with a recommendation before making an architectural change.
-
-## 14. Completion report
-
-Claude Code must report:
-
-1. Implemented extraction components.
-2. Files created or modified.
-3. Dependencies introduced.
-4. Algorithms and classification methods used.
-5. Candidate data models used.
-6. Provenance implementation.
-7. Tests executed and exact results.
-8. Quality evaluation results.
-9. Known limitations.
-10. Deviations from approved specifications.
-11. Acceptance criteria status.
-
-Clearly distinguish tested behavior from unverified assumptions.
-
-## 15. Definition of done
-
-Phase 8.4 is complete when Raven can transform validated source information into structured, evidence-backed memory candidates while preserving uncertainty, provenance, importance and confidence.
-
-**The output of this milestone is a set of validated memory candidates, not final authoritative memories.**
+Do not automatically proceed to plan 8.5.
