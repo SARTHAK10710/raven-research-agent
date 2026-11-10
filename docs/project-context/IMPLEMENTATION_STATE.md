@@ -4,7 +4,7 @@ Actual implementation progress, recorded only from verified repository state.
 
 Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` · `TESTING` · `VERIFIED` · `BLOCKED`. `VERIFIED` requires executed test evidence against the subphase's acceptance criteria; generated code is never verified by itself.
 
-**Baseline:** `main` @ `8f8f694`. No application code, dependencies or tests exist.
+**Baseline:** `main` @ `f6abef0`. No application code, dependencies or tests exist.
 
 ## Summary
 
@@ -49,6 +49,6 @@ These are documentation changes, tracked here so they are not mistaken for imple
 
 | Change | State | Branch / commit |
 |---|---|---|
-| Restore overwritten specs 5.4, 5.8–5.10, 7.2, 7.3 with amendments appended; move the 7.5 amendment to file 05; correct doc paths; update stale top-level docs | Committed; validated against Git originals; not merged into `main` | `docs/recover-overwritten-specs` @ `83e174e` |
-| Project-context system (`CLAUDE.md`, `.claude/rules/`, `docs/project-context/`) | Committed; not merged into `main` | `docs/recover-overwritten-specs` @ `83e174e` |
-| Record approved 8.1 setup decisions in 7.1 §22, 7.7, technical-decisions Readme, Phase 8 Readme and plan 8.1 | Committed; not merged into `main` | `docs/recover-overwritten-specs` @ `83e174e` |
+| Restore overwritten specs 5.4, 5.8–5.10, 7.2, 7.3 with amendments appended; move the 7.5 amendment to file 05; correct doc paths; update stale top-level docs | Merged into `main` (PR #1); validated against Git originals | `83e174e`, merged in `f6abef0` |
+| Project-context system (`CLAUDE.md`, `.claude/rules/`, `docs/project-context/`) | Merged into `main` (PR #1) | `83e174e`, merged in `f6abef0` |
+| Record approved 8.1 setup decisions in 7.1 §22, 7.7, technical-decisions Readme, Phase 8 Readme and plan 8.1 | Merged into `main` (PR #1) | `83e174e`, merged in `f6abef0` |
