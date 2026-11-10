@@ -10,7 +10,9 @@ This repository holds the architecture, data-model, algorithm and technology spe
 
 ## Current phase
 
-See [`docs/project-context/PROJECT_STATUS.md`](docs/project-context/PROJECT_STATUS.md). At the time of writing: Phase 8 (Memory Engine implementation), subphase 8.1 (Foundation and Project Setup). The inspection is complete and the setup decisions are approved (Python 3.12, mypy strict, uv workspace, root `tests/`, Pydantic Settings; see [7.1 §22](docs/technical-decisions/01-baseline-technology-stack.md)). Implementation has not been approved to start. Never begin or advance a subphase without explicit user approval.
+See [`docs/project-context/PROJECT_STATUS.md`](docs/project-context/PROJECT_STATUS.md). At the time of writing: Phase 8 (Memory Engine implementation), subphase 8.1 (Foundation and Project Setup). The foundation is implemented and verified (Python 3.12, mypy strict, uv workspace, root `tests/`, Pydantic Settings; see [7.1 §22](docs/technical-decisions/01-baseline-technology-stack.md)). Phase 8.2 has not been approved to start.
+
+Run checks from the repository root: `uv sync`, `uv run pytest`, `uv run ruff check .`, `uv run ruff format --check .`, `uv run mypy`. Never begin or advance a subphase without explicit user approval.
 
 ## Context loading (every session)
 

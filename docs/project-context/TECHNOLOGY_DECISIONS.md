@@ -2,7 +2,7 @@
 
 A summary of Phase 7 ([docs/technical-decisions](../technical-decisions/Readme.md)). The source documents are authoritative.
 
-**Installed in the repository:** nothing. There is no `pyproject.toml`, lockfile or environment. "Approved" below means selected in the specifications, not installed. Each dependency is added only in the subphase that needs it.
+**Installed in the repository:** only the Phase 8.1 dependencies, declared in `pyproject.toml` files and locked in the root `uv.lock` (Phase 8.1, uncommitted on `feat/phase-8-1-foundation`). "Approved" below means selected in the specifications, not installed. Each dependency is added only in the subphase that needs it.
 
 ## Approved Phase 8.1 project setup decisions
 
@@ -20,8 +20,8 @@ Approved by the project owner on 2026-11-11. Recorded in [7.1 §22](../technical
 
 | When | Dependencies | Installed? |
 |---|---|---|
-| Phase 8.1 — runtime | `pydantic`, `pydantic-settings` | No |
-| Phase 8.1 — development | `pytest`, `pytest-cov`, `ruff`, `mypy` | No |
+| Phase 8.1 — runtime | `pydantic`, `pydantic-settings` | Yes — 2.14.3, 2.16.2 (locked) |
+| Phase 8.1 — development | `pytest`, `pytest-cov`, `ruff`, `mypy` | Yes — 9.2.0, 7.1.0, 0.17.4, 2.4.1 (locked) |
 | Phase 8.2 | `SQLAlchemy`, `Alembic`, PostgreSQL driver (choice pending, see below) | No |
 | When required | `HTTPX` (API/HTTP testing); OpenTelemetry API/SDK (instrumentation) | No |
 | Later milestones | NLP, embedding, messaging and storage libraries, in the subphase that needs them | No |
@@ -62,7 +62,9 @@ Approved by the project owner on 2026-11-11. Recorded in [7.1 §22](../technical
 | Decision | Status |
 |---|---|
 | PostgreSQL driver; sync vs async SQLAlchemy | Not specified. Needed by 8.2 |
-| Ruff rule selection; detailed mypy configuration beyond strict mode | Set during 8.1 implementation (7.1 §22.2) |
+| Embedding model, dimension, metric, index type | Not chosen. Needed by 8.2 (vector columns) or 8.7 |
+
+Set during Phase 8.1 implementation (7.1 §22.2): Ruff rules `E, W, F, I, B, UP, SIM, S, N, RUF` (line length 100; `S101` allowed in tests); mypy `strict = true` with the `pydantic.mypy` plugin over `memory-engine/src` and `tests`; build backend `hatchling` (build time only, not a runtime or dev dependency).
 
 ## Proposed — requires evaluation before approval
 
