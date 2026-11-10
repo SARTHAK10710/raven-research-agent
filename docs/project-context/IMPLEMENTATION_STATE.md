@@ -49,6 +49,6 @@ These are documentation changes, tracked here so they are not mistaken for imple
 
 | Change | State | Branch / commit |
 |---|---|---|
-| Restore overwritten specs 5.4, 5.8–5.10, 7.2, 7.3 with amendments appended; move the 7.5 amendment to file 05; correct doc paths; update stale top-level docs | Done in the working tree; validated against Git originals; **uncommitted** | `docs/recover-overwritten-specs` |
-| Project-context system (`CLAUDE.md`, `.claude/rules/`, `docs/project-context/`) | Created; **uncommitted** | `docs/recover-overwritten-specs` |
-| Record approved 8.1 setup decisions in 7.1 §22, 7.7, technical-decisions Readme, Phase 8 Readme and plan 8.1 | Done in the working tree; **uncommitted** | `docs/recover-overwritten-specs` |
+| Restore overwritten specs 5.4, 5.8–5.10, 7.2, 7.3 with amendments appended; move the 7.5 amendment to file 05; correct doc paths; update stale top-level docs | Committed; validated against Git originals; not merged into `main` | `docs/recover-overwritten-specs` @ `83e174e` |
+| Project-context system (`CLAUDE.md`, `.claude/rules/`, `docs/project-context/`) | Committed; not merged into `main` | `docs/recover-overwritten-specs` @ `83e174e` |
+| Record approved 8.1 setup decisions in 7.1 §22, 7.7, technical-decisions Readme, Phase 8 Readme and plan 8.1 | Committed; not merged into `main` | `docs/recover-overwritten-specs` @ `83e174e` |

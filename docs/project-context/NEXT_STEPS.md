@@ -8,7 +8,7 @@
 
 ## Prerequisites before 8.1 implementation
 
-1. User reviews the uncommitted changes on `docs/recover-overwritten-specs` and approves a commit (and merge).
+1. Push `docs/recover-overwritten-specs` (commit `83e174e`, not yet pushed) and merge it into `main`.
 2. User explicitly approves starting 8.1.
 
 ## Approved 8.1 decisions
@@ -53,10 +53,10 @@ Dependency timing: 8.1 adds `pydantic`, `pydantic-settings`, and for development
   - Updated `README.md`, `PROJECT_ARCHITECTURE.md` and `docs/architecture/Readme.md`.
   - Created `CLAUDE.md`, `.claude/rules/` (4 files) and `docs/project-context/` (7 files); labeled five Raven engineering conventions; added the UI / Entry Layer status row.
   - Recorded the five approved 8.1 decisions and dependency timing in 7.1 §22, the Phase 8 Readme §7.1 and plan 8.1, and aligned 7.7 and the technical-decisions Readme (mypy strict).
-- **Files changed:** see `git status` on `docs/recover-overwritten-specs` — 27 modified documentation files and 12 new context files. No application code.
+- **Files changed:** commit `83e174e` on `docs/recover-overwritten-specs` — 27 modified documentation files and 12 new context files (39 total), followed by a small commit updating these status files to cite it. No application code.
 - **Implementation status:** no implementation. 8.1 at `INSPECTION`; nothing installed.
 - **Tests:** none exist. Documentation validation: restored originals diffed against Git blobs (identical); Markdown links and anchors checked.
 - **Decisions made:** amendments are appended to their original specifications; path references corrected to match existing filenames (no renames); Python 3.12, mypy strict, uv workspace, root `tests/`, Pydantic Settings approved.
 - **Unresolved:** the "Still open" table above, and the open documentation issues in [KNOWN_CONSTRAINTS.md](KNOWN_CONSTRAINTS.md#open-documentation-issues).
-- **Next action:** user review and commit; then explicit approval to start 8.1.
+- **Next action:** push and merge `docs/recover-overwritten-specs` into `main`; then explicit approval to start 8.1.
 - **Read next session:** `CLAUDE.md`, this directory's `PROJECT_STATUS.md`, `ARCHITECTURE_SUMMARY.md`, `KNOWN_CONSTRAINTS.md`, `NEXT_STEPS.md`, then Plan 8.1 and 7.1 §22.

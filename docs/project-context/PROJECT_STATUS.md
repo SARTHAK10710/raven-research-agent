@@ -1,6 +1,6 @@
 # Project Status
 
-**Last verified update:** 2026-11-11, against `main` @ `8f8f694` plus uncommitted changes on branch `docs/recover-overwritten-specs` (documentation recovery and this context system).
+**Last verified update:** 2026-11-11, against branch `docs/recover-overwritten-specs` @ `83e174e` (documentation recovery, this context system and the approved 8.1 decisions), based on `main` @ `8f8f694`. The branch is committed locally; it has not been pushed or merged into `main`.
 
 ## Current position
 
@@ -9,7 +9,7 @@
 | Current phase | Phase 8 — Memory Engine Implementation |
 | Current subphase | 8.1 — Foundation and Project Setup |
 | Subphase status | `INSPECTION` — inspection report delivered; five setup decisions **approved** 2026-11-11 (Python 3.12, mypy strict, uv workspace, root `tests/`, Pydantic Settings); implementation not yet approved to start |
-| Current active task | Review and commit the documentation recovery, the project-context system and the recorded 8.1 decisions; then approval to start 8.1 |
+| Current active task | Push and merge `docs/recover-overwritten-specs` (commit `83e174e`) into `main`; then approval to start 8.1 |
 | Application code | **None.** Every engine directory contains only `.gitkeep` |
 
 ## Documentation completion
@@ -25,7 +25,7 @@
 | 7 | Technology and infrastructure | Documented, with Document Intelligence amendments | [docs/technical-decisions](../technical-decisions/Readme.md) |
 | 8 | Memory Engine implementation plans (8.1–8.12) | Documented | [Phase-08 plans](../implementation-plans/Phase-08-memory-engine/Readme.md) |
 
-Documentation recovery: four specifications that had been overwritten by amendments (5.4, 5.8–5.10, 7.2, 7.3) were restored from Git with their amendments appended. The 7.5 amendment was moved into its correct file, and broken paths were corrected. **This is uncommitted** on `docs/recover-overwritten-specs` until the user approves a commit.
+Documentation recovery: four specifications that had been overwritten by amendments (5.4, 5.8–5.10, 7.2, 7.3) were restored from Git with their amendments appended. The 7.5 amendment was moved into its correct file, and broken paths were corrected. This is committed as `83e174e` on `docs/recover-overwritten-specs` and is **not yet merged into `main`**.
 
 ## Implementation completion
 
@@ -41,6 +41,6 @@ No dependency has been installed. No test exists or has been run. No database, b
 
 ## Pending work
 
-1. User review and commit of the recovery, context-system and decision-recording changes.
+1. Push `docs/recover-overwritten-specs` and merge it into `main` (commit `83e174e`).
 2. Explicit user approval to start Phase 8.1 (see [NEXT_STEPS.md](NEXT_STEPS.md)).
 3. Phase 8.1 implementation, after approval.
