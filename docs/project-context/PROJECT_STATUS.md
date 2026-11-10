@@ -1,6 +1,6 @@
 # Project Status
 
-**Last verified update:** 2026-11-11, against branch `feat/phase-8-1-foundation` (based on `main` @ `2c35fb3`) with the Phase 8.1 foundation in the working tree, **not yet committed**.
+**Last verified update:** 2026-11-11, against `main` @ `6efd72d`. Phase 8.1 commit `5a0d6e5` (branch `feat/phase-8-1-foundation`) was pushed and merged into `main` through [PR #3](https://github.com/SARTHAK10710/raven-research-agent/pull/3) by the user on 2026-11-10 21:19 UTC.
 
 ## Current position
 
@@ -8,8 +8,8 @@
 |---|---|
 | Current phase | Phase 8 — Memory Engine Implementation |
 | Current subphase | 8.1 — Foundation and Project Setup |
-| Subphase status | `VERIFIED` — all plan 8.1 acceptance criteria met with executed checks (pytest 71 passed, Ruff lint and format clean, mypy strict clean, `uv sync --locked` reproducible). Uncommitted; awaiting user review |
-| Current active task | User review and commit of Phase 8.1; then settle the decisions that block Phase 8.2 (see [NEXT_STEPS.md](NEXT_STEPS.md)) |
+| Subphase status | 8.1 `VERIFIED` and merged (commit `5a0d6e5`, merge `6efd72d`). Re-verified 2026-11-11: pytest 71 passed, Ruff lint and format clean, `uv sync --locked` succeeded, mypy strict clean from a normal-length checkout (see [KNOWN_CONSTRAINTS.md](KNOWN_CONSTRAINTS.md)) |
+| Current active task | Phase 8.2 Decisions 1, 2, 4, 5 and 10 **approved** 2026-11-11 and recorded. The vector-storage deferral to 8.7 is also approved. Remaining before 8.2: Docker confirmation, merging the documentation, and approval to start ([decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md)). **Phase 8.2 has not started** |
 | Application code | Phase 8.1 foundation only: `memory-engine/src/memory_engine/` (config, exceptions, domain errors, structured logging) and `tests/memory_engine/`. **No memory functionality** (no ingestion, extraction, storage, retrieval or document processing) |
 
 ## Documentation completion
@@ -31,7 +31,7 @@ Documentation recovery: four specifications that had been overwritten by amendme
 
 | Phase | Status |
 |---|---|
-| 8 — Memory Engine | 8.1 `VERIFIED` (foundation; uncommitted); 8.2–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
+| 8 — Memory Engine | 8.1 `VERIFIED` (foundation; merged into `main`); 8.2–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
 | Research Engine | Not started (later phase) |
 | Agent Orchestrator | Not started (later phase) |
 | Shared Infrastructure | Not started |
@@ -41,6 +41,6 @@ Installed: only the Phase 8.1 dependencies, locked in the root `uv.lock` (see [T
 
 ## Pending work
 
-1. User review and commit of Phase 8.1 on `feat/phase-8-1-foundation`.
-2. Decisions that block Phase 8.2 (see [NEXT_STEPS.md](NEXT_STEPS.md)).
+1. Docker availability for integration tests.
+2. Commit and merge the checkpoint correction, the decision review and the recorded approvals (currently uncommitted in the working tree).
 3. Explicit user approval to start Phase 8.2.

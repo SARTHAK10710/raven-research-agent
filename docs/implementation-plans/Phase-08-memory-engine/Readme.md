@@ -248,6 +248,21 @@ The uv workspace organizes code and dependencies only. It does not change the mo
 
 Later milestones add their own dependencies (NLP, embeddings, messaging, storage) only when they need them.
 
+### 7.2 Approved Phase 8.2 decisions
+
+Approved on 2026-11-11. Recorded in [`01-baseline-technology-stack.md`](../../technical-decisions/01-baseline-technology-stack.md) §23 and, for the vocabularies, in the Phase 8.2 amendment of [`phase-05-memory-engine-models.md`](../../data-models/phase-05-memory-engine-models.md):
+
+| Decision | Approved choice |
+|---|---|
+| Package layout | Domain-first `memory_engine.personal` and `memory_engine.documents`, each with `domain` and `application` layers; shared kernel `memory_engine.domain`; adapters in `infrastructure`; Orchestrator contracts in `interfaces`. Replaces the tree proposed in plan 8.1 §4 |
+| Database access | psycopg 3 with synchronous SQLAlchemy 2.0; one engine per process; short owner-scoped units of work |
+| Vocabularies | Entity relationships, memory relationships, revision change types and Atomic Memory lifecycle states as defined in the Phase 8.2 amendment |
+| Document record placement | `memory` schema; `pm_`, `doc_` and `me_` table prefixes; no implicit cascades; guarded cross-domain evidence references |
+| Owner identity | Caller-supplied `OwnerScope` with an opaque `owner_id`; no Memory Engine user table |
+| Vector storage timing | Phase 8.2 creates embedding metadata only; vector tables and indexes are created in Phase 8.7 after the embedding model is selected (§23.5) |
+
+Still open: the embedding model itself, to be selected before Phase 8.7 ([decision review](../../project-context/PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md), Decision 3).
+
 ## 8. Testing and quality requirements
 
 The Memory Engine must be validated at multiple levels:

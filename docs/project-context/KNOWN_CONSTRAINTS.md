@@ -24,7 +24,7 @@ Changing any of these requires an approved architectural decision, recorded in t
 Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLOGY_DECISIONS.md](TECHNOLOGY_DECISIONS.md#deferred).
 
 - Embedding model, dimensions, index type and parameters, chunk size and overlap, reranker, retrieval thresholds and weights.
-- PostgreSQL driver and sync vs async database access (Phase 8.2). The Python version, type checker, project layout, test location and configuration approach are approved, not deferred ([TECHNOLOGY_DECISIONS.md](TECHNOLOGY_DECISIONS.md#approved-phase-81-project-setup-decisions)).
+- The embedding model, dimension, metric and index type (Decision 3), needed before Phase 8.7. Vector storage is deferred to 8.7, and 8.2 creates embedding metadata only (approved 2026-11-11). The PostgreSQL driver and access pattern, package layout, vocabularies, document record placement and owner identity were approved on 2026-11-11 ([TECHNOLOGY_DECISIONS.md](TECHNOLOGY_DECISIONS.md#approved-phase-82-decisions)). The Python version, type checker, project layout, test location and configuration approach are approved, not deferred ([TECHNOLOGY_DECISIONS.md](TECHNOLOGY_DECISIONS.md#approved-phase-81-project-setup-decisions)).
 - Parser adoption (pypdf, python-docx), OCR, advanced layout and table extraction.
 - Identity and secrets providers, cloud and hosting, CI provider, coverage thresholds.
 - Retention periods, backup frequency and retention, RPO/RTO, rate and file-size limits, retry counts, resource budgets.
@@ -32,7 +32,8 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
 ## Known technical limitations
 
 - **Only the Phase 8.1 foundation is implemented** (configuration, errors, logging, domain boundary, unit tests). No memory or document functionality, database, broker or storage exists.
-- On Windows, a repository at a very long path cannot load mypy's compiled DLLs from `.venv` ("filename or extension is too long"), even with long paths enabled. Use a normal clone location, or point `UV_PROJECT_ENVIRONMENT` at a shorter path.
+- On Windows, a repository at a very long path cannot load mypy's compiled DLLs from `.venv` ("filename or extension is too long"), even with long paths enabled, because the DLL loader does not honour that setting. Verified 2026-11-11: it fails at a 180-character repository root (extension paths 256–263 characters) and passes from a 109-character root. Keep the repository root short (under about 100 characters), especially before adding deep ML dependencies such as PyTorch; otherwise point `UV_PROJECT_ENVIRONMENT` at a shorter path.
+- Docker availability for PostgreSQL integration tests (Phase 8.2) has not been verified on the development machine.
 - OCR is not supported; scanned PDFs cannot be assumed processable.
 - Advanced PDF layout and table extraction are not covered by the baseline.
 - No CI pipeline exists.
@@ -47,4 +48,7 @@ Reported, not resolved.
 4. **Overlap:** the 7.3 and 7.5 amendments both describe document embeddings and hybrid retrieval.
 5. **Storage placement:** the 7.2 amendment places document records in the `memory` schema "subject to reconciliation with Phase 5". Not yet reconciled.
 6. **Phase 8.1 plan:** the proposed module tree (plan 8.1 §4) has no Document Intelligence area; where Personal Memory and Document Intelligence code lives inside the package is undecided. (The earlier conflicts over test location, standalone vs workspace layout, and 8.1 dependency timing were resolved by the 2026-11-11 approved decisions, and plan 8.1 was updated to match.)
-7. **No `docs/technical-decisions.md`:** some instructions refer to it. Decisions are recorded in the relevant file under `docs/technical-decisions/`.
+7. **Specification gaps for Phase 8.2** (see the [decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) §5.6):
+   - *Resolved 2026-11-11:* Atomic Memory lifecycle states (G1) and the conflicting relationship vocabularies (G2–G4) are defined by the approved Phase 8.2 amendment of [5.4](../data-models/phase-05-memory-engine-models.md).
+   - Still open: no language requirement is stated, although embedding-model selection depends on it (G6). Parsing ownership (G5) and profile ownership (G7) are Decisions 13 and 12.
+8. **No `docs/technical-decisions.md`:** some instructions refer to it. Decisions are recorded in the relevant file under `docs/technical-decisions/`.

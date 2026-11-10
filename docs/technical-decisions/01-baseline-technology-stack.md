@@ -617,6 +617,72 @@ These remain approved baseline technologies (§17). This schedule only controls 
 
 ### 22.2 Not decided here
 
-- PostgreSQL driver and sync vs async database access (Phase 8.2).
+- PostgreSQL driver and sync vs async database access (Phase 8.2). *Decided in §23.*
 - Ruff rule selection and detailed mypy configuration beyond strict mode (Phase 8.1 implementation).
 - Exact dependency versions, which are pinned through the root `uv.lock` during implementation.
+
+---
+
+## 23. Approved Phase 8.2 Decisions
+
+**Status:** Approved by the project owner on 2026-11-11, before Phase 8.2 implementation. Analysis and alternatives: [Phase 8.2 architecture decision review](../project-context/PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) §4–5.
+
+These decisions do not change Raven's architecture: the three primary engines, the modular monolith, Shared Infrastructure, and the separation of Personal Memory and Document Intelligence remain as specified. Decision 4 (relationship vocabularies and Atomic Memory lifecycle states) is a data-model decision and is recorded in the Phase 5.4 data model ([`phase-05-memory-engine-models.md`](../data-models/phase-05-memory-engine-models.md), "Phase 8.2 Amendment").
+
+### 23.1 Decision 1 — Memory Engine package layout
+
+Domain-first packages, each layered into domain and application:
+
+| Package | Responsibility |
+|---|---|
+| `memory_engine.domain` | Shared kernel (existing): domain errors, identifiers, `OwnerScope`, temporal value objects, typed references, shared vocabulary enums |
+| `memory_engine.personal.{domain,application}` | Personal Memory domain model and use cases (ingestion, extraction, entities, resolution, storage, retrieval, consolidation, deletion), with their ports; `personal/api.py` public facade |
+| `memory_engine.documents.{domain,application}` | Document Intelligence domain model and use cases (registration, parsing, chunking, indexing, retrieval, evidence, lifecycle), with their ports; `documents/api.py` public facade |
+| `memory_engine.infrastructure` | Adapters: `persistence/` (engine, sessions, unit of work, outbox, per-domain ORM models and repositories), later `object_storage/`, `embeddings/`, `tasks/` |
+| `memory_engine.interfaces` | Contracts used by the Orchestrator (commands, queries, results) |
+| `config`, `exceptions`, `observability` | Engine-wide (existing) |
+
+Packages are created only when they have content. This replaces the feature-first tree proposed in plan 8.1 §4; its feature names become modules inside `personal/application/`.
+
+**Import rules (enforced by tests):**
+- Domain packages import only the standard library, the shared kernel and `exceptions`.
+- Application packages never import `infrastructure`.
+- `documents` never imports `personal`. `personal.application` may use `documents.api` only, for authorized document-to-memory extraction.
+- `interfaces` imports only the public facades and the shared kernel.
+
+### 23.2 Decision 2 — PostgreSQL driver and access pattern
+
+- **Driver:** psycopg 3 (`postgresql+psycopg` dialect). Its LGPL-3.0 licence is to be reviewed before production.
+- **Access:** synchronous SQLAlchemy 2.0 ORM; a `Session` per unit of work; no asynchronous database access initially. psycopg 3 also supports async, so a later move needs no driver change, but it requires a measured need and approval.
+- **Pooling:** one engine per process with `QueuePool` and `pool_pre_ping`. Celery prefork children create their own engine after fork. Pool sizes are configurable and tuned by measurement (7.2 §9).
+- **Transactions:** short, owner-scoped units of work at `READ COMMITTED`; optimistic concurrency via a version column on mutable authoritative rows; immutable revision rows; outbox rows written in the same transaction; no transaction held across parsing, embedding or network calls.
+- **Testing:** repository-port fakes in unit tests; real PostgreSQL with pgvector via Docker Compose in integration tests, with transactional rollback; migrations tested upgrade → downgrade → upgrade.
+- **Dependencies when 8.2 starts:** `SQLAlchemy` 2.x, `alembic`, `psycopg[binary]`. The `pgvector` Python package follows with vector storage.
+
+### 23.3 Decision 5 — Placement of Document Intelligence records
+
+- All Memory Engine tables live in the existing `memory` schema (7.2; 7.2 amendment §3), owned and written only by the Memory Engine role.
+- Table prefixes: `pm_` for Personal Memory, `doc_` for Document Intelligence, `me_` for shared engine plumbing (outbox, operations, idempotency).
+- Document records: `doc_document`, `doc_document_version` (immutable), `doc_extracted_representation`, `doc_chunk` (text in PostgreSQL for full-text search), `doc_chunk_location`, `doc_embedding` (metadata), `doc_processing_operation`. Original files and large extracted artifacts live in object storage under opaque, owner-partitioned keys.
+- Every owned row carries `owner_id`, including chunks and embeddings, so isolation is enforced in SQL before ranking.
+- No implicit `ON DELETE CASCADE` on user data in either domain. Deletion runs as explicit, verified workflow steps, and foreign keys use `RESTRICT`.
+- Personal-memory provenance references document evidence through `pm_document_evidence_ref` (document, version, nullable chunk, location) with `RESTRICT` foreign keys. The deletion workflow marks such references `source_deleted` before removing document data. Document deletion never deletes independent personal memories.
+
+### 23.4 Decision 10 — Owner identity
+
+- The Memory Engine does not authenticate users and keeps no user table. Callers (the Entry layer through the Orchestrator) pass a validated `OwnerScope` carrying an opaque owner identifier (UUID).
+- Every owned row stores `owner_id` without a foreign key to a Memory Engine user table; identity records remain owned by Shared Infrastructure (5.7).
+- Every repository method requires an `OwnerScope` and filters by it in SQL.
+
+### 23.5 Vector storage timing (Decision 3, deferral only)
+
+Approved on 2026-11-11.
+
+- **Phase 8.2** creates embedding **metadata** tables only, for both domains: source reference, model identifier and revision, dimension, preprocessing and normalization configuration, lifecycle status (Decision 5.4.20), and timestamps. It creates **no vector columns, vector tables or vector indexes**.
+- **Phase 8.7** creates the vector payload tables (for example `pm_embedding_vector`, `doc_embedding_vector`), the pgvector extension objects and the vector indexes. This happens after the embedding model is selected through a Raven-specific evaluation ([decision review](../project-context/PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) §5.3).
+- The vector dimension, similarity metric and index type follow the selected model and are not fixed earlier.
+
+### 23.6 Not decided here
+
+- The embedding model itself, with its dimension, metric and index type (Decision 3). It must be selected, with approval, before Phase 8.7 creates vector storage.
+- The language-scope requirement (gap G6), and Decisions 6–9 and 11–15, per the decision review.

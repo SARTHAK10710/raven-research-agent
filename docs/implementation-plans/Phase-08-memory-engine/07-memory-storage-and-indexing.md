@@ -29,6 +29,13 @@ Read:
 - `docs/implementation-plans/Phase-08-memory-engine/08-memory-retrieval.md`
 - `docs/implementation-plans/Phase-08-memory-engine/12-document-rag-pipeline.md`
 
+### 2.1 Approved vector storage timing
+
+Approved on 2026-11-11 (`docs/technical-decisions/01-baseline-technology-stack.md` §23.5):
+- Plan 8.2 creates embedding **metadata** only.
+- **This plan creates the vector payload tables** (personal memory and document chunk vectors kept separate), the pgvector objects and the vector indexes.
+- **Prerequisite:** the embedding model must be selected and approved first, through a Raven-specific evaluation. Its dimension, similarity metric and index type follow from that choice.
+
 ## 3. Storage architecture
 
 Use the approved baseline:
