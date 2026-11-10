@@ -31,7 +31,8 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
 
 ## Known technical limitations
 
-- **Nothing is implemented.** No code, dependencies, database, broker, storage or tests exist.
+- **Only the Phase 8.1 foundation is implemented** (configuration, errors, logging, domain boundary, unit tests). No memory or document functionality, database, broker or storage exists.
+- On Windows, a repository at a very long path cannot load mypy's compiled DLLs from `.venv` ("filename or extension is too long"), even with long paths enabled. Use a normal clone location, or point `UV_PROJECT_ENVIRONMENT` at a shorter path.
 - OCR is not supported; scanned PDFs cannot be assumed processable.
 - Advanced PDF layout and table extraction are not covered by the baseline.
 - No CI pipeline exists.

@@ -1,12 +1,13 @@
 # Rule: Coding Standards
 
-No application code exists yet, so these standards come from the approved Phase 7 specifications ([7.1](../../docs/technical-decisions/01-baseline-technology-stack.md), [7.7](../../docs/technical-decisions/07-observability-and-testing-infrastructure.md), [7.8](../../docs/technical-decisions/08-deployment-and-environment-architecture.md)) and the [Phase 8.1 plan](../../docs/implementation-plans/Phase-08-memory-engine/01-foundation-and-project-setup.md). Items marked **pending** are not decided; do not act on them until the user approves them, then update this file. Once code exists, follow its established conventions and record them here.
+Phase 8.1 created the foundation code (`memory-engine/src/memory_engine/`: `config`, `domain`, `exceptions`, `observability`); follow its patterns. These standards come from the approved Phase 7 specifications ([7.1](../../docs/technical-decisions/01-baseline-technology-stack.md), [7.7](../../docs/technical-decisions/07-observability-and-testing-infrastructure.md), [7.8](../../docs/technical-decisions/08-deployment-and-environment-architecture.md)) and the [Phase 8.1 plan](../../docs/implementation-plans/Phase-08-memory-engine/01-foundation-and-project-setup.md). Items marked **pending** are not decided; do not act on them until the user approves them, then update this file. Once code exists, follow its established conventions and record them here.
 
 ## Python
 
 - Python 3.12 (**approved**, [7.1 §22](../../docs/technical-decisions/01-baseline-technology-stack.md)). `requires-python` begins at 3.12; develop and test on 3.12.
 - Type-annotate all code. mypy in **strict mode** is the only type checker (**approved**); do not add Pyright.
-- Ruff for linting and formatting — **pending:** rule set (set during 8.1).
+- Ruff for linting and formatting with rules `E, W, F, I, B, UP, SIM, S, N, RUF`, line length 100 (`S101` allowed in tests). Configured in the root `pyproject.toml`; run `uv run ruff check .` and `uv run ruff format --check .` from the repository root.
+- Use absolute imports (`from memory_engine.x import y`); the domain boundary test rejects relative imports.
 - Keep business logic free of framework and infrastructure imports (see Structure).
 
 ## Project structure
