@@ -54,7 +54,7 @@ The initial recommended stack is:
 | API testing | HTTPX |
 | Coverage | pytest-cov |
 | Code formatting and linting | Ruff |
-| Static type checking | mypy or Pyright |
+| Static type checking | mypy, strict mode ([7.1 §22](01-baseline-technology-stack.md)) |
 | Dependency management | uv |
 
 These technologies provide the initial baseline. Exact deployment and storage configurations will be finalized during implementation.
@@ -597,7 +597,7 @@ The initial testing stack is:
 | HTTPX | API testing |
 | pytest-cov | Code coverage |
 | Ruff | Linting and formatting |
-| mypy or Pyright | Static type checking |
+| mypy (strict mode) | Static type checking ([7.1 §22](01-baseline-technology-stack.md)) |
 | Docker Compose | Local integration dependencies |
 | PostgreSQL test database | Database integration tests |
 | RabbitMQ test instance | Messaging integration tests |
@@ -890,7 +890,7 @@ The following architectural decisions are established:
 7. HTTPX supports API testing.
 8. pytest-cov supports coverage measurement.
 9. Ruff provides linting and formatting.
-10. mypy or Pyright provides static type checking.
+10. mypy in strict mode provides static type checking (selected in [7.1 §22](01-baseline-technology-stack.md)).
 11. Testing uses unit, component, integration, end-to-end, quality, and reliability layers.
 12. Raven requires separate algorithm and retrieval quality evaluation.
 13. Failure injection is required for critical workflows.

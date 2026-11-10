@@ -1353,7 +1353,7 @@ The Research Engine algorithm design is organized into five major groups.
 | 6.7 | Content Extraction & Fact Normalization | `02-content-extraction-normalization.md` |
 | 6.8 | Source Evaluation & Verification | `03-source-evaluation-verification.md` |
 | 6.9 | Research Memory Management & Session Lifecycle | `04-research-memory-session-lifecycle.md` |
-| 6.10 | Retrieval, Comparison & Synthesis | `05-retrieval-comparison-synthesis.md` |
+| 6.10 | Retrieval, Comparison & Synthesis | `05-retrival-comparison-synthesis.md` |
 
 The Research Engine algorithm specification is architecturally covered once these five groups have been documented and reviewed.
 

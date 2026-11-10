@@ -21,13 +21,13 @@ Read:
 - `docs/architecture/`
 - `docs/data-models/`
 - `docs/algorithms/`
-- `docs/technology/`
-- `docs/technical-decisions.md`
-- `docs/implementation-plans/phase-08-memory-engine/02-database-and-persistence.md`
-- `docs/implementation-plans/phase-08-memory-engine/05-entity-and-relationship-management.md`
-- `docs/implementation-plans/phase-08-memory-engine/06-memory-resolution.md`
-- `docs/implementation-plans/phase-08-memory-engine/07-memory-storage-and-indexing.md`
-- `docs/implementation-plans/phase-08-memory-engine/12-document-rag-pipeline.md`
+- `docs/technical-decisions/`
+- `docs/technical-decisions/Readme.md`
+- `docs/implementation-plans/Phase-08-memory-engine/02-database-and-persistence.md`
+- `docs/implementation-plans/Phase-08-memory-engine/05-entity-and-relationship-management.md`
+- `docs/implementation-plans/Phase-08-memory-engine/06-memory-resolution.md`
+- `docs/implementation-plans/Phase-08-memory-engine/07-memory-storage-and-indexing.md`
+- `docs/implementation-plans/Phase-08-memory-engine/12-document-rag-pipeline.md`
 
 Follow the approved deletion and lifecycle models.
 

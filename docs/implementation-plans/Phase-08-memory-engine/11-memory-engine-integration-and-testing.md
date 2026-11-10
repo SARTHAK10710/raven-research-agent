@@ -21,11 +21,11 @@ Read:
 - `docs/architecture/`
 - `docs/data-models/`
 - `docs/algorithms/`
-- `docs/technology/`
-- `docs/technical-decisions.md`
-- `docs/implementation-plans/phase-08-memory-engine/README.md`
+- `docs/technical-decisions/`
+- `docs/technical-decisions/Readme.md`
+- `docs/implementation-plans/Phase-08-memory-engine/Readme.md`
 - Plans 8.1 through 8.10.
-- `docs/implementation-plans/phase-08-memory-engine/12-document-rag-pipeline.md`
+- `docs/implementation-plans/Phase-08-memory-engine/12-document-rag-pipeline.md`
 
 All tests must validate the approved specifications rather than silently changing them.
 

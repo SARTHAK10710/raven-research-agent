@@ -206,23 +206,29 @@ A retrieved passage must remain traceable to its source.
 
 ## 5. Phase 6 Documentation
 
-Phase 6 is divided into eleven subphases.
+Phase 6 is documented in twelve numbered subphases plus the Document Processing and RAG specification. Subphase numbers below are taken from each document's own header.
 
 | Subphase | Document | Scope |
 |---|---|---|
-| 6.1 | `README.md` | Shared algorithm design principles and processing contract |
-| 6.2 | `memory-ingestion-extraction.md` | Memory ingestion, relevance gate and extraction |
-| 6.3 | `memory-resolution.md` | Deduplication, entity resolution and contradiction handling |
-| 6.4 | `memory-retrieval.md` | Hybrid retrieval, ranking and context selection |
-| 6.5 | `memory-consolidation-forgetting.md` | Consolidation, decay, profiles and forgetting |
-| 6.6 | `research-processing.md` | Query decomposition, discovery, extraction and normalization |
-| 6.7 | `research-verification.md` | Source evaluation, corroboration and fact verification |
-| 6.8 | `research-retrieval-comparison.md` | Research retrieval, freshness and comparison |
-| 6.9 | `orchestrator-algorithms.md` | Intent routing, planning, scheduling and context management |
-| 6.10 | `execution-reliability.md` | Retries, checkpoints, cancellation, recovery and response assembly |
-| 6.11 | `document-processing-rag.md` | Document extraction, structure-aware chunking, embedding, hybrid retrieval, evidence selection, extractive answer assembly and citation validation |
+| 6.1 | `shared/01-shared-algorithm-framework.md` | Shared algorithm framework, scoring system and processing contract |
+| 6.2 | `memory/01-memory-ingestion-extraction.md` | Memory ingestion, relevance gate and extraction |
+| 6.3 | `memory/02-memory-resolution.md` | Deduplication, entity resolution and contradiction handling |
+| 6.4 | `memory/03-memory-retrieval.md` | Hybrid retrieval, ranking and context selection |
+| 6.5 | `memory/04-memory-consolidation-maintenance.md` | Consolidation, maintenance, profiles and forgetting |
+| — | `memory/05-document-processing-and-rag.md` | Document extraction, structure-aware chunking, embedding, hybrid retrieval, evidence selection, extractive answer assembly and citation validation |
+| 6.6 | `research/01-query-understanding-discovery.md` | Query understanding and information discovery |
+| 6.7 | `research/02-content-extraction-normalization.md` | Content extraction and fact normalization |
+| 6.8 | `research/03-source-evaluation-verification.md` | Source evaluation and verification |
+| 6.9 | `research/04-research-memory-session-lifecycle.md` | Research memory management and session lifecycle |
+| 6.10 | `research/05-retrival-comparison-synthesis.md` | Research retrieval, comparison and synthesis |
+| 6.11 | `orchestrator/01-intent-planning-routing.md` | Intent understanding, planning and routing |
+| 6.12 | `orchestrator/02-result-validation-response-assembly` | Result validation and response assembly |
 
-Each document will contain the algorithms and decision logic for its respective area.
+Paths are relative to `docs/algorithms/`.
+
+*Numbering note:* an earlier version of this table assigned 6.11 to Document Processing and RAG. The orchestrator document now uses 6.11, and `memory/05-document-processing-and-rag.md` does not declare a subphase number, so its number is left unassigned here pending a decision. The file `orchestrator/02-result-validation-response-assembly` has no `.md` extension; it is referenced by its actual name.
+
+Each document contains the algorithms and decision logic for its respective area.
 
 ### 5.1 Memory and Document Intelligence Boundaries
 

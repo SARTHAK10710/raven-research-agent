@@ -448,8 +448,8 @@ Sensitive user information must not be unnecessarily exposed in logs.
 | HTTPX | API testing |
 | pytest-cov | Coverage reporting |
 | Ruff | Linting and formatting |
-| mypy or Pyright | Static type checking |
-| uv | Dependency and environment management |
+| mypy (strict mode) | Static type checking — selected for Phase 8.1; see §22 |
+| uv (workspace) | Dependency and environment management — uv workspace with one root `uv.lock`; see §22 |
 
 Testing must cover correctness, security, data integrity, concurrency and failure recovery.
 
@@ -485,8 +485,10 @@ Kubernetes is not required for the initial baseline.
 | Component | Technology | Status |
 |---|---|---|
 | Programming language | Python | Selected |
+| Python runtime version | Python 3.12 | Selected (§22) |
 | Backend | FastAPI | Selected |
 | Validation | Pydantic | Selected |
+| Configuration | Pydantic Settings (`pydantic-settings`) | Selected (§22) |
 | Database | PostgreSQL | Selected |
 | ORM | SQLAlchemy | Selected |
 | Migrations | Alembic | Selected |
@@ -506,8 +508,10 @@ Kubernetes is not required for the initial baseline.
 | Testing | pytest | Selected |
 | HTTP testing | HTTPX | Selected |
 | Linting | Ruff | Selected |
-| Type checking | mypy or Pyright | Selection pending implementation tooling review |
+| Type checking | mypy, strict mode | Selected (§22); previously pending implementation tooling review |
 | Dependency management | uv | Selected |
+| Project layout | uv workspace: root workspace configuration, engine packages as members, one root `uv.lock` | Selected (§22) |
+| Test location | Repository-root `tests/` | Selected (§22) |
 | Containers | Docker | Selected |
 | Local orchestration | Docker Compose | Selected |
 
@@ -583,3 +587,36 @@ This will define:
 8. Backup and recovery.
 9. Retention.
 10. Deletion infrastructure.
+
+---
+
+## 22. Approved Project Setup Decisions (Phase 8.1)
+
+**Status:** Approved by the project owner on 2026-11-11, before Phase 8.1 implementation.
+
+These decisions resolve the tooling choices that §3, §15 and §17 left open. They do not change Raven's architecture: the modular monolith, the three primary engines, Shared Infrastructure, and all ownership boundaries remain as specified above.
+
+| # | Decision | Approved choice | Details |
+|---|---|---|---|
+| 1 | Python version | **Python 3.12** | Python 3.12 is the runtime baseline. Projects declare a `requires-python` range beginning at 3.12 (`>=3.12`). Development and CI run on 3.12. Adopting a newer version requires first verifying support across the dependency stack, in particular the later NLP and embedding libraries. |
+| 2 | Type checker | **mypy, strict mode** | mypy is the only static type checker; Pyright is not introduced as a second one. Strict mode is enabled, and mypy runs as a Phase 8.1 quality check. |
+| 3 | Project layout | **uv workspace** | The repository root owns the workspace configuration (root `pyproject.toml`, no application code). `memory-engine/` is a workspace member with its own `pyproject.toml`. One root `uv.lock` manages the whole workspace; members do not keep independent lockfiles. Other engines join as members when they are implemented. A workspace is a code and dependency organization only. It does not imply microservices or independent deployment. |
+| 4 | Test location | **Repository-root `tests/`** | Tests live under the existing root `tests/` directory, organized by engine and test type as implementation develops (for example `tests/memory_engine/unit/`, `tests/memory_engine/integration/`). Directories are created when they have content. Tests are not placed in `memory-engine/tests/`. |
+| 5 | Configuration | **Pydantic Settings (`pydantic-settings`)** | Validated, environment-based configuration using Pydantic Settings, the official Pydantic package for settings in Pydantic v2. Existing secret-handling, environment-variable and logging requirements apply ([7.8](08-deployment-and-environment-architecture.md) §6–7). |
+
+### 22.1 Dependency timing
+
+| When | Dependencies |
+|---|---|
+| Phase 8.1 — runtime | `pydantic`, `pydantic-settings` |
+| Phase 8.1 — development | `pytest`, `pytest-cov`, `ruff`, `mypy` |
+| Phase 8.2 — added with database persistence | `SQLAlchemy`, `Alembic`, PostgreSQL driver (driver choice and sync vs async access are decided in 8.2) |
+| When required | `HTTPX` (when API or HTTP testing is needed); OpenTelemetry API and SDK (when instrumentation is implemented) |
+
+These remain approved baseline technologies (§17). This schedule only controls when each dependency is introduced. No dependency is added merely because it appears in the technology roadmap.
+
+### 22.2 Not decided here
+
+- PostgreSQL driver and sync vs async database access (Phase 8.2).
+- Ruff rule selection and detailed mypy configuration beyond strict mode (Phase 8.1 implementation).
+- Exact dependency versions, which are pinned through the root `uv.lock` during implementation.

@@ -47,8 +47,8 @@ Before implementing a capability, Claude Code must inspect the relevant document
 - `docs/architecture/`
 - `docs/data-models/`
 - `docs/algorithms/`
-- `docs/technology/`
-- `docs/technical-decisions.md`
+- `docs/technical-decisions/`
+- `docs/technical-decisions/Readme.md`
 
 The implementation plans explain how to implement the approved architecture. They do not independently authorize changes to architectural decisions.
 
@@ -208,19 +208,45 @@ Each plan must pass its own acceptance criteria before the phase is considered c
 
 Implementation plans belong inside:
 
-`docs/implementation-plans/phase-08-memory-engine/`
+`docs/implementation-plans/Phase-08-memory-engine/`
 
 Actual source code belongs in the existing:
 
 `memory-engine/`
 
-Tests belong in the appropriate locations under:
+Tests belong in the appropriate locations under the repository-root:
 
 `tests/`
+
+Memory Engine tests are organized by engine and test type (for example `tests/memory_engine/unit/` and `tests/memory_engine/integration/`), not in `memory-engine/tests/`.
 
 Do not place implementation source code inside the documentation or implementation-plan directories.
 
 Claude Code must inspect the existing repository before proposing or creating package structures. Reuse existing conventions and avoid unnecessary restructuring.
+
+### 7.1 Approved project setup decisions
+
+Approved on 2026-11-11 and recorded in [`docs/technical-decisions/01-baseline-technology-stack.md`](../../technical-decisions/01-baseline-technology-stack.md) §22:
+
+| Decision | Approved choice |
+|---|---|
+| Python version | Python 3.12 (`requires-python` range beginning at 3.12; development and CI on 3.12) |
+| Type checker | mypy in strict mode (Pyright is not used) |
+| Project layout | uv workspace: the repository root owns the workspace configuration, `memory-engine/` is a workspace member, and one root `uv.lock` manages all members |
+| Test location | Repository-root `tests/` |
+| Configuration | Pydantic Settings (`pydantic-settings`), with validated environment-based configuration |
+
+The uv workspace organizes code and dependencies only. It does not change the modular-monolith architecture or imply independent deployment.
+
+**Dependency timing:**
+
+| When | Dependencies |
+|---|---|
+| Phase 8.1 | Runtime: `pydantic`, `pydantic-settings`. Development: `pytest`, `pytest-cov`, `ruff`, `mypy` |
+| Phase 8.2 | `SQLAlchemy`, `Alembic`, PostgreSQL driver |
+| When required | `HTTPX` (API/HTTP testing), OpenTelemetry API/SDK (instrumentation) |
+
+Later milestones add their own dependencies (NLP, embeddings, messaging, storage) only when they need them.
 
 ## 8. Testing and quality requirements
 

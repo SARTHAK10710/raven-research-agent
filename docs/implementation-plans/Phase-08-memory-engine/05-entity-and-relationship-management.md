@@ -40,10 +40,10 @@ Claude Code must review:
 4. `docs/algorithms/memory/02-memory-resolution.md`
 5. `docs/algorithms/memory/01-memory-ingestion-extraction.md`
 6. `docs/algorithms/shared/01-shared-algorithm-framework.md`
-7. `docs/technology/01-baseline-technology-stack.md`
-8. `docs/technology/02-database-and-storage-architecture.md`
-9. `docs/implementation-plans/phase-08-memory-engine/02-database-and-persistence.md`
-10. `docs/implementation-plans/phase-08-memory-engine/04-extraction-and-evaluation.md`
+7. `docs/technical-decisions/01-baseline-technology-stack.md`
+8. `docs/technical-decisions/02-database-and-storage-architecture.md`
+9. `docs/implementation-plans/Phase-08-memory-engine/02-database-and-persistence.md`
+10. `docs/implementation-plans/Phase-08-memory-engine/04-extraction-and-evaluation.md`
 
 The approved Phase 5 data models are authoritative.
 

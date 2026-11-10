@@ -2,18 +2,23 @@
 
 An independent AI Research Agent architecture centered on persistent memory, evidence-based research, and adaptive orchestration.
 
-> **Status:** architecture only. No engine code, schemas, database choices, detailed algorithms, operational thresholds, implementation, or production tests are included.
+> **Status:** documentation complete through Phase 7 (architecture, data models, algorithms, and technology decisions). Raven is preparing to enter Phase 8, Memory Engine implementation. **No application code has been implemented yet**, and no component has been installed, tested, or deployed.
 
 ## Architecture Summary
 
-Raven has four conceptual layers:
+Raven is built around **three primary engines** supported by shared infrastructure:
 
-1. **User Interface / Entry Layer** — request intake, authentication context, validation, and response delivery.
-2. **Agent Orchestrator** — intent understanding, planning, routing, coordination, execution state, recovery, and response assembly.
-3. **Specialized Engines** — Memory Engine for persistent memory and Research Engine for external evidence.
-4. **Shared Infrastructure** — future storage, indexing, identity, communication, execution, and observability capabilities.
+1. **Memory Engine** — persistent knowledge in two separate logical domains:
+   - **Personal Memory** — facts, preferences, decisions, entities, and relationships about the user.
+   - **Document Intelligence** — uploaded document processing, chunking, embeddings, hybrid retrieval, evidence selection, and citations.
+2. **Research Engine** — external discovery, extraction, verification, and research-session lifecycle.
+3. **Agent Orchestrator** — intent understanding, planning, routing, coordination, execution state, recovery, and response assembly.
 
-These are ownership boundaries, not a decision to deploy separate microservices.
+These sit within four conceptual layers: the **User Interface / Entry Layer** (request intake, authentication context, validation, and response delivery), the **Agent Orchestrator**, the **Specialized Engines** (Memory and Research), and **Shared Infrastructure** (storage, indexing, identity, messaging, execution, and observability).
+
+Personal Memory and Document Intelligence have separate ownership, data models, retrieval workflows, and lifecycle rules. They may share infrastructure, but document chunks are never treated as personal memories.
+
+These are ownership boundaries, not a decision to deploy separate microservices. Phase 7 selected a modular monolith with independently executable background workers.
 
 | Component | Optimization : Performance |
 | --- | --- |
@@ -23,16 +28,36 @@ These are ownership boundaries, not a decision to deploy separate microservices.
 
 The ratios are architecture preferences, not measured runtime allocations or benchmarks.
 
+## Technology Baseline
+
+Phase 7 selected Python (3.12), FastAPI, Pydantic (with Pydantic Settings for configuration), PostgreSQL with SQLAlchemy and Alembic, pgvector, S3-compatible object storage, RabbitMQ with Celery, spaCy, scikit-learn, the sentence-transformers ecosystem, OpenTelemetry, Prometheus, Grafana, pytest, Ruff, mypy (strict mode), uv (as a workspace), and Docker. Core processing does not use generative LLM APIs or locally hosted generative LLMs. See [docs/technical-decisions](docs/technical-decisions/Readme.md) for the full decisions and their status.
+
 ## Phase Status
 
-| Phase | Status |
-| --- | --- |
-| Phase 1 — Overall Architecture | **Formally complete** |
-| Phase 2 — Memory Engine | **Architecture complete** |
-| Phase 3 — Research Engine | **Architecture complete** |
-| Phase 4 — Agent Orchestrator | **Architecture complete** |
+Documentation completion and implementation completion are tracked separately.
 
-Read [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md) and the documents in [docs/architecture](docs/architecture).
+| Phase | Documentation | Implementation |
+| --- | --- | --- |
+| Phase 1 — Overall Architecture | **Formally complete** | — |
+| Phase 2 — Memory Engine Architecture | **Architecture complete** | — |
+| Phase 3 — Research Engine Architecture | **Architecture complete** | — |
+| Phase 4 — Agent Orchestrator Architecture | **Architecture complete** | — |
+| Phase 5 — Data Models & Database Design | **Documented** | — |
+| Phase 6 — Algorithms & Processing Design | **Documented** | — |
+| Phase 7 — Technology & Infrastructure Selection | **Documented** | — |
+| Phase 8 — Memory Engine Implementation | **Plans documented** | **Not started** |
+
+## Documentation
+
+| Area | Location |
+| --- | --- |
+| Claude Code instructions and project context | [CLAUDE.md](CLAUDE.md), [docs/project-context](docs/project-context/README.md) (status, implementation state, constraints, next steps) |
+| Architecture baseline | [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md), [docs/architecture](docs/architecture/Readme.md) |
+| Design overview | [DESIGN.md](DESIGN.md) |
+| Data models (Phase 5) | [docs/data-models](docs/data-models/Readme.md) |
+| Algorithms (Phase 6) | [docs/algorithms](docs/algorithms/Readme.md) |
+| Technology decisions (Phase 7) | [docs/technical-decisions](docs/technical-decisions/Readme.md) |
+| Memory Engine implementation plans (Phase 8) | [docs/implementation-plans/Phase-08-memory-engine](docs/implementation-plans/Phase-08-memory-engine/Readme.md) |
 
 ## Claude Code Workflow
 
@@ -47,4 +72,14 @@ Claude Code must not independently alter agreed architectural decisions.
 
 ## Deferred Work
 
-Database choices, schemas, API contracts, algorithms, retention periods, retry limits, resource budgets, concurrency mechanisms, operational thresholds, benchmarks, deployment, security implementation, and tests are intentionally deferred and not yet implemented or validated.
+Database and core technology choices are no longer deferred; they were made in Phase 7. The following remain deferred until implementation evidence or an explicit decision is available:
+
+- Exact embedding model and dimensions, reranking model, chunk size and overlap.
+- Document parser adoption (pypdf and python-docx are proposed but require evaluation), OCR, and advanced layout or table extraction.
+- Authentication and secrets-management providers, cloud provider, production hosting, and production orchestration.
+- Dedicated vector database or search engine (only if measured workload justifies them).
+- Concrete API and message schemas, queue topology, retry counts, resource budgets, and operational thresholds.
+- Retention periods, backup frequency and retention, and RPO/RTO targets.
+- CI provider, coverage thresholds, and benchmark datasets.
+
+Nothing has been implemented, benchmarked, or validated by tests yet.

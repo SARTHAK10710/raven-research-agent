@@ -95,7 +95,7 @@ Phase 7 is divided into eight technology specifications.
 | 7.2 | `02-database-and-storage-architecture.md` | PostgreSQL, logical schemas, object storage, persistence and lifecycle |
 | 7.3 | `03-vector-search-and-embedding-infrastructure.md` | pgvector, embedding generation, vector search and hybrid retrieval |
 | 7.4 | `04-background-processing-and-messaging.md` | RabbitMQ, Celery, asynchronous processing and task reliability |
-| 7.5 | `05-nlp-and-machine-learning-stack.md` | NLP, conventional ML, document parsing, extraction, chunking and evidence processing |
+| 7.5 | `05-NLP-and-machine-learning-stack.md` | NLP, conventional ML, document parsing, extraction, chunking and evidence processing |
 | 7.6 | `06-api-security-and-internal-communication.md` | FastAPI, API contracts, authentication and authorization |
 | 7.7 | `07-observability-and-testing-infrastructure.md` | Logging, metrics, tracing, testing and quality evaluation |
 | 7.8 | `08-deployment-and-environment-architecture.md` | Docker, environments, deployment, configuration and recovery |
@@ -110,9 +110,10 @@ The initial technology direction is:
 
 | Area | Technology |
 |---|---|
-| Primary language | Python |
+| Primary language | Python 3.12 |
 | Backend framework | FastAPI |
 | Data validation | Pydantic |
+| Configuration | Pydantic Settings (`pydantic-settings`) |
 | Primary database | PostgreSQL |
 | ORM | SQLAlchemy |
 | Database migrations | Alembic |
@@ -132,11 +133,14 @@ The initial technology direction is:
 | Metrics | Prometheus |
 | Dashboards | Grafana |
 | Testing | pytest, HTTPX, pytest-cov |
-| Code quality | Ruff, mypy/Pyright |
-| Environment management | uv |
+| Code quality | Ruff, mypy (strict mode) |
+| Environment management | uv (workspace, one root `uv.lock`) |
+| Test location | Repository-root `tests/` |
+
+The Python version, type checker, project layout, test location and configuration choices were approved for Phase 8.1 on 2026-11-11; see `01-baseline-technology-stack.md` §22, which also records when each dependency is introduced.
 | Containerization | Docker, Docker Compose |
 
-Document parsing recommendations are maintained in `05-nlp-and-machine-learning-stack.md`.
+Document parsing recommendations are maintained in `05-NLP-and-machine-learning-stack.md`.
 
 The initial proposed document parsers are:
 

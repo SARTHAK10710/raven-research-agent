@@ -1,0 +1,68 @@
+# Rule: Coding Standards
+
+No application code exists yet, so these standards come from the approved Phase 7 specifications ([7.1](../../docs/technical-decisions/01-baseline-technology-stack.md), [7.7](../../docs/technical-decisions/07-observability-and-testing-infrastructure.md), [7.8](../../docs/technical-decisions/08-deployment-and-environment-architecture.md)) and the [Phase 8.1 plan](../../docs/implementation-plans/Phase-08-memory-engine/01-foundation-and-project-setup.md). Items marked **pending** are not decided; do not act on them until the user approves them, then update this file. Once code exists, follow its established conventions and record them here.
+
+## Python
+
+- Python 3.12 (**approved**, [7.1 §22](../../docs/technical-decisions/01-baseline-technology-stack.md)). `requires-python` begins at 3.12; develop and test on 3.12.
+- Type-annotate all code. mypy in **strict mode** is the only type checker (**approved**); do not add Pyright.
+- Ruff for linting and formatting — **pending:** rule set (set during 8.1).
+- Keep business logic free of framework and infrastructure imports (see Structure).
+
+## Project structure
+
+- Memory Engine code lives only in `memory-engine/`. Do not modify other engines' directories unless the approved task says so.
+- uv workspace (**approved**): the root `pyproject.toml` owns the workspace configuration and contains no application code; `memory-engine/` is a member; one root `uv.lock`. Never create per-member lockfiles. The workspace is not a microservice split.
+- Tests live in the repository-root `tests/` (**approved**), organized by engine and test type, for example `tests/memory_engine/unit/`. Never in `memory-engine/tests/`.
+- Never place source code in `docs/`.
+- Layers: **domain** (concepts, invariants, value objects, domain errors; no FastAPI, database drivers, RabbitMQ, Celery or storage SDKs), **application** (use cases; depends on interfaces), **infrastructure** (database, repositories, storage, messaging, observability adapters), **interfaces** (contracts other components use).
+- Create a module only when it has real content. No empty placeholder packages. No abstraction unless it protects ownership, enables testing or isolates replaceable infrastructure.
+- Package layout follows plan 8.1 §4: `memory-engine/src/memory_engine/`. **Pending:** placement of Personal Memory vs Document Intelligence code within the package.
+
+## Naming
+
+- Follow PEP 8: `snake_case` modules, functions and variables; `PascalCase` classes; `UPPER_SNAKE_CASE` constants.
+- Use the domain vocabulary from the Phase 5 data models (for example memory source, memory candidate, atomic memory, document version, document chunk). Do not invent synonyms for defined concepts.
+- Exception class names end in `Error`. *(Raven engineering convention, not a source-document requirement.)*
+
+## Error handling
+
+- Meaningful exception types, with domain errors separate from infrastructure errors.
+- Preserve the original cause (`raise ... from err`). Never swallow exceptions.
+- Never return stack traces or internal details to callers or users.
+- Never report an operation as successful before its required persistence is confirmed. Distinguish accepted asynchronous work from completed work.
+- API error categories follow [7.6 §13](../../docs/technical-decisions/06-api-security-and-internal-communication.md): `INVALID_REQUEST`, `UNAUTHENTICATED`, `FORBIDDEN`, `RESOURCE_NOT_FOUND`, `RATE_LIMITED`, `CONFLICT`, `REQUEST_TIMEOUT`, `SERVICE_UNAVAILABLE`, `INTERNAL_ERROR`.
+- Mapping errors to these API categories belongs at the interface layer, not in the domain. *(Raven engineering convention, not a source-document requirement.)*
+
+## Logging
+
+- Python standard `logging` with structured output (7.7 §3). Do not add a logging framework without approval.
+- Conceptual fields (7.7 §6.1): timestamp, level, service/component, environment, event type, message, request/execution/task/trace IDs, non-sensitive user scope, duration, error code.
+- Never log secrets, tokens, credentials, full request bodies, raw personal-memory content or document text. See [security and privacy](security-and-privacy.md).
+
+## Configuration
+
+- Pydantic Settings (`pydantic-settings`, **approved**) for validated, environment-based configuration; fail at startup on missing or invalid mandatory configuration.
+- Environment-specific values stay out of code. Environments: development, testing, staging, production.
+- Secrets are separate from ordinary configuration. `.env` is git-ignored; `.env.example` holds placeholders only.
+
+## Dependencies
+
+- uv manages environments; `pyproject.toml` is the central configuration; dependencies are pinned and locked reproducibly; runtime and development dependencies are separated.
+- Add a dependency only in the subphase that needs it, with a stated reason and a check for an existing solution. Review licence and maintenance status.
+- Approved timing ([7.1 §22.1](../../docs/technical-decisions/01-baseline-technology-stack.md)): 8.1 adds `pydantic`, `pydantic-settings` and, for development, `pytest`, `pytest-cov`, `ruff`, `mypy`. SQLAlchemy, Alembic and the PostgreSQL driver wait for 8.2. HTTPX and OpenTelemetry are added only when required.
+- Never add generative LLM libraries. Proposed parsers (pypdf, python-docx) need evaluation and approval first. See [`TECHNOLOGY_DECISIONS.md`](../../docs/project-context/TECHNOLOGY_DECISIONS.md).
+
+## Testing
+
+- pytest; pytest-cov for coverage reporting (no threshold until one is approved); HTTPX only where HTTP/API testing is required.
+- Layers (7.7 §10): unit, component, integration, end-to-end, quality/evaluation, reliability/security.
+- Tests are repeatable, use synthetic data, never touch production data, and make no network calls in unit tests. Integration tests use isolated real infrastructure; do not mock away every meaningful integration.
+- Test behavior and invariants (duplicates, contradictions, isolation, deletion propagation, provenance), not just imports or successful responses.
+- Coverage alone never proves correctness.
+
+## Documentation and quality
+
+- Each package's README covers its responsibilities, boundaries, setup and test commands, and links to the architecture docs instead of duplicating them.
+- Quality gates before acceptance: format/lint, type check, unit tests, relevant component and integration tests, plus migration validation when the schema changes.
+- Keep docstrings and comments for intent and invariants, not restatements of code.

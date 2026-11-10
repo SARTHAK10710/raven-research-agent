@@ -21,11 +21,11 @@ Read and reconcile the following before implementation:
 - `PROJECT_ARCHITECTURE.md`
 - `docs/architecture/`
 - `docs/data-models/`
-- `docs/technical-decisions.md`
-- `docs/technology/01-baseline-technology-stack.md`
-- `docs/technology/02-database-and-storage-architecture.md`
-- `docs/technology/03-vector-search-and-embedding-infrastructure.md`
-- `docs/technology/04-background-processing-and-messaging.md`
+- `docs/technical-decisions/Readme.md`
+- `docs/technical-decisions/01-baseline-technology-stack.md`
+- `docs/technical-decisions/02-database-and-storage-architecture.md`
+- `docs/technical-decisions/03-vector-search-and-embedding-infrastructure.md`
+- `docs/technical-decisions/04-background-processing-and-messaging.md`
 
 Relevant data-model specifications include:
 
