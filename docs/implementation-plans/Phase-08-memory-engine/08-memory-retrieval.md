@@ -1,608 +1,450 @@
-# Phase 8.8 — Memory Retrieval Implementation Plan
+# 8.8 — Memory Retrieval
 
 ## 1. Objective
 
-Implement the Memory Engine's retrieval system.
+Implement a reliable retrieval system that retrieves relevant personal memories for a given user query or application request.
 
-The retrieval system receives a query and retrieves relevant authoritative memories using the approved hybrid retrieval architecture.
+The retrieval system must identify relevant information from the user's authoritative memory records while preserving:
 
-It must consider semantic relevance, keyword relevance, metadata, entities, relationships, temporal context, importance, confidence and evidence quality.
+- User ownership.
+- Temporal context.
+- Confidence.
+- Importance.
+- Provenance.
+- Historical and current distinctions.
+- Entity and relationship context.
 
-### Primary objectives
+This plan covers personal memory retrieval only.
 
-- Understand retrieval requests.
-- Perform hybrid memory search.
-- Apply ownership and metadata filters.
-- Retrieve relevant entities and relationships.
-- Rank candidate memories.
-- Apply confidence and evidence filtering.
-- Support dynamic Top-K selection.
-- Support iterative retrieval.
-- Enforce retrieval budgets.
-- Return provenance-aware results.
-- Preserve historical versus current context.
-- Provide measurable retrieval quality.
+Document retrieval and document-grounded answer generation are separate capabilities implemented under plan 8.12.
 
 ## 2. Architecture references
 
-Claude Code must review:
+Read:
 
-1. `PROJECT_ARCHITECTURE.md`
-2. `docs/architecture/` — Memory Engine architecture.
-3. `docs/data-models/` — approved Memory Engine data models.
-4. `docs/algorithms/memory/03-memory-retrieval.md`
-5. `docs/algorithms/shared/01-shared-algorithm-framework.md`
-6. `docs/technology/01-baseline-technology-stack.md`
-7. `docs/technology/02-database-and-storage-architecture.md`
-8. `docs/technology/03-vector-search-and-embedding-infrastructure.md`
-9. `docs/technology/05-nlp-and-machine-learning-stack.md`
-10. `docs/implementation-plans/phase-08-memory-engine/06-memory-resolution.md`
-11. `docs/implementation-plans/phase-08-memory-engine/07-memory-storage-and-indexing.md`
+- `PROJECT_ARCHITECTURE.md`
+- `docs/architecture/`
+- `docs/data-models/`
+- `docs/algorithms/`
+- `docs/technology/`
+- `docs/technical-decisions.md`
+- `docs/implementation-plans/phase-08-memory-engine/05-entity-and-relationship-management.md`
+- `docs/implementation-plans/phase-08-memory-engine/06-memory-resolution.md`
+- `docs/implementation-plans/phase-08-memory-engine/07-memory-storage-and-indexing.md`
+- `docs/implementation-plans/phase-08-memory-engine/12-document-rag-pipeline.md`
 
-The approved retrieval algorithms and data models are authoritative.
+Follow the approved retrieval algorithms and data models.
 
-## 3. Scope
+## 3. Retrieval architecture
 
-### Included
+Implement the following retrieval workflow:
 
-- Retrieval request validation.
-- Query preprocessing.
-- Hybrid retrieval.
-- Vector similarity search.
-- Keyword retrieval.
-- Metadata filtering.
-- Entity-aware retrieval.
-- Relationship-aware retrieval.
-- Temporal filtering.
-- Candidate aggregation and deduplication.
-- Relevance ranking.
-- Confidence and evidence filtering.
-- Dynamic Top-K selection.
-- Iterative retrieval.
-- Retrieval budgets.
-- Provenance-aware result construction.
-- Retrieval quality evaluation.
+1. Receive a retrieval request.
+2. Validate the request and user ownership.
+3. Normalize the query.
+4. Identify relevant entities, topics, and temporal constraints.
+5. Apply metadata and access filters.
+6. Retrieve candidate memories using supported retrieval methods.
+7. Combine and deduplicate candidate results.
+8. Apply relevance and confidence evaluation.
+9. Apply temporal and relationship-aware ranking.
+10. Select the appropriate results.
+11. Attach provenance and retrieval metadata.
+12. Return a structured result.
 
-### Excluded
+Retrieval must never bypass user ownership or expose another user's memories.
 
-- Memory consolidation.
-- Profile generation.
-- Forgetting and deletion execution.
-- Agent orchestration.
-- User-facing conversational response generation.
-- Document RAG and document chunk retrieval.
+## 4. Retrieval scope
 
-Document RAG additions remain deferred until the final Phase 8 review.
+The retrieval system must operate on authoritative personal memory data and the approved associated representations.
 
-## 4. Retrieval architecture
+Eligible information includes:
 
-Implement the following logical components.
-
-### 4.1 Retrieval Interface
-
-Responsibilities:
-
-- Accept retrieval requests from authorized internal callers.
-- Validate query and context information.
-- Pass requests to the retrieval application service.
-- Return structured retrieval results.
-
-The interface must not independently implement ranking or memory business logic.
-
-### 4.2 Query Preprocessor
-
-Responsibilities:
-
-- Normalize query text.
-- Identify useful keywords.
-- Extract available entities and attributes.
-- Preserve negation and qualifiers.
-- Identify temporal constraints.
-- Prepare query representations for hybrid retrieval.
-
-Do not alter the meaning of the original query.
-
-### 4.3 Retrieval Context Manager
-
-Prepare retrieval context using available information.
-
-Potential context includes:
-
-- User identity.
-- Current task or execution reference.
-- Relevant entities.
-- Project context.
-- Time constraints.
+- Atomic memories.
+- Memory revisions where historical retrieval is appropriate.
 - Memory categories.
-- Historical or current information requirements.
-- Explicit retrieval filters.
+- Entities and aliases.
+- Entity relationships.
+- Memory relationships.
+- Episodes.
+- Derived profiles.
+- Memory provenance.
+- Approved memory embeddings and keyword indexes.
 
-Context must be selectively applied.
+Do not include document chunks in the personal memory result set by default.
 
-Do not retrieve unrelated personal information merely because it exists.
+Document chunks must be retrieved through the Document Intelligence pipeline in plan 8.12.
 
-### 4.4 Vector Retrieval
+## 5. Query preprocessing
 
-Use pgvector to retrieve semantically similar memories.
+Normalize the retrieval request while preserving its intended meaning.
 
-Responsibilities:
+Where supported, identify:
 
-- Generate or obtain a query embedding.
-- Search the approved embedding index.
-- Apply relevant metadata and ownership filters.
-- Return similarity information.
-- Preserve memory and revision references.
+- Important terms.
+- Entities.
+- Aliases.
+- Topics.
+- Temporal expressions.
+- Contextual constraints.
+- Requested information type.
+- Relevant category hints.
 
-Use the approved embedding model and preprocessing configuration.
+Do not over-normalize queries in ways that remove meaningful context.
 
-Do not assume vector similarity proves factual relevance.
+Preserve the original query for tracing and debugging, subject to privacy requirements.
 
-### 4.5 Keyword Retrieval
+## 6. Hybrid retrieval
 
-Use PostgreSQL full-text search to identify relevant memories through lexical matching.
+Use the approved hybrid retrieval architecture.
 
-Responsibilities:
+### 6.1 Vector retrieval
 
-- Search normalized memory content.
-- Identify exact and partial keyword matches.
-- Apply ownership and metadata filters.
-- Return keyword relevance information.
+Use pgvector to retrieve semantically relevant personal memories.
 
-Keyword retrieval is particularly useful for names, identifiers, technologies and exact phrases.
+Vector similarity is a candidate-generation signal.
 
-### 4.6 Metadata Retrieval
+It is not proof that two memories are identical or that a retrieved statement is true.
 
-Support structured filtering using approved memory metadata.
+### 6.2 Keyword retrieval
 
-Potential filters include:
+Use PostgreSQL full-text search and approved keyword retrieval methods to identify memories containing relevant terms.
+
+Keyword retrieval is useful for exact names, terms, and specific references.
+
+### 6.3 Metadata retrieval
+
+Use structured metadata filters for:
 
 - User ownership.
-- Memory category.
-- Importance.
+- Memory categories.
+- Entities.
+- Temporal constraints.
 - Confidence.
-- Lifecycle state.
-- Entity association.
-- Source reference.
-- Temporal validity.
-- Creation and update timestamps.
+- Importance.
+- Memory lifecycle status.
 
-Only retrieve memories accessible to the requesting user.
+### 6.4 Relationship-aware retrieval
 
-### 4.7 Entity and Relationship Retrieval
+Use approved entity and memory relationships to discover related context.
 
-Use the approved entity and relationship models to identify contextual memories.
+Relationship traversal must respect ownership, relationship validity, and temporal context.
 
-Examples:
+Do not introduce graph database infrastructure for this capability.
 
-A query about Raven may retrieve memories associated with:
+## 7. Candidate aggregation and deduplication
 
-- Raven as a project.
-- Its technology stack.
-- Related decisions.
-- Associated commitments.
-- Previous development milestones.
+Combine results from the available retrieval methods.
 
-Entity relationships should expand retrieval only when they improve query relevance.
+The aggregation process must:
 
-Avoid unrestricted graph traversal.
+- Identify duplicate result references.
+- Preserve the strongest available evidence.
+- Retain relevant retrieval-method metadata.
+- Avoid returning the same memory multiple times.
+- Preserve meaningful relationships between separate memories.
 
-### 4.8 Candidate Aggregator
+Do not merge distinct authoritative memories simply because their content is similar.
 
-Combine retrieval candidates from the different retrieval methods.
+Memory resolution remains the responsibility of plan 8.6.
 
-Responsibilities:
+## 8. Ranking and filtering
 
-- Merge candidate result sets.
-- Deduplicate repeated memory references.
-- Preserve retrieval signals.
-- Preserve source and revision references.
-- Apply eligibility filters.
-- Prepare candidates for ranking.
+Use the approved multifactor ranking strategy.
 
-Do not discard useful provenance while combining results.
+Relevant factors may include:
 
-## 5. Hybrid retrieval strategy
-
-Implement the approved hybrid retrieval approach:
-
-1. Vector retrieval.
-2. Keyword retrieval.
-3. Metadata filtering.
-4. Entity and relationship retrieval.
-5. Candidate aggregation.
-6. Relevance ranking.
-
-The implementation must not depend exclusively on vector search.
-
-Different query types may benefit from different retrieval signals.
-
-For example:
-
-- Conceptual questions may benefit more from semantic retrieval.
-- Exact project identifiers may benefit more from keyword retrieval.
-- Time-specific questions may require metadata filtering.
-- Relationship questions may require entity context.
-
-The retrieval system should support configurable weighting based on evaluation.
-
-Do not hardcode arbitrary weights without documenting their rationale and evaluating them against representative datasets.
-
-## 6. Candidate eligibility and filtering
-
-Before ranking, apply the required eligibility rules.
-
-### Ownership
-
-Only retrieve memories belonging to the authorized user.
-
-### Lifecycle state
-
-Exclude rejected, deleted or otherwise ineligible memories.
-
-Use the approved lifecycle definitions.
-
-### Confidence
-
-Consider confidence and evidence quality when determining whether a memory can support an answer.
-
-Low-confidence memories may be retained as contextual evidence but must not be presented as established facts.
-
-### Temporal context
-
-Distinguish:
-
-- Current information.
-- Historical information.
-- Future plans.
-- Expired or superseded information.
-- Information with unknown temporal validity.
-
-Do not assume that the newest observation always replaces an older historical fact.
-
-### Evidence
-
-Preserve the source references supporting retrieved memories.
-
-Do not present unsupported derived information as verified.
-
-## 7. Relevance ranking
-
-Implement a ranking system using the approved retrieval algorithm.
-
-Consider:
-
-- Semantic similarity.
+- Semantic relevance.
 - Keyword relevance.
-- Metadata match.
 - Entity relevance.
-- Relationship relevance.
+- Context match.
 - Importance.
 - Confidence.
-- Evidence quality.
-- Temporal relevance.
-- Freshness where appropriate.
+- Freshness.
+- Temporal validity.
+- Relationship relevance.
+- Query-specific constraints.
 
-Importance, confidence and relevance must remain separate concepts.
+Importance and confidence must remain separate.
 
-A highly important memory is not automatically relevant to every query.
+A highly relevant but low-confidence memory must not be presented as a confirmed fact.
 
-A high-confidence memory is not automatically relevant either.
+Historical information must not silently replace the current value.
 
-The ranking system must evaluate the complete retrieval context.
+Apply the approved ranking and filtering rules rather than inventing an unrelated scoring system.
 
-### Ranking requirements
+## 9. Dynamic Top-K retrieval
 
-- Use normalized or appropriately comparable retrieval signals.
-- Avoid double-counting correlated signals.
-- Preserve ranking explanations or contributing signals where practical.
-- Support configurable ranking parameters.
-- Make ranking deterministic where equivalent inputs and configuration are supplied.
+Do not always return a fixed number of memories.
 
-## 8. Dynamic Top-K selection
-
-Implement adaptive selection of the number of memories returned.
-
-The system must not rely on one fixed Top-K value for every query.
-
-Consider:
+Select the result count according to:
 
 - Query complexity.
 - Retrieval confidence.
-- Candidate relevance distribution.
-- Evidence diversity.
-- Available retrieval budget.
-- Whether additional results are likely to improve the answer.
+- Relevance distribution.
+- Available evidence.
+- Context requirements.
+- Retrieval budget.
 
-Requirements:
+Use iterative retrieval when the initial results are insufficient and additional retrieval is justified.
 
-- Set a configurable maximum result limit.
-- Support a minimum useful result threshold.
-- Avoid returning irrelevant memories merely to fill the result limit.
-- Allow smaller result sets for simple queries.
-- Allow broader result sets for complex queries.
-- Preserve the reason for early stopping where practical.
+Stop when:
 
-Exact thresholds must be evaluated using representative retrieval datasets.
+- Sufficient relevant context has been obtained.
+- Additional retrieval produces little value.
+- The retrieval budget is exhausted.
+- No additional relevant memories are available.
 
-## 9. Iterative retrieval
+Do not increase retrieval volume merely to produce a larger result.
 
-Support controlled iterative retrieval when the initial result set is insufficient.
+## 10. Temporal retrieval
 
-Example workflow:
+Preserve temporal integrity.
 
-1. Execute initial hybrid retrieval.
-2. Evaluate result relevance and coverage.
-3. Identify missing context.
-4. Refine search terms or metadata filters.
-5. Execute a bounded additional retrieval pass.
-6. Merge and rerank results.
-7. Stop when sufficient evidence is available or the budget is exhausted.
+Support queries that refer to:
 
-Iteration must be bounded.
+- Current information.
+- Historical information.
+- Changes over time.
+- Previous decisions.
+- Past preferences.
+- Time-bounded events.
+- Progression of goals or projects.
 
-Do not repeatedly execute equivalent searches without a meaningful refinement.
+The system must distinguish:
 
-Preserve the original query and retrieval history for observability.
+- When information was true.
+- When Raven learned the information.
+- When the record was created or updated.
 
-## 10. Retrieval budgets
+Use the approved temporal data model.
 
-Every retrieval request must operate within configurable resource limits.
+Do not treat an old value as current simply because it has a high semantic similarity score.
+
+## 11. Confidence and evidence filtering
+
+Retrieval results must preserve their confidence and provenance.
+
+Distinguish:
+
+- Explicit memories.
+- Inferred memories.
+- Low-confidence candidates.
+- Needs-review information.
+- Rejected information.
+- Active authoritative memories.
+- Historical revisions.
+
+Only records eligible under the approved lifecycle and retrieval policy may be returned as authoritative memory.
+
+Low-confidence information may be returned as qualified context when appropriate, but must not be represented as confirmed fact.
+
+## 12. Retrieval result contract
+
+Return a structured result using the approved interface contract.
+
+A logical result may include:
+
+- Memory identity.
+- Relevant content.
+- Category.
+- Entity references.
+- Importance.
+- Confidence.
+- Explicit or inferred status.
+- Temporal context.
+- Provenance references.
+- Retrieval method.
+- Relevance metadata.
+- Historical/current status.
+
+Use exact field names and types from the approved data models and contracts.
+
+Do not return internal database credentials, raw storage paths, or unnecessary sensitive metadata.
+
+## 13. Personal memory and document retrieval boundary
+
+Raven has two distinct retrieval domains:
+
+### Personal memory retrieval
+
+Owned by the Memory Engine's personal memory retrieval component.
+
+Retrieves information about the user from authoritative personal memory records.
+
+### Document retrieval
+
+Owned by the Document Intelligence pipeline in plan 8.12.
+
+Retrieves passages from uploaded documents using document-specific indexes and evidence references.
+
+### Coordination
+
+The Agent Orchestrator will determine whether a request needs:
+
+- Personal memory only.
+- Document retrieval only.
+- Both personal memory and document retrieval.
+- Neither, where another approved route is appropriate.
+
+The Memory Engine may expose separate internal capabilities or interfaces for these retrieval domains.
+
+Do not combine their indexes or silently treat document content as user memory.
+
+If a future unified retrieval result contract is required, it must preserve typed source domains and provenance.
+
+## 14. Performance and resource management
+
+Optimize retrieval using measured performance.
 
 Consider:
 
-- Maximum retrieval iterations.
-- Maximum candidate count.
-- Maximum database queries.
-- Maximum execution time.
-- Embedding generation cost.
-- Maximum returned result count.
-
-Use early stopping when additional retrieval is unlikely to improve the result.
-
-Budget exhaustion must produce a clear partial-result status rather than silently pretending retrieval was exhaustive.
-
-## 11. Retrieval result contract
-
-Return a structured retrieval result containing the approved model fields.
-
-The logical output should preserve:
-
-- Retrieval request identifier.
-- User reference.
-- Query reference.
-- Retrieved memory identifiers.
-- Relevant revision identifiers.
-- Ranked relevance information.
-- Confidence and evidence information.
-- Source provenance.
-- Temporal context.
-- Entity references where relevant.
-- Retrieval method information.
-- Completion or partial-result status.
-
-Claude Code must reconcile this contract with the approved Phase 5 data models and existing application interfaces.
-
-Do not introduce a duplicate result model if an equivalent one already exists.
-
-## 12. Historical and current memory handling
-
-Retrieval must preserve temporal distinctions.
-
-Examples:
-
-Question:
-"What technology is Raven currently using?"
-
-Expected behavior:
-
-Prefer the current authoritative information while accounting for superseded historical records.
-
-Question:
-"What technology did Raven originally use?"
-
-Expected behavior:
-
-Retrieve the relevant historical revision rather than returning only the current state.
-
-Question:
-"How has Raven's technology stack changed?"
-
-Expected behavior:
-
-Retrieve the relevant sequence of historical states and their temporal relationships.
-
-Do not flatten a changing fact into one timeless value.
-
-## 13. Failure handling
-
-| Scenario | Expected behavior |
-|---|---|
-| Empty query | Reject with validation error |
-| Query embedding failure | Use an approved fallback retrieval method where possible |
-| Vector search unavailable | Continue with keyword and metadata retrieval where safe |
-| Keyword search unavailable | Continue with other supported retrieval methods |
-| No matching memories | Return an empty result with clear status |
-| Low-confidence candidates | Preserve uncertainty or filter according to policy |
-| Conflicting memories | Preserve conflicting evidence and temporal context |
-| Database interruption | Return a controlled retrieval failure |
-| Iteration budget exhausted | Return partial results with explicit status |
-| Unauthorized user | Deny retrieval |
-| Stale embedding | Exclude or handle according to approved consistency policy |
-
-Partial retrieval must never be represented as exhaustive retrieval.
-
-## 14. Testing requirements
-
-### Unit tests
-
-Test:
-
-- Query preprocessing.
-- Context filtering.
-- Metadata filtering.
-- Vector retrieval interface.
-- Keyword retrieval interface.
-- Candidate aggregation.
-- Deduplication.
-- Relevance ranking.
-- Confidence filtering.
-- Temporal filtering.
-- Dynamic Top-K selection.
-- Iterative retrieval.
-- Budget enforcement.
-
-### Component tests
-
-Test:
-
-- End-to-end hybrid retrieval.
-- Entity-aware retrieval.
-- Relationship-aware retrieval.
-- Historical memory retrieval.
-- Current memory retrieval.
-- Result construction.
-- Provenance preservation.
-
-### Integration tests
-
-Test:
-
-- PostgreSQL full-text search.
-- pgvector search.
-- Metadata filtering.
-- Combined retrieval queries.
-- Ownership enforcement.
-- Embedding model integration.
-
-### Quality evaluation
-
-Build representative query datasets covering:
-
-- Exact fact retrieval.
-- Semantic paraphrases.
-- Project-specific queries.
-- Preference retrieval.
-- Historical queries.
-- Current-state queries.
-- Relationship queries.
-- Multi-part questions.
-- Ambiguous queries.
-- Contradictory evidence.
-- Queries with no relevant memories.
-
-Evaluate:
-
-- Precision@K.
-- Recall@K.
-- Mean Reciprocal Rank.
-- nDCG@K.
-- Retrieval latency.
-- Evidence coverage.
-- Temporal correctness.
-- Unauthorized retrieval prevention.
-
-Do not claim retrieval quality is production-ready solely because the implementation passes unit tests.
-
-## 15. Observability
-
-Record structured events for:
-
-- Retrieval started.
-- Query preprocessing completed.
-- Vector retrieval completed.
-- Keyword retrieval completed.
-- Candidate aggregation completed.
-- Ranking completed.
-- Iteration started.
-- Early stopping triggered.
-- Budget exhausted.
-- Retrieval completed.
-- Retrieval failed.
-
-Track:
-
-- Retrieval latency.
+- Index usage.
+- Query latency.
 - Candidate count.
-- Results returned.
-- Precision and recall from evaluation.
-- Empty-result rate.
-- Iteration count.
-- Budget exhaustion rate.
-- Vector and keyword retrieval failures.
-- Retrieval quality by query category.
+- Vector search cost.
+- Keyword search cost.
+- Relationship traversal cost.
+- Database load.
+- Retrieval budgets.
 
-Do not log raw private memory content unnecessarily.
+Avoid premature introduction of a separate search or vector database.
 
-## 16. Acceptance criteria
+Maintain predictable retrieval behavior under concurrent requests.
 
-Phase 8.8 is complete only when:
+## 15. Failure handling
 
-- [ ] Retrieval requests are validated.
-- [ ] Query preprocessing works.
-- [ ] Vector retrieval works.
-- [ ] Keyword retrieval works.
-- [ ] Metadata filtering works.
-- [ ] Entity-aware retrieval works.
-- [ ] Relationship-aware retrieval works.
-- [ ] Hybrid candidate aggregation works.
-- [ ] Duplicate results are removed safely.
-- [ ] Relevance ranking is implemented.
-- [ ] Confidence and evidence filtering are implemented.
-- [ ] Temporal context is preserved.
-- [ ] Dynamic Top-K selection works.
-- [ ] Iterative retrieval is bounded.
-- [ ] Retrieval budgets are enforced.
-- [ ] Provenance is preserved in results.
-- [ ] Historical and current information can be distinguished.
-- [ ] Partial results are clearly identified.
-- [ ] Ownership and authorization are enforced.
-- [ ] Unit and integration tests pass.
-- [ ] Retrieval quality evaluation is available.
+Handle:
 
-## 17. Implementation constraints
+- Empty query.
+- Invalid query.
+- Unauthorized user.
+- Missing indexes.
+- Vector search failure.
+- Keyword search failure.
+- Database unavailability.
+- Stale memory representations.
+- Conflicting temporal values.
+- Low-confidence results.
+- Empty result sets.
+- Retrieval timeout.
 
-Claude Code must:
+A partial retrieval failure must be represented accurately.
 
-1. Inspect the repository before modifications.
-2. Reuse Phase 8.1–8.7 implementations.
-3. Follow approved Phase 5 data models.
-4. Follow Phase 6 retrieval algorithms.
-5. Follow Phase 7 technology decisions.
-6. Keep retrieval separate from response generation.
-7. Keep relevance separate from importance and confidence.
-8. Preserve provenance and temporal context.
-9. Enforce ownership on every retrieval path.
-10. Use bounded iterative retrieval.
-11. Avoid unrestricted entity traversal.
-12. Avoid generative LLM functionality.
-13. Avoid implementing document RAG in this milestone.
-14. Place source code inside `memory-engine/`.
-15. Place tests inside `tests/`.
-16. Do not proceed to Phase 8.9 automatically.
+Do not report a complete result when an important retrieval method has failed.
 
-If an existing retrieval contract or model cannot support a required capability, report the gap before changing the architecture.
+If partial results are returned, include enough status information for the caller to understand their limitations.
 
-## 18. Completion report
+## 16. Testing requirements
 
-Claude Code must provide:
+### Query tests
 
-1. Summary of retrieval functionality.
-2. Files created or modified.
-3. Retrieval methods implemented.
-4. Ranking strategy.
-5. Dynamic Top-K strategy.
-6. Iterative retrieval and budget configuration.
-7. Provenance and temporal handling.
-8. Tests executed and exact results.
-9. Retrieval evaluation results.
-10. Known limitations.
-11. Deviations from approved architecture.
-12. Acceptance criteria status.
+- Exact name lookup.
+- Semantic lookup.
+- Keyword lookup.
+- Entity-based lookup.
+- Category-based lookup.
+- Temporal lookup.
+- Historical lookup.
+- Current-state lookup.
+- Multi-entity query.
+- Ambiguous query.
 
-Clearly distinguish implementation completion from retrieval quality validation.
+### Ranking tests
 
-## 19. Definition of done
+- Importance and confidence independence.
+- Explicit versus inferred information.
+- Freshness and temporal validity.
+- Duplicate result removal.
+- Relationship-aware retrieval.
+- Low-confidence filtering.
+- Dynamic Top-K behavior.
 
-Phase 8.8 is complete when Raven can retrieve relevant, evidence-backed memories using hybrid search and contextual ranking while preserving ownership, confidence, provenance and temporal correctness.
+### Security and isolation tests
 
-**The output is a reliable retrieval interface that allows Raven and the Agent Orchestrator to access the right memories for a given task.**
+- Cross-user retrieval attempt.
+- Unauthorized access.
+- User-scoped vector search.
+- User-scoped keyword search.
+- Relationship traversal ownership.
+- Historical revision access.
+
+### Domain-boundary tests
+
+- Document chunks do not appear in personal memory retrieval by default.
+- Document retrieval remains available through plan 8.12.
+- Document evidence is not represented as authoritative personal memory.
+- Memory and document result types retain distinct provenance.
+- Combined orchestration does not bypass domain-specific authorization.
+
+### Reliability tests
+
+- Vector search failure.
+- Keyword search failure.
+- Database failure.
+- Partial retrieval.
+- Timeout.
+- Stale index.
+- Empty result.
+- High-volume candidate set.
+
+## 17. Acceptance criteria
+
+This plan is complete when:
+
+1. Personal memory retrieval works end to end.
+2. Hybrid vector, keyword, and metadata retrieval is supported.
+3. Entity and relationship context is used appropriately.
+4. Candidate aggregation and deduplication work.
+5. Ranking preserves importance and confidence distinctions.
+6. Temporal integrity is maintained.
+7. Dynamic Top-K and retrieval budgets work.
+8. Provenance is preserved.
+9. User isolation is enforced.
+10. Document chunks remain outside personal memory retrieval by default.
+11. Failure behavior is tested.
+12. Required retrieval quality and integration tests pass.
+
+## 18. Out of scope
+
+This plan does not implement:
+
+- Document parsing.
+- Document chunking.
+- Document embedding generation.
+- Document vector retrieval.
+- Document keyword retrieval.
+- Document reranking.
+- Evidence selection from uploaded documents.
+- Document-grounded answer assembly.
+- Citation generation and validation.
+- Cross-engine orchestration.
+
+These responsibilities belong to plan 8.12 or the later Orchestrator and integration phases.
+
+## 19. Claude Code execution instructions
+
+Before implementation:
+
+1. Inspect the existing retrieval components and repositories.
+2. Read the approved retrieval algorithms and data models.
+3. Inspect the personal memory and document indexing boundaries.
+4. Identify existing vector and keyword search infrastructure.
+5. Report any conflicting retrieval contracts or missing decisions.
+6. Propose the minimum required implementation changes.
+
+Do not silently combine personal memory and document retrieval.
+
+After implementation, report:
+
+- Files created or modified.
+- Retrieval methods implemented.
+- Ranking and filtering behavior.
+- Provenance handling.
+- Domain separation.
+- Dependencies added.
+- Tests executed and results.
+- Acceptance criteria satisfied.
+- Known limitations.
+
+Do not automatically proceed to plan 8.9.
