@@ -1,0 +1,1333 @@
+# Phase 6.12 — Agent Orchestrator: Result Validation & Response Assembly
+
+**Project:** Raven Research Agent  
+**Phase:** 6 — Algorithms & Processing Design  
+**Subphase:** 6.12 — Result Validation & Response Assembly  
+**Status:** Architecture and algorithm specification  
+**Optimization Priority:** Quality first  
+**Processing Approach:** Hybrid — deterministic rules, conventional NLP/statistical methods, and selective non-generative ML
+
+---
+
+## 1. Purpose
+
+The Agent Orchestrator receives outputs from the Memory Engine, Research Engine and other authorized operations.
+
+These outputs may differ in:
+
+- Structure and format.
+- Confidence levels.
+- Evidence quality.
+- Temporal context.
+- Completeness.
+- Provenance.
+- Verification status.
+- Granularity.
+
+The Orchestrator must normalize, validate, reconcile and assemble these results into a coherent response without changing their underlying meaning.
+
+Its responsibility is not to manufacture missing information or make unsupported claims.
+
+It must preserve the distinction between:
+
+- Historical information and current information.
+- Personal memories and external research.
+- Verified findings and unverified claims.
+- Evidence and interpretation.
+- Conflicting results and resolved conclusions.
+- Complete results and partial results.
+
+### Core principles
+
+1. Preserve the original engine outputs.
+2. Validate results before using them.
+3. Preserve provenance and evidence references.
+4. Do not treat confidence scores from different engines as interchangeable.
+5. Do not silently resolve contradictions.
+6. Do not convert missing information into assumptions.
+7. Preserve temporal context.
+8. Distinguish incomplete execution from complete execution.
+9. Assemble responses according to the user's original objective.
+10. Final response quality takes priority over brevity or speed.
+
+---
+
+# 2. Algorithm Inventory
+
+| ID | Algorithm | Primary responsibility |
+|---|---|---|
+| 6.12.1 | Engine Result Intake & Validation | Validate incoming engine results |
+| 6.12.2 | Result Normalization | Convert results into a common representation |
+| 6.12.3 | Provenance & Evidence Preservation | Preserve source traceability |
+| 6.12.4 | Cross-Engine Result Reconciliation | Reconcile Memory and Research outputs |
+| 6.12.5 | Duplicate Information Detection | Identify repeated information |
+| 6.12.6 | Conflict & Contradiction Preservation | Identify and preserve conflicting claims |
+| 6.12.7 | Evidence-Aware Response Assembly | Construct the response from supported results |
+| 6.12.8 | Uncertainty & Completeness Evaluation | Determine what can and cannot be concluded |
+| 6.12.9 | Response Formatting & Adaptation | Format the response for the user |
+| 6.12.10 | Final Response Validation & Delivery State | Validate and finalize delivery |
+
+---
+
+# 3. 6.12.1 — Engine Result Intake & Validation
+
+## Purpose
+
+Validate the results returned by Raven's engines before the Orchestrator uses them.
+
+An engine result must not be considered valid merely because an operation returned successfully.
+
+The result must satisfy its expected contract.
+
+## Validation dimensions
+
+- Execution identity.
+- Task identity.
+- User scope.
+- Engine ownership.
+- Output schema.
+- Required fields.
+- Result status.
+- Provenance references.
+- Version compatibility.
+- Completion status.
+
+## Algorithm
+
+**Input:**
+
+- Engine result.
+- Expected task contract.
+- Execution ID.
+- User identity.
+- Engine identity.
+
+**Output:**
+
+- Validated result.
+- Validation status.
+- Validation errors, if any.
+
+### Processing steps
+
+1. Receive the engine result.
+2. Identify the originating engine.
+3. Validate execution and task references.
+4. Validate user scope and authorization.
+5. Validate output schema and version.
+6. Validate required fields.
+7. Validate referenced records through authorized interfaces where necessary.
+8. Check result status.
+9. Mark the result valid, partial, rejected or requiring review.
+10. Record the validation outcome.
+
+### Pseudocode
+
+```text
+FUNCTION validate_engine_result(result, expected_contract):
+
+    validate_execution_reference(result)
+
+    validate_task_reference(result)
+
+    validate_user_scope(result)
+
+    validate_engine_ownership(result)
+
+    validate_schema(result, expected_contract)
+
+    validate_required_fields(result)
+
+    validate_provenance_references(result)
+
+    IF result.contains_integrity_error:
+        RETURN REJECTED
+
+    IF result.status == PARTIALLY_COMPLETE:
+        RETURN PARTIAL
+
+    RETURN VALIDATED
+```
+
+## Result outcomes
+
+- `VALIDATED`
+- `PARTIAL`
+- `REQUIRES_REVIEW`
+- `REJECTED`
+- `INVALID_SCHEMA`
+- `UNAUTHORIZED`
+- `INTEGRITY_FAILURE`
+
+## Safeguards
+
+- Invalid results must not enter final response assembly.
+- Partial results must retain their partial status.
+- A successful transport response does not prove successful business execution.
+- Engine-owned records must not be modified directly by the Orchestrator.
+- Invalid references must not be silently discarded.
+
+---
+
+# 4. 6.12.2 — Result Normalization
+
+## Purpose
+
+Convert outputs from different engines into a common logical representation.
+
+The Memory Engine and Research Engine have different data models.
+
+The Orchestrator needs a common representation to compare, organize and assemble their results.
+
+Normalization must not erase engine-specific information.
+
+## Common result representation
+
+Conceptual fields:
+
+```text
+NormalizedResult:
+    result_id
+    execution_id
+    task_id
+    originating_engine
+    result_type
+    subject_reference
+    claim_or_content
+    attributes
+    temporal_context
+    confidence_metadata
+    verification_status
+    provenance_references
+    source_references
+    completeness_status
+    original_result_reference
+    schema_version
+```
+
+## Normalization rules
+
+### Memory results
+
+Preserve:
+
+- Memory identity.
+- Memory category.
+- Explicit or inferred origin.
+- Importance.
+- Confidence.
+- Valid-time context.
+- Revision or supersession information.
+- Relationships.
+- Provenance.
+
+### Research results
+
+Preserve:
+
+- Research session identity.
+- Snapshot identity.
+- Finding identity.
+- Evidence references.
+- Source reliability.
+- Fact confidence.
+- Verification status.
+- Publication and event dates.
+- Research completeness.
+
+### Common representation
+
+Only fields with compatible meanings should be normalized into shared fields.
+
+For example:
+
+- Memory confidence and Research fact confidence can both be represented as confidence metadata.
+- Their underlying values and scoring methods must remain separate.
+- Source reliability must never be substituted for fact confidence.
+- Memory importance must not be treated as factual confidence.
+
+## Algorithm
+
+**Input:**
+
+- Validated engine result.
+- Engine-specific output contract.
+
+**Output:**
+
+- Normalized result.
+- Preserved engine-specific metadata.
+
+### Processing steps
+
+1. Identify result type.
+2. Read the originating engine contract.
+3. Map compatible fields.
+4. Preserve engine-specific fields.
+5. Preserve temporal metadata.
+6. Preserve evidence and provenance references.
+7. Validate required normalized fields.
+8. Link the normalized result to its original output.
+9. Return normalized representation.
+
+### Pseudocode
+
+```text
+FUNCTION normalize_result(result):
+
+    contract = resolve_engine_contract(
+        result.originating_engine
+    )
+
+    normalized = initialize_normalized_result()
+
+    normalized.common_fields = map_compatible_fields(
+        result,
+        contract
+    )
+
+    normalized.engine_specific_metadata = preserve_metadata(
+        result
+    )
+
+    normalized.original_result_reference = result.id
+
+    validate_normalized_result(normalized)
+
+    RETURN normalized
+```
+
+## Safeguards
+
+- Do not discard original engine outputs.
+- Do not combine incompatible scoring systems.
+- Do not remove temporal context.
+- Do not convert missing fields into fabricated defaults.
+- Do not reinterpret engine-specific statuses.
+
+---
+
+# 5. 6.12.3 — Provenance & Evidence Preservation
+
+## Purpose
+
+Maintain traceability between every important response statement and its originating information.
+
+Raven should be able to identify where a claim came from.
+
+Possible origins include:
+
+- User-provided information.
+- Memory Engine records.
+- Research Engine findings.
+- External source evidence.
+- Derived comparisons.
+- Orchestrator-generated summaries.
+
+## Provenance categories
+
+| Category | Meaning |
+|---|---|
+| `USER_PROVIDED` | Directly supplied by the user |
+| `MEMORY_DERIVED` | Retrieved from a stored memory |
+| `RESEARCH_DERIVED` | Produced from research findings |
+| `SOURCE_DERIVED` | Supported by external source evidence |
+| `COMPUTED` | Produced through deterministic computation |
+| `SYNTHESIZED` | Combined from multiple supported inputs |
+| `INFERRED` | Derived through a supported inference process |
+
+## Algorithm
+
+**Input:**
+
+- Normalized results.
+- Evidence references.
+- Source references.
+- Provenance metadata.
+
+**Output:**
+
+- Provenance-linked result set.
+- Traceability records.
+- Missing provenance indicators.
+
+### Processing steps
+
+1. Identify every result's origin.
+2. Resolve its original record reference.
+3. Retrieve associated evidence references where authorized.
+4. Preserve source identifiers and timestamps.
+5. Link derived results to their contributing inputs.
+6. Identify unsupported or missing provenance.
+7. Preserve provenance through later transformations.
+8. Validate traceability.
+
+### Pseudocode
+
+```text
+FUNCTION preserve_provenance(results):
+
+    FOR EACH result IN results:
+
+        origin = identify_origin(result)
+
+        references = resolve_provenance_references(
+            result
+        )
+
+        IF result.is_derived:
+            references += result.contributing_inputs
+
+        validate_reference_integrity(references)
+
+        attach_provenance(result, origin, references)
+
+    RETURN results
+```
+
+## Safeguards
+
+- A synthesized claim must retain links to its supporting inputs.
+- A memory-derived claim must not be presented as independently researched.
+- External claims must retain source references.
+- Unsupported statements must not receive fabricated provenance.
+- Provenance must survive normalization and formatting.
+
+---
+
+# 6. 6.12.4 — Cross-Engine Result Reconciliation
+
+## Purpose
+
+Reconcile results from Memory and Research Engines when both contribute to the same user request.
+
+Example:
+
+The Memory Engine retrieves a user's previously recorded project budget.
+
+The Research Engine discovers the project's current market pricing.
+
+The Orchestrator must combine these results without treating them as the same type of information.
+
+## Reconciliation dimensions
+
+- Entity identity.
+- Attribute compatibility.
+- Temporal compatibility.
+- Context compatibility.
+- Source provenance.
+- Verification status.
+- Confidence metadata.
+- Contradictions.
+- User-specific versus external information.
+
+## Reconciliation rules
+
+### Historical versus current
+
+A stored memory may represent a historical value.
+
+A research finding may represent a current value.
+
+Both can be valid within their respective time periods.
+
+### Personal versus external
+
+A personal preference must not be overwritten by a general market finding.
+
+An external source must not automatically replace user-provided information.
+
+### Different contexts
+
+Two values must not be merged unless their entities, attributes, units and relevant contexts are compatible.
+
+### Contradictory information
+
+If the Memory Engine and Research Engine return different values, determine whether the difference is:
+
+- A legitimate change over time.
+- A difference in context.
+- A difference in measurement.
+- A source disagreement.
+- A genuine unresolved contradiction.
+
+## Algorithm
+
+**Input:**
+
+- Normalized Memory results.
+- Normalized Research results.
+- Original user request.
+- Temporal and contextual metadata.
+
+**Output:**
+
+- Reconciled result set.
+- Relationship classifications.
+- Conflict indicators.
+
+### Processing steps
+
+1. Group results by relevant entity and attribute.
+2. Compare temporal context.
+3. Compare units and contextual attributes.
+4. Compare provenance.
+5. Identify compatible results.
+6. Identify historical/current differences.
+7. Identify conflicts.
+8. Preserve independent results when reconciliation is unsafe.
+9. Record reconciliation decisions.
+10. Return reconciled results.
+
+### Pseudocode
+
+```text
+FUNCTION reconcile_cross_engine_results(memory, research):
+
+    groups = group_by_entity_and_attribute(
+        memory,
+        research
+    )
+
+    reconciled = []
+
+    FOR EACH group IN groups:
+
+        validate_context_compatibility(group)
+
+        classify_temporal_relationship(group)
+
+        classify_source_relationship(group)
+
+        IF group.is_compatible:
+            reconciled.append(combine_with_provenance(group))
+
+        ELSE:
+            reconciled.append(preserve_separately(group))
+
+    RETURN reconciled
+```
+
+## Safeguards
+
+- Never overwrite a memory using external research without an authorized memory update workflow.
+- Never treat historical values as current without temporal validation.
+- Preserve source disagreement.
+- Do not merge different units or contexts.
+- Do not equate confidence scores from different engines.
+
+---
+
+# 7. 6.12.5 — Duplicate Information Detection
+
+## Purpose
+
+Identify repeated information across engine outputs so the final response does not repeat the same claim unnecessarily.
+
+Duplicate detection is not the same as contradiction detection.
+
+Two statements can be similar without representing the same fact.
+
+## Duplicate categories
+
+- Exact duplicate.
+- Normalized duplicate.
+- Semantic duplicate.
+- Same finding from different evidence.
+- Repeated historical information.
+- Related but distinct information.
+
+## Algorithm
+
+**Input:**
+
+- Reconciled results.
+- Entity references.
+- Claim text.
+- Attribute and temporal context.
+
+**Output:**
+
+- Duplicate groups.
+- Unique result set.
+- Relationship classifications.
+
+### Processing steps
+
+1. Normalize comparable claim text.
+2. Compare entity and attribute references.
+3. Compare temporal context.
+4. Compare values and units.
+5. Apply exact and semantic similarity checks.
+6. Validate potential duplicates against context.
+7. Group confirmed duplicates.
+8. Preserve independent evidence references.
+9. Retain related but distinct claims.
+10. Return deduplicated presentation data.
+
+### Pseudocode
+
+```text
+FUNCTION detect_duplicate_information(results):
+
+    groups = []
+
+    FOR EACH result IN results:
+
+        candidates = find_similar_results(
+            result,
+            results
+        )
+
+        FOR EACH candidate IN candidates:
+
+            IF same_entity(result, candidate)
+               AND same_attribute(result, candidate)
+               AND compatible_context(result, candidate)
+               AND equivalent_value(result, candidate):
+
+                classify_relationship(result, candidate)
+
+    RETURN {
+        duplicate_groups,
+        distinct_results
+    }
+```
+
+## Safeguards
+
+- Semantic similarity alone is insufficient.
+- Different dates may represent different facts.
+- Different units must be normalized before comparison.
+- Independent sources must remain linked even when their claims are duplicates.
+- Do not delete original engine records during response deduplication.
+
+---
+
+# 8. 6.12.6 — Conflict & Contradiction Preservation
+
+## Purpose
+
+Identify conflicting outputs and prevent the Orchestrator from silently selecting one without sufficient evidence.
+
+A conflict may arise from:
+
+- Different source values.
+- Historical versus current information.
+- Different reporting periods.
+- Different definitions.
+- Different entities.
+- Different measurement units.
+- Incorrect extraction.
+- Actual disagreement.
+
+## Conflict categories
+
+| Category | Description |
+|---|---|
+| `TEMPORAL_DIFFERENCE` | Values differ across time |
+| `CONTEXT_DIFFERENCE` | Values apply to different contexts |
+| `UNIT_DIFFERENCE` | Values use different units |
+| `SOURCE_CONFLICT` | Sources disagree |
+| `ENTITY_MISMATCH` | Claims refer to different entities |
+| `ATTRIBUTE_MISMATCH` | Claims refer to different attributes |
+| `DIRECT_CONTRADICTION` | Claims cannot both be true in the same context |
+| `UNRESOLVED` | Insufficient information to classify |
+
+## Algorithm
+
+**Input:**
+
+- Reconciled results.
+- Provenance.
+- Temporal metadata.
+- Verification status.
+
+**Output:**
+
+- Conflict records.
+- Conflict classifications.
+- Resolution status.
+
+### Processing steps
+
+1. Compare claims sharing relevant entities and attributes.
+2. Identify incompatible values.
+3. Check temporal context.
+4. Check units and definitions.
+5. Inspect provenance and verification.
+6. Classify the conflict.
+7. Determine whether evidence supports resolution.
+8. Preserve unresolved conflicts.
+9. Mark the result for qualification or user clarification.
+10. Return conflict metadata.
+
+### Pseudocode
+
+```text
+FUNCTION preserve_conflicts(results):
+
+    conflicts = []
+
+    FOR EACH comparable_pair IN find_comparable_pairs(results):
+
+        IF values_are_incompatible(comparable_pair):
+
+            classification = classify_conflict(
+                comparable_pair
+            )
+
+            resolution = evaluate_resolution_evidence(
+                comparable_pair
+            )
+
+            IF resolution.is_sufficient:
+                record_supported_resolution(resolution)
+            ELSE:
+                conflicts.append(
+                    preserve_unresolved_conflict(
+                        comparable_pair,
+                        classification
+                    )
+                )
+
+    RETURN conflicts
+```
+
+## Safeguards
+
+- Do not resolve conflicts based only on source count.
+- Do not automatically prefer newer information when the contexts differ.
+- Do not prefer Memory or Research results universally.
+- Preserve unresolved disagreement in the final response when relevant.
+- If the conflict materially affects the answer, qualify the conclusion or ask for clarification.
+
+---
+
+# 9. 6.12.7 — Evidence-Aware Response Assembly
+
+## Purpose
+
+Construct a coherent response using validated, reconciled and provenance-linked results.
+
+The Orchestrator must select information based on the user's actual objective.
+
+It must not include every retrieved result simply because it is available.
+
+## Response assembly principles
+
+- Answer the primary question first.
+- Include relevant supporting information.
+- Preserve evidence and provenance.
+- Keep historical and current information distinct.
+- Identify uncertainty.
+- Include relevant limitations.
+- Avoid unsupported extrapolation.
+- Preserve meaningful conflicts.
+- Avoid unnecessary repetition.
+
+## Response structure
+
+A response may contain:
+
+1. Direct answer.
+2. Key findings.
+3. Supporting evidence.
+4. Historical context.
+5. Comparison or analysis.
+6. Uncertainty and conflicts.
+7. Limitations.
+8. Sources or references.
+
+Not every response needs every section.
+
+## Algorithm
+
+**Input:**
+
+- Original user request.
+- Validated results.
+- Reconciled results.
+- Provenance records.
+- Conflict metadata.
+- Completeness status.
+
+**Output:**
+
+- Structured response draft.
+- Claim-to-evidence mapping.
+- Remaining limitations.
+
+### Processing steps
+
+1. Revisit the original user objective.
+2. Identify required answer components.
+3. Select relevant validated results.
+4. Group information by topic or requested structure.
+5. Preserve provenance.
+6. Attach evidence to supported claims.
+7. Include relevant historical context.
+8. Include meaningful conflicts and uncertainty.
+9. Exclude irrelevant or redundant results.
+10. Generate a structured response draft.
+
+### Pseudocode
+
+```text
+FUNCTION assemble_response(request, results):
+
+    requirements = extract_answer_requirements(request)
+
+    relevant = select_relevant_validated_results(
+        results,
+        requirements
+    )
+
+    sections = organize_results(relevant)
+
+    FOR EACH claim IN sections:
+
+        attach_supporting_evidence(claim)
+
+        preserve_temporal_context(claim)
+
+        preserve_uncertainty(claim)
+
+    include_relevant_conflicts(sections)
+
+    include_material_limitations(sections)
+
+    RETURN structured_response_draft
+```
+
+## Safeguards
+
+- Every factual claim must have an appropriate basis.
+- Derived conclusions must retain supporting inputs.
+- Do not imply that a source supports more than it actually states.
+- Do not present inferred memory as explicit user statements.
+- Do not present incomplete research as exhaustive.
+- Do not fabricate citations or source references.
+
+---
+
+# 10. 6.12.8 — Uncertainty & Completeness Evaluation
+
+## Purpose
+
+Determine whether Raven has enough reliable information to answer the user's request and communicate remaining uncertainty.
+
+A response can contain valid information while still being incomplete.
+
+The Orchestrator must distinguish these conditions.
+
+## Uncertainty dimensions
+
+- Missing information.
+- Low-confidence claims.
+- Conflicting evidence.
+- Weak source reliability.
+- Historical-only information.
+- Unverified claims.
+- Incomplete engine execution.
+- Unavailable sources.
+- Context mismatch.
+
+## Completeness states
+
+- `COMPLETE`
+- `PARTIALLY_COMPLETE`
+- `INCOMPLETE`
+- `INSUFFICIENT_INFORMATION`
+- `BLOCKED`
+- `NOT_APPLICABLE`
+
+## Evaluation rules
+
+### Complete
+
+All required answer components are supported and validated.
+
+### Partially complete
+
+Some required components are supported, but others remain unavailable or unresolved.
+
+### Incomplete
+
+Required components are missing or execution did not finish.
+
+### Insufficient information
+
+Available evidence does not support a reliable answer.
+
+### Blocked
+
+A required operation could not proceed because of authorization, dependency or infrastructure constraints.
+
+## Algorithm
+
+**Input:**
+
+- Original request.
+- Required answer components.
+- Validated results.
+- Conflict metadata.
+- Engine completion states.
+
+**Output:**
+
+- Completeness status.
+- Uncertainty indicators.
+- Missing information.
+- Qualification requirements.
+
+### Processing steps
+
+1. Identify required answer components.
+2. Map results to each component.
+3. Check evidence coverage.
+4. Evaluate confidence and verification status.
+5. Identify unresolved conflicts.
+6. Identify incomplete or failed tasks.
+7. Determine missing information.
+8. Assign completeness status.
+9. Define required qualifications.
+10. Return evaluation results.
+
+### Pseudocode
+
+```text
+FUNCTION evaluate_response_completeness(request, results):
+
+    requirements = identify_required_components(request)
+
+    coverage = map_results_to_requirements(
+        requirements,
+        results
+    )
+
+    uncertainty = evaluate_evidence_uncertainty(results)
+
+    conflicts = identify_unresolved_conflicts(results)
+
+    execution_status = inspect_required_task_states()
+
+    completeness = classify_completeness(
+        coverage,
+        uncertainty,
+        conflicts,
+        execution_status
+    )
+
+    RETURN {
+        completeness_status,
+        uncertainty,
+        missing_components,
+        required_qualifications
+    }
+```
+
+## Safeguards
+
+- Missing information must not be treated as a negative result.
+- Unverified claims must not be promoted to verified.
+- A complete response may still contain qualified uncertainty.
+- A partially complete response must not be described as exhaustive.
+- Confidence scores must not replace evidence evaluation.
+
+---
+
+# 11. 6.12.9 — Response Formatting & Adaptation
+
+## Purpose
+
+Format the response according to the user's request while preserving factual integrity.
+
+Formatting must not alter the meaning or certainty of information.
+
+## Formatting dimensions
+
+- Requested format.
+- Desired level of detail.
+- Audience.
+- Technical depth.
+- Comparison requirements.
+- Tables and structured lists.
+- Citations and references.
+- Important limitations.
+
+## Formatting principles
+
+1. Respect explicit user formatting instructions.
+2. Answer directly before unnecessary background.
+3. Use tables when they improve comparisons.
+4. Preserve units and temporal context.
+5. Keep evidence references close to supported claims.
+6. Do not remove important qualifications for brevity.
+7. Do not add unsupported recommendations.
+8. Avoid unnecessary repetition.
+
+## Algorithm
+
+**Input:**
+
+- Structured response draft.
+- User formatting instructions.
+- Completeness metadata.
+- Evidence and provenance references.
+
+**Output:**
+
+- Formatted response.
+
+### Processing steps
+
+1. Identify requested format.
+2. Identify required detail level.
+3. Select an appropriate structure.
+4. Organize answer sections.
+5. Format comparisons and values.
+6. Attach relevant references.
+7. Preserve qualifications.
+8. Validate that formatting did not alter meaning.
+
+### Pseudocode
+
+```text
+FUNCTION format_response(draft, user_preferences):
+
+    format = identify_requested_format(user_preferences)
+
+    structure = select_response_structure(
+        draft,
+        format
+    )
+
+    formatted = organize_content(structure)
+
+    attach_references(formatted)
+
+    preserve_qualifications(formatted)
+
+    validate_semantic_equivalence(draft, formatted)
+
+    RETURN formatted
+```
+
+## Safeguards
+
+- Formatting must not change factual claims.
+- Important caveats must not be hidden.
+- Citations must remain attached to the relevant claims.
+- Tables must not imply comparability where values are incompatible.
+- Short responses must retain material uncertainty.
+
+---
+
+# 12. 6.12.10 — Final Response Validation & Delivery State
+
+## Purpose
+
+Perform the final validation before the response is delivered.
+
+The Orchestrator must ensure that the response satisfies the original request and accurately represents the execution outcome.
+
+## Final validation dimensions
+
+- Request coverage.
+- Factual consistency.
+- Evidence integrity.
+- Provenance.
+- Temporal accuracy.
+- Conflict handling.
+- Uncertainty disclosure.
+- Privacy.
+- Formatting.
+- Completeness.
+- Delivery readiness.
+
+## Delivery states
+
+- `DRAFT`
+- `VALIDATING`
+- `READY`
+- `DELIVERING`
+- `DELIVERED`
+- `DELIVERY_FAILED`
+- `REQUIRES_REVISION`
+
+## Algorithm
+
+**Input:**
+
+- Formatted response.
+- Original user request.
+- Validation requirements.
+- Execution status.
+- Completeness metadata.
+
+**Output:**
+
+- Validated response.
+- Delivery status.
+- Validation record.
+
+### Processing steps
+
+1. Retrieve the formatted response.
+2. Compare it against the original request.
+3. Validate required answer coverage.
+4. Validate factual and temporal consistency.
+5. Validate evidence references.
+6. Validate uncertainty disclosures.
+7. Check privacy and authorization.
+8. Check for unsupported claims.
+9. Approve or reject the response draft.
+10. Deliver the response.
+11. Record delivery outcome.
+
+### Pseudocode
+
+```text
+FUNCTION validate_and_deliver_response(response, request):
+
+    set_delivery_state(VALIDATING)
+
+    validate_request_coverage(response, request)
+
+    validate_factual_consistency(response)
+
+    validate_evidence_and_provenance(response)
+
+    validate_temporal_context(response)
+
+    validate_uncertainty_disclosure(response)
+
+    validate_privacy_and_authorization(response)
+
+    validate_output_format(response)
+
+    IF validation_failed:
+        RETURN REQUIRES_REVISION
+
+    set_delivery_state(READY)
+
+    deliver_response(response)
+
+    record_delivery_outcome()
+
+    RETURN delivery_status
+```
+
+## Safeguards
+
+- Never deliver a response that violates authorization or privacy requirements.
+- Do not claim successful delivery until confirmed.
+- Delivery failure must not automatically rerun completed research.
+- Preserve the response and execution references for safe recovery.
+- If validation fails, return to the relevant assembly or validation stage.
+
+---
+
+# 13. End-to-End Response Assembly Lifecycle
+
+```text
+Memory Engine Results -----+
+                           |
+                           v
+                    Result Intake
+                           |
+Research Engine Results ---+
+                           |
+                           v
+                    Result Validation
+                           |
+                           v
+                   Result Normalization
+                           |
+                           v
+                Provenance & Evidence Linking
+                           |
+                           v
+                Cross-Engine Reconciliation
+                           |
+                           v
+                  Duplicate Detection
+                           |
+                           v
+                Conflict Identification
+                           |
+                           v
+                 Evidence-Aware Assembly
+                           |
+                           v
+              Uncertainty & Completeness
+                           |
+                           v
+                 Response Formatting
+                           |
+                           v
+                Final Response Validation
+                           |
+                           v
+                    Response Delivery
+```
+
+This is a logical processing sequence. Implementations may combine compatible operations or execute independent validation steps concurrently, provided their dependencies and integrity requirements are preserved.
+
+---
+
+# 14. Response Claim Contract
+
+Every material factual statement in an assembled response should be traceable to its supporting information.
+
+Conceptual contract:
+
+```text
+ResponseClaim:
+    claim_id
+    claim_text
+    claim_type
+    entity_reference
+    attribute_reference
+    temporal_context
+    originating_engine
+    supporting_result_references
+    evidence_references
+    provenance_type
+    confidence_metadata
+    verification_status
+    qualification
+    conflict_references
+```
+
+A claim may have:
+
+- One supporting result.
+- Multiple independent supporting results.
+- A derived result with multiple inputs.
+- An unresolved conflict.
+- Insufficient evidence.
+
+The absence of supporting evidence must remain visible to validation logic.
+
+This is a logical contract, not a finalized database schema.
+
+---
+
+# 15. Quality & Integrity Requirements
+
+1. Original engine results must remain preserved.
+2. Normalization must be traceable.
+3. Provenance must survive every transformation.
+4. Engine-specific scoring systems must remain distinguishable.
+5. Historical and current information must not be conflated.
+6. Duplicate detection must not erase independent evidence.
+7. Conflicts must not be silently resolved.
+8. Missing information must remain explicitly missing.
+9. Inferences must be distinguishable from sourced facts.
+10. Partial results must retain their completion status.
+11. Cross-engine reconciliation must respect data ownership.
+12. Final responses must not introduce unsupported claims.
+13. Privacy and authorization checks must apply throughout assembly.
+14. The Orchestrator must not directly modify engine-owned records.
+
+---
+
+# 16. Evaluation Metrics
+
+These metrics will be evaluated during Phase 12.
+
+| Area | Metric |
+|---|---|
+| Result validation | Output contract validation accuracy |
+| Normalization | Semantic preservation accuracy |
+| Provenance | Claim traceability coverage |
+| Reconciliation | Cross-engine reconciliation accuracy |
+| Deduplication | Duplicate detection precision and recall |
+| Conflict handling | Conflict detection accuracy |
+| Evidence | Evidence coverage |
+| Synthesis | Unsupported claim rate |
+| Completeness | Completeness classification accuracy |
+| Formatting | Meaning preservation |
+| Final validation | Validation defect detection rate |
+| Reliability | Invalid response delivery rate |
+
+Numerical targets will be established during Phase 12.
+
+---
+
+# 17. Dependencies
+
+This phase depends on:
+
+- Phase 1 — Overall System Architecture.
+- Phase 3 — Research Engine Architecture.
+- Phase 4 — Agent Orchestrator Architecture.
+- Phase 5.3 — Core Entities & Relationships.
+- Phase 5.5 — Research Engine Data Models.
+- Phase 5.6 — Orchestrator Data Models.
+- Phase 6.1 — Shared Algorithm Framework.
+- Phase 6.4 — Memory Retrieval.
+- Phase 6.6–6.10 — Research Algorithms.
+- Phase 6.11 — Intent, Planning & Routing.
+
+---
+
+# 18. Phase 6.12 Completion Criteria
+
+The specification is complete when:
+
+- Engine outputs can be validated.
+- Results can be normalized without losing original meaning.
+- Provenance can be preserved.
+- Cross-engine results can be reconciled safely.
+- Duplicate information can be identified.
+- Conflicting information can be preserved.
+- Responses can be assembled using supporting evidence.
+- Uncertainty and completeness can be evaluated.
+- Responses can be formatted without changing meaning.
+- Final responses can be validated before delivery.
+- Delivery failures can be distinguished from execution failures.
+
+**Completion status:** Specification complete when documented and reviewed. Implementation, calibration, integration, and testing remain future work.
+
+---
+
+# 19. Phase 6 Completion & Next Phase
+
+With Phase 6.12 documented, the planned algorithm specification groups are complete:
+
+| Group | Scope | Status |
+|---|---|---|
+| 6.1 | Shared Algorithm Framework | Documented |
+| 6.2 | Memory Ingestion & Extraction | Documented |
+| 6.3 | Memory Resolution | Documented |
+| 6.4 | Memory Retrieval | Documented |
+| 6.5 | Memory Consolidation & Maintenance | Documented |
+| 6.6 | Research Query Understanding & Discovery | Documented |
+| 6.7 | Research Content Extraction & Normalization | Documented |
+| 6.8 | Research Source Evaluation & Verification | Documented |
+| 6.9 | Research Memory & Session Lifecycle | Documented |
+| 6.10 | Research Retrieval, Comparison & Synthesis | Documented |
+| 6.11 | Orchestrator Intent, Planning & Routing | Documented |
+| 6.12 | Orchestrator Result Validation & Response Assembly | Documented |
+
+**Phase 6 status:** Algorithm specifications documented. This does not mean algorithms have been implemented, calibrated, integrated, or tested.
+
+## Next: Phase 7 — Technology & Infrastructure Selection
+
+Phase 7 will select the concrete technologies and infrastructure for Raven, including:
+
+1. Programming languages and runtime.
+2. Application architecture and service boundaries.
+3. Primary database.
+4. Vector storage and search.
+5. Object and document storage.
+6. Queue and event infrastructure.
+7. Embedding models.
+8. NLP and non-generative ML tooling.
+9. API and communication protocols.
+10. Security, observability, deployment and infrastructure.
+
+The choices will be evaluated against Raven's quality-first design, privacy, data integrity, maintainability, scalability and cost.
