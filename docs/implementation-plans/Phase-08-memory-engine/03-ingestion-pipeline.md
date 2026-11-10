@@ -1,491 +1,415 @@
-# Phase 8.3 — Ingestion Pipeline Implementation Plan
+# 8.3 — Ingestion Pipeline
 
 ## 1. Objective
 
-Implement the Memory Engine's ingestion pipeline, responsible for accepting incoming information, validating it, normalizing its structure, preserving its source information and preparing it for downstream processing.
+Implement the Memory Engine ingestion pipeline to accept, validate, normalize, and register incoming information.
 
-The ingestion pipeline is the entry point into the Memory Engine.
+The pipeline must support two distinct ingestion paths:
 
-It must ensure that incoming information is valid, traceable, correctly associated with its owner and safely registered before extraction begins.
+1. **Personal memory ingestion:** messages, text, conversation history, and other supported information that may become personal memory.
+2. **Document ingestion:** uploaded files that must be registered, validated, preserved, and handed off for document processing.
 
-### Primary objectives
+Both paths share appropriate validation, ownership, security, and operation-management infrastructure. They must not share the same business processing lifecycle.
 
-- Accept supported input types.
-- Validate incoming data and metadata.
-- Normalize content into a consistent internal representation.
-- Preserve original source information.
-- Enforce user ownership and access boundaries.
-- Support idempotent ingestion.
-- Handle explicit memory instructions appropriately.
-- Register accepted inputs for downstream processing.
-- Provide reliable processing status and error information.
+The ingestion pipeline must preserve source information and establish reliable downstream processing without prematurely extracting memories or processing document chunks.
 
 ## 2. Architecture references
 
-Before implementation, Claude Code must review:
+Read the following before implementation:
 
-1. `PROJECT_ARCHITECTURE.md`
-2. `docs/architecture/` — relevant Memory Engine architecture documents.
-3. `docs/data-models/` — approved Memory Engine data models.
-4. `docs/algorithms/memory/01-memory-ingestion-extraction.md`
-5. `docs/technology/01-baseline-technology-stack.md`
-6. `docs/technology/02-database-and-storage-architecture.md`
-7. `docs/technology/04-background-processing-and-messaging.md`
-8. `docs/implementation-plans/phase-08-memory-engine/01-foundation-and-project-setup.md`
-9. `docs/implementation-plans/phase-08-memory-engine/02-database-and-persistence.md`
+- `PROJECT_ARCHITECTURE.md`
+- `docs/architecture/`
+- `docs/data-models/`
+- `docs/algorithms/`
+- `docs/technology/`
+- `docs/technical-decisions.md`
+- `docs/implementation-plans/phase-08-memory-engine/02-database-and-persistence.md`
+- `docs/implementation-plans/phase-08-memory-engine/04-extraction-and-evaluation.md`
+- `docs/implementation-plans/phase-08-memory-engine/12-document-rag-pipeline.md`
 
-The existing architecture, data models and algorithm specifications are authoritative.
+Follow the approved data models and technology decisions. Do not introduce new entities, dependencies, or processing stages without reconciling them with the existing specifications.
 
-Do not independently introduce new memory entities or redefine existing data models.
+## 3. Ingestion architecture
 
-## 3. Scope of implementation
+Implement ingestion as a controlled pipeline:
 
-### Included
+1. Receive the input.
+2. Validate the request.
+3. Authenticate and verify ownership.
+4. Identify the input type.
+5. Validate the content and metadata.
+6. Preserve the original source or content reference.
+7. Register the ingestion operation.
+8. Route to the correct downstream workflow.
+9. Record the handoff and processing status.
+10. Return an accurate acknowledgement.
 
-- Ingestion service.
-- Input validation.
-- Source type validation.
-- Content normalization.
-- Metadata validation.
-- Ownership and authorization checks.
-- Original content preservation.
-- Ingestion identifiers and idempotency.
-- Ingestion status management.
-- Error handling.
-- Downstream processing handoff.
-- Unit and component tests.
-
-### Excluded
-
-The following capabilities belong to subsequent implementation milestones:
-
-- Detailed relevance evaluation.
-- Atomic fact extraction.
-- Memory importance and confidence scoring.
-- Explicit versus inferred memory classification beyond instruction routing.
-- Memory candidate generation.
-- Entity resolution.
-- Duplicate and contradiction resolution.
-- Memory embeddings.
-- Vector indexing.
-- Memory retrieval.
-- Consolidation and maintenance.
-- Full forgetting and deletion execution.
-- Document RAG and semantic document retrieval.
-
-These capabilities must not be prematurely implemented in this milestone.
+The pipeline must not report successful downstream processing merely because an input was accepted.
 
 ## 4. Supported input types
 
-The ingestion pipeline should support the input categories defined by the approved architecture.
+The ingestion layer must accommodate the following categories, subject to the approved implementation scope.
 
-| Input type | Expected handling |
-|---|---|
-| Text | Validate and normalize text content |
-| User messages | Preserve message content and source metadata |
-| Conversation history | Preserve message order, speaker and available timestamps |
-| PDF | Validate format and register the source for supported content processing |
-| DOCX | Validate format and register the source for supported content processing |
-| TXT | Validate format and register the source for supported content processing |
+### 4.1 Personal memory inputs
 
-Important:
+- Plain text.
+- User messages.
+- Conversation history.
+- Structured text input.
+- Explicit remember instructions.
+- Explicit forget instructions.
 
-- Validate actual file content rather than trusting file extensions.
-- Reject malformed or unsupported files.
-- Preserve original uploaded files.
-- Do not assume OCR support for scanned PDFs.
-- Do not claim successful text extraction when no supported parser has performed it.
-- Detailed document chunking, embeddings and RAG are deferred to the final Phase 8 architecture review.
+### 4.2 Document inputs
 
-## 5. Ingestion architecture
+Initial document formats:
 
-Implement the ingestion pipeline using clearly separated responsibilities.
+- PDF.
+- DOCX.
+- TXT.
 
-### 5.1 Ingestion Interface
+The ingestion layer must validate actual file content and detected format rather than trusting the file extension alone.
 
-Responsibilities:
+Scanned PDFs and image-based documents may require OCR. OCR support must follow an explicit technology decision and must not be assumed to exist in the initial ingestion implementation.
 
-- Receive ingestion requests.
-- Accept content and metadata.
-- Validate basic request structure.
-- Pass requests to the ingestion application service.
-- Return structured processing information.
+Unsupported formats must receive a clear status and error.
 
-The interface must not contain memory extraction or business logic.
+## 5. Personal memory ingestion
 
-### 5.2 Input Validation
+### 5.1 Validation
 
-Responsibilities:
+Validate:
 
-- Validate required fields.
-- Validate supported source types.
-- Validate content presence.
-- Validate metadata structure.
-- Validate schema version.
-- Validate file format and integrity.
-- Enforce configurable size limits.
-- Reject malformed inputs.
+- User identity.
+- Source type.
+- Content presence.
+- Content size.
+- Required metadata.
+- Input encoding.
+- Request schema.
+- Idempotency key where required.
+- Authorization.
 
-Validation must fail safely.
+Reject malformed or unauthorized requests before processing.
 
-### 5.3 Source Normalization
+### 5.2 Normalization
 
-Responsibilities:
+Normalize input without changing its original meaning.
 
-- Normalize text encoding.
-- Standardize line endings.
-- Remove invalid control characters where appropriate.
-- Normalize supported metadata representations.
-- Preserve meaningful formatting.
-- Preserve original source content separately.
+Examples:
 
-Normalization must not silently change the meaning of the source.
+- Normalize supported text encoding.
+- Standardize metadata representation.
+- Preserve timestamps and time zones.
+- Preserve speaker identity where available.
+- Preserve conversation ordering.
+- Remove invalid control characters where safe.
 
-### 5.4 Ownership and Authorization
+Do not discard the original source when normalization creates a modified representation.
 
-Responsibilities:
+### 5.3 Source preservation
 
-- Verify the authenticated user.
-- Validate the ownership of the ingestion request.
-- Prevent cross-user access.
-- Verify access to referenced content.
-- Prevent one user's source from being attached to another user's memory context.
+Preserve:
 
-Never trust a user ID supplied only through an untrusted request payload.
+- Original content or durable source reference.
+- Source type.
+- Source identifier.
+- User ownership.
+- Received timestamp.
+- Original source timestamp where available.
+- Relevant metadata.
+- Normalization metadata.
 
-### 5.5 Source Persistence
+All downstream memory candidates must be traceable to their originating source.
 
-Responsibilities:
+### 5.4 Explicit instructions
 
-- Preserve original source content.
-- Register source metadata.
-- Associate the source with the correct user.
-- Persist content references.
-- Record ingestion timestamps.
-- Maintain source provenance.
+Explicit remember instructions must be prioritized appropriately for downstream extraction.
 
-Follow the approved storage architecture:
+Explicit forget instructions must bypass normal memory extraction and enter the approved forgetting and deletion workflow.
 
-- PostgreSQL stores structured metadata and references.
-- Object storage stores large original content where appropriate.
-- Avoid duplicating large files unnecessarily.
-- Use checksums where appropriate for integrity verification.
+The ingestion layer must not treat a forget instruction as ordinary content to be stored as a new personal memory without evaluating the instruction.
 
-Do not assume PostgreSQL and object storage support a shared atomic transaction.
+## 6. Document ingestion
 
-Use operation tracking and reconciliation where necessary to handle partial failures.
+### 6.1 Document registration
 
-### 5.6 Ingestion Orchestration
+When a user uploads a supported document:
 
-Responsibilities:
+1. Authenticate the user.
+2. Validate the upload request.
+3. Verify the file's actual format.
+4. Enforce file-size and upload limits.
+5. Validate the detected media type.
+6. Calculate a content checksum.
+7. Apply the approved security checks.
+8. Preserve the original file in approved object storage.
+9. Register the document and its version.
+10. Create or register the document-processing operation.
+11. Hand off processing to the Document Intelligence pipeline.
 
-- Coordinate validation, normalization and persistence.
-- Maintain ingestion status.
-- Handle idempotency.
-- Register accepted inputs for downstream processing.
-- Return a consistent result.
+Document identity and versioning must follow the Phase 5 data models and plan 8.2.
 
-This component must not perform detailed extraction or memory resolution.
+Do not use filenames as document identifiers.
 
-## 6. Input contract
+### 6.2 Original document preservation
 
-Use the existing ingestion input model from the algorithm specification.
+The original file must remain available as the authoritative source artifact, subject to retention and deletion policies.
 
-The logical contract includes:
+Persist its approved metadata and secure object-storage reference.
+
+Do not store extracted text as a replacement for the original file.
+
+Do not expose internal object-storage credentials or unrestricted storage locations.
+
+### 6.3 Document handoff
+
+After successful registration, create a reliable handoff to the Document Intelligence pipeline defined in plan 8.12.
+
+The handoff must include the approved references needed to identify:
+
+- User ownership.
+- Document identity.
+- Document version.
+- Original object reference.
+- Processing operation.
+- Relevant metadata.
+- Schema or contract version.
+
+Use the approved background-processing architecture.
+
+The handoff must be recoverable if message publication or worker execution fails.
+
+### 6.4 Scope boundary
+
+This plan is responsible for document acceptance and registration.
+
+The following operations belong to plan 8.12:
+
+- PDF/DOCX/TXT content parsing.
+- OCR, if approved.
+- Layout and structural extraction.
+- Document chunking.
+- Chunk metadata generation.
+- Document embedding generation.
+- Document indexing.
+- Document retrieval.
+- Evidence selection.
+- Document answer assembly.
+- Citation generation and validation.
+
+Do not duplicate these operations in the ingestion pipeline.
+
+## 7. Input contract
+
+Use the approved request and message contracts.
+
+A logical ingestion request may contain:
 
 | Field | Purpose |
 |---|---|
-| `ingestion_id` | Unique ingestion identifier |
+| `ingestion_id` | Unique ingestion operation identifier |
 | `user_id` | Owner identity |
-| `source_type` | Type of incoming source |
-| `source_id` | Original source identifier, when available |
-| `content_reference` | Reference to the stored content |
+| `source_type` | Input source category |
+| `source_id` | External or originating source identifier, when available |
+| `content_reference` | Content or object-storage reference |
 | `received_at` | Time Raven received the input |
 | `source_timestamp` | Original source timestamp, when available |
-| `content_metadata` | Additional source metadata |
-| `priority_hint` | Priority information, where applicable |
-| `instruction_type` | Identifies an explicit instruction, when applicable |
-| `schema_version` | Input contract version |
+| `content_metadata` | Relevant input metadata |
+| `priority_hint` | Processing priority where authorized |
+| `instruction_type` | Normal, remember, forget, or other approved instruction |
+| `schema_version` | Contract version |
 
-Claude Code must reconcile this contract with the approved Pydantic models and Phase 5 data models before implementation.
+This is a logical contract reference, not authorization to introduce an incompatible schema. Reconcile exact field names and required values with existing contracts.
 
-Do not create duplicate models if an equivalent approved model already exists.
+Document-specific metadata must preserve document and version references rather than overloading personal memory fields.
 
-## 7. Ingestion processing workflow
+## 8. Idempotency and duplicate handling
 
-Implement the following logical sequence:
-
-1. Receive the ingestion request.
-2. Validate request structure.
-3. Authenticate and verify ownership.
-4. Identify the source type.
-5. Validate the actual content and format.
-6. Normalize the content and metadata.
-7. Calculate or validate the content checksum where appropriate.
-8. Check idempotency.
-9. Persist original content or register its existing reference.
-10. Persist ingestion metadata.
-11. Register the accepted input for downstream processing.
-12. Return the ingestion result.
-
-If a step fails, the pipeline must record the appropriate failure state and avoid reporting successful ingestion.
-
-### 7.1 Explicit instructions
-
-Raven must distinguish ordinary information from explicit memory instructions.
-
-**Explicit remember:**
-
-- Preserve the instruction.
-- Assign the appropriate priority hint.
-- Continue through normal validation.
-- Prepare the input for downstream extraction.
-
-**Explicit forget:**
-
-- Recognize the instruction.
-- Do not send it through ordinary memory extraction.
-- Route it toward the dedicated forgetting workflow.
-- Do not execute the full deletion operation in this milestone.
-
-Explicit forgetting must not be blocked by ordinary relevance filtering.
-
-## 8. Idempotency
-
-Repeated ingestion requests must not create unintended duplicate source records.
-
-Implement idempotency using a stable ingestion identifier or an approved idempotency key.
+The ingestion pipeline must support safe retries.
 
 Requirements:
 
-- Repeated requests with the same idempotency identity should resolve to the existing ingestion result where appropriate.
-- Do not assume two files are identical solely because their filenames match.
-- Use content checksums as an additional integrity or duplicate-detection signal.
-- Distinguish a legitimate new source from a retried request.
-- Handle concurrent duplicate requests safely.
-- Do not silently overwrite previously stored content.
+- Repeated requests with the same idempotency key must not create duplicate operations.
+- Content checksums may help detect identical file content.
+- A matching checksum must not automatically merge distinct document identities.
+- Re-uploading a document must follow the approved document-version policy.
+- Failed handoffs must be recoverable.
+- Worker retries must not create duplicate document registrations or memory sources.
 
-The exact uniqueness constraints must follow the approved data model.
+Idempotency must be scoped to the appropriate user and operation.
 
-## 9. Ingestion status management
+Do not treat content similarity as proof that two documents are identical.
 
-Use the existing approved status definitions wherever available.
+## 9. Processing states and error handling
 
-The logical status outcomes include:
+Use the approved lifecycle model where defined.
 
-- `validated`
-- `queued`
-- `rejected`
-- `invalid_input`
-- `unsupported_input`
-- `access_denied`
-- `ownership_validation_failed`
-- `parsing_failed`
-- `processing_failed`
+The ingestion workflow must distinguish at least:
 
-Do not introduce conflicting status names if the existing data model already defines equivalent states.
+- Received.
+- Validating.
+- Validated.
+- Registered.
+- Queued.
+- Handed off.
+- Rejected.
+- Invalid input.
+- Unsupported input.
+- Access denied.
+- Ownership validation failed.
+- Storage failed.
+- Processing failed.
 
-Status transitions must be explicit and auditable.
+These are conceptual states. Reconcile exact persisted values with the approved models before implementation.
 
-A successfully validated input is not necessarily an extracted or stored memory.
+The system must not label a document as fully processed when only registration and handoff have succeeded.
 
-The ingestion result must clearly distinguish source acceptance from downstream memory processing.
+Failures must preserve enough operation information to support safe retry and diagnosis.
 
-## 10. Error handling and recovery
+## 10. Security requirements
 
-Handle the following scenarios:
+Implement:
 
-| Scenario | Expected behavior |
-|---|---|
-| Empty input | Reject with validation error |
-| Missing required metadata | Reject with validation error |
-| Unsupported file type | Reject safely |
-| Incorrect file extension | Validate actual content and reject mismatch |
-| Corrupted file | Record parsing failure |
-| File exceeds configured limit | Reject with clear error |
-| Unauthorized user | Deny access |
-| Ownership mismatch | Reject without exposing another user's data |
-| Duplicate request | Resolve through idempotency |
-| Object storage failure | Record failure and reconcile incomplete operations |
-| Database failure | Avoid reporting successful persistence |
-| Downstream queue unavailable | Preserve accepted state safely and support controlled retry |
-| Malformed metadata | Reject with structured validation error |
+- Authentication.
+- User ownership validation.
+- File-size limits.
+- File-type validation.
+- Safe filename handling.
+- Storage access control.
+- Input validation.
+- Protection against path traversal.
+- Protection against malicious or malformed files.
+- Safe error responses.
+- Sensitive-data protection in logs.
 
-Retries must be bounded.
+Treat document contents as untrusted input.
 
-Do not create duplicate source records when recovering from partial failures.
+Do not execute document contents, embedded scripts, or macros.
 
-## 11. Downstream integration
+Any malware scanning or advanced file inspection dependency must follow the approved technology and security decisions.
 
-The ingestion pipeline must prepare accepted inputs for the next milestone.
+## 11. Observability
 
-Its output should include:
+Record relevant events and metrics:
 
-- Ingestion identifier.
-- Owner reference.
-- Source type.
-- Content reference.
-- Normalized metadata.
-- Source timestamp, if available.
-- Processing status.
-- Schema version.
-- Provenance information.
+- Ingestion requests.
+- Accepted and rejected requests.
+- Validation failures.
+- Storage failures.
+- Duplicate operations.
+- Document registration.
+- Processing handoff.
+- Handoff failures.
+- Processing latency.
+- Retry counts.
 
-The next processing milestone, Phase 8.4 — Extraction and Evaluation, will consume accepted inputs.
+Correlate operations using the approved request, execution, task, message, and trace identifiers.
 
-Use a clearly defined internal interface so extraction can be implemented independently.
+Do not log full document contents or unnecessary personal information.
 
-Where asynchronous processing is required, use the approved messaging architecture and idempotent task handling.
+## 12. Testing requirements
 
-Do not tightly couple ingestion to extraction implementation.
+### 12.1 Personal memory ingestion tests
 
-## 12. Logging and observability
+- Valid text input.
+- Invalid request.
+- Empty content.
+- Invalid encoding.
+- Missing metadata.
+- Unauthorized request.
+- Ownership mismatch.
+- Explicit remember instruction.
+- Explicit forget instruction.
+- Duplicate request.
+- Retry after failure.
 
-Record structured events for:
+### 12.2 Document ingestion tests
 
-- Ingestion request received.
-- Validation completed.
-- Ownership verification completed.
-- Source normalization completed.
-- Content persistence completed.
-- Idempotency match detected.
-- Downstream processing registered.
-- Ingestion rejected.
-- Ingestion failed.
+- Valid PDF.
+- Valid DOCX.
+- Valid TXT.
+- Invalid file content.
+- Extension and actual-format mismatch.
+- Oversized upload.
+- Empty file.
+- Malformed document.
+- Duplicate upload request.
+- Identical file uploaded as a separate document.
+- Storage failure.
+- Database registration failure.
+- Handoff failure.
+- Retry after partial completion.
+- Cross-user access attempt.
 
-Include relevant identifiers:
+### 12.3 Integration tests
 
-- `ingestion_id`
-- `user_id` or a safe internal reference
-- `source_id`
-- `correlation_id`
-- `trace_id`
+- Successful document registration and handoff.
+- Processing operation remains traceable.
+- Original file reference remains valid.
+- Failed handoff can be recovered.
+- No duplicate registration on retry.
+- Document processing is not falsely marked complete.
+- Personal memory and document ingestion remain separate.
 
-Never log:
+## 13. Acceptance criteria
 
-- Full private document contents.
-- Sensitive personal information unnecessarily.
-- Authentication tokens.
-- Credentials.
-- Secret storage URLs.
+This plan is complete when:
 
-## 13. Testing requirements
+1. Personal memory inputs are validated and normalized.
+2. Original source information is preserved.
+3. Explicit remember and forget instructions are routed correctly.
+4. Supported document formats are validated.
+5. Original documents are securely stored.
+6. Document and version records are registered correctly.
+7. Processing operations are traceable.
+8. Document processing is handed off reliably.
+9. Idempotency and retry behavior are tested.
+10. Ownership and security checks pass.
+11. Failure states are accurately reported.
+12. Required tests pass.
 
-### Unit tests
+## 14. Out of scope
 
-Test:
+This plan does not implement:
 
-- Input schema validation.
-- Supported source type validation.
-- Metadata normalization.
-- Text normalization.
-- Content checksum generation.
-- Idempotency key handling.
-- Instruction type recognition.
-- Status transition validation.
+- Detailed memory extraction.
+- Memory candidate evaluation.
+- Entity resolution.
+- Memory duplicate or contradiction resolution.
+- Document parsing.
+- OCR.
+- Document structure extraction.
+- Document chunking.
+- Embedding generation.
+- Vector indexing.
+- Hybrid document retrieval.
+- Evidence-grounded answer assembly.
+- Full deletion orchestration.
 
-### Component tests
+These responsibilities belong to their dedicated plans.
 
-Test:
+## 15. Claude Code execution instructions
 
-- Ingestion service.
-- Ownership validation.
-- Source persistence.
-- Storage failure handling.
-- Ingestion status management.
-- Downstream handoff.
+Before implementation:
 
-### Security tests
+1. Inspect the existing ingestion implementation and repository conventions.
+2. Read the referenced architecture and data-model specifications.
+3. Identify existing storage, validation, and background-processing infrastructure.
+4. Reconcile the document registration and handoff contracts.
+5. Report any unresolved schema or security decisions.
+6. Propose the minimum required implementation changes.
 
-Test:
+Do not silently invent new contracts or dependencies.
 
-- Cross-user source access.
-- Forged user identifiers.
-- Unauthorized content references.
-- Invalid file uploads.
-- Malformed metadata.
-- Sensitive information leakage through logs.
+After implementation, report:
 
-### Reliability tests
+- Files created or modified.
+- Input types supported.
+- Document registration behavior.
+- Storage and handoff implementation.
+- Dependencies added.
+- Tests executed and results.
+- Acceptance criteria satisfied.
+- Known limitations.
 
-Test:
-
-- Repeated ingestion requests.
-- Concurrent duplicate requests.
-- Database interruption.
-- Object storage interruption.
-- Partial persistence failure.
-- Queue unavailability.
-- Recovery and reconciliation behavior.
-
-### Input coverage
-
-Test supported text, messages, conversation history, PDF, DOCX and TXT inputs.
-
-Include malformed files, extension mismatches and unsupported scanned PDFs where OCR is unavailable.
-
-Verify that original content and source metadata remain traceable.
-
-## 14. Acceptance criteria
-
-Phase 8.3 is complete only when:
-
-- [ ] Supported input types are accepted.
-- [ ] Invalid inputs are rejected safely.
-- [ ] Actual file formats are validated.
-- [ ] Content normalization works correctly.
-- [ ] Original source content is preserved.
-- [ ] Metadata and provenance are persisted.
-- [ ] User ownership is enforced.
-- [ ] Idempotent ingestion works.
-- [ ] Explicit remember instructions are prioritized appropriately.
-- [ ] Explicit forget instructions bypass ordinary extraction.
-- [ ] Downstream handoff is defined and tested.
-- [ ] Failures are handled without false success reporting.
-- [ ] Structured logging and observability are implemented.
-- [ ] Unit and component tests pass.
-- [ ] Security and reliability tests pass.
-- [ ] No out-of-scope extraction or retrieval functionality has been introduced.
-
-## 15. Implementation constraints
-
-Claude Code must follow these constraints:
-
-1. Inspect the existing repository before making changes.
-2. Reuse the foundation and persistence layers created in earlier milestones.
-3. Follow the approved architecture and data models.
-4. Do not introduce unnecessary dependencies.
-5. Do not duplicate existing functionality.
-6. Do not implement generative LLM functionality.
-7. Do not implement document RAG in this milestone.
-8. Do not create source code inside `docs/implementation-plans/`.
-9. Put implementation code inside the existing `memory-engine/` directory.
-10. Keep tests inside the existing `tests/` structure.
-11. Do not proceed to Phase 8.4 automatically.
-
-If a conflict exists between an implementation instruction and an approved architecture document, report it before making architectural changes.
-
-## 16. Completion report
-
-After implementation, Claude Code must provide:
-
-1. Summary of completed functionality.
-2. Files created or modified.
-3. Dependencies added or changed.
-4. Database or migration changes, if any.
-5. Ingestion interfaces and contracts implemented.
-6. Tests executed.
-7. Exact test results.
-8. Known limitations.
-9. Deviations from the approved architecture.
-10. Acceptance criteria checklist.
-
-Clearly distinguish implemented functionality from deferred functionality.
-
-## 17. Definition of done
-
-The ingestion pipeline is considered complete when Raven can reliably accept, validate, normalize, register and preserve supported incoming sources while maintaining ownership, provenance, idempotency and failure safety.
-
-It must provide a stable handoff to the extraction pipeline without taking responsibility for downstream memory intelligence.
-
-**Phase 8.3 delivers reliable ingestion, not completed memory formation.**
+Do not automatically proceed to plan 8.4.
