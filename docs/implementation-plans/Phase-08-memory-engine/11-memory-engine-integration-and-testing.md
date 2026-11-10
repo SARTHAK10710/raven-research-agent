@@ -1,680 +1,597 @@
-# Phase 8.11 — Memory Engine Integration & Testing Implementation Plan
+# 8.11 — Memory Engine Integration and Testing
 
 ## 1. Objective
 
 Integrate and validate the complete Memory Engine implementation.
 
-This milestone verifies that all previously implemented components operate together correctly, maintain data integrity and satisfy the approved architectural requirements.
+Phase 8 must deliver two distinct but interoperable capabilities:
 
-The integration must validate the complete memory lifecycle:
+1. Personal Memory Engine.
+2. Document Intelligence and Retrieval-Augmented Generation (RAG).
 
+Both capabilities must operate under the same Memory Engine ownership while maintaining separate data models, processing pipelines, retrieval domains, and lifecycle rules.
+
+This plan validates that all implemented components work together reliably and meet the approved architecture, security, quality, and data-integrity requirements.
+
+## 2. Architecture references
+
+Read:
+
+- `PROJECT_ARCHITECTURE.md`
+- `docs/architecture/`
+- `docs/data-models/`
+- `docs/algorithms/`
+- `docs/technology/`
+- `docs/technical-decisions.md`
+- `docs/implementation-plans/phase-08-memory-engine/README.md`
+- Plans 8.1 through 8.10.
+- `docs/implementation-plans/phase-08-memory-engine/12-document-rag-pipeline.md`
+
+All tests must validate the approved specifications rather than silently changing them.
+
+## 3. Integration architecture
+
+Validate the following capabilities.
+
+### Personal memory
+
+- Foundation and configuration.
+- Database and persistence.
 - Ingestion.
 - Extraction and evaluation.
 - Entity and relationship management.
 - Memory resolution.
-- Authoritative storage and indexing.
+- Memory storage and indexing.
 - Memory retrieval.
 - Consolidation and maintenance.
 - Forgetting and deletion.
 
-### Primary objectives
-
-- Integrate all Memory Engine components.
-- Validate internal interfaces and contracts.
-- Verify end-to-end memory lifecycle workflows.
-- Validate database and storage consistency.
-- Verify ownership and privacy boundaries.
-- Test asynchronous processing and recovery.
-- Validate retrieval quality.
-- Test deletion guarantees.
-- Evaluate system reliability and performance.
-- Produce a final Phase 8 implementation report.
-
-## 2. Architecture references
-
-Claude Code must review:
-
-1. `PROJECT_ARCHITECTURE.md`
-2. `docs/architecture/` — Memory Engine architecture.
-3. `docs/data-models/` — approved Memory Engine data models.
-4. `docs/algorithms/` — approved Memory Engine algorithms.
-5. `docs/technology/` — approved technology decisions.
-6. `docs/implementation-plans/phase-08-memory-engine/README.md`
-7. `docs/implementation-plans/phase-08-memory-engine/01-foundation-and-project-setup.md`
-8. `docs/implementation-plans/phase-08-memory-engine/02-database-and-persistence.md`
-9. `docs/implementation-plans/phase-08-memory-engine/03-ingestion-pipeline.md`
-10. `docs/implementation-plans/phase-08-memory-engine/04-extraction-and-evaluation.md`
-11. `docs/implementation-plans/phase-08-memory-engine/05-entity-and-relationship-management.md`
-12. `docs/implementation-plans/phase-08-memory-engine/06-memory-resolution.md`
-13. `docs/implementation-plans/phase-08-memory-engine/07-memory-storage-and-indexing.md`
-14. `docs/implementation-plans/phase-08-memory-engine/08-memory-retrieval.md`
-15. `docs/implementation-plans/phase-08-memory-engine/09-consolidation-and-maintenance.md`
-16. `docs/implementation-plans/phase-08-memory-engine/10-forgetting-and-deletion.md`
-
-All approved architecture, data models, algorithms and technology decisions remain authoritative.
-
-## 3. Scope
-
-### Included
-
-- Component integration.
-- Internal interface validation.
-- Data contract validation.
-- End-to-end lifecycle testing.
-- Database integration testing.
-- Background processing integration.
-- Ownership and authorization testing.
-- Concurrency testing.
-- Failure and recovery testing.
-- Retrieval quality evaluation.
-- Deletion verification.
-- Performance benchmarking.
-- Security validation.
-- Regression testing.
-- Final implementation documentation.
-
-### Excluded
-
-- Research Engine implementation.
-- Agent Orchestrator implementation.
-- Cross-engine integration.
-- Production deployment.
-- Document RAG extensions not yet incorporated into the approved Phase 8 architecture.
-
-These will be handled in subsequent phases or after the final Phase 8 architecture review.
-
-## 4. Integration architecture
-
-Validate the integration of the following components.
-
-### 4.1 Ingestion Pipeline
-
-Verify:
-
-- Supported inputs are accepted.
-- Input validation works.
-- Source metadata is preserved.
-- Original content remains traceable.
-- Ownership is enforced.
-- Idempotency works.
-- Accepted inputs are registered for extraction.
-
-### 4.2 Extraction & Evaluation
-
-Verify:
-
-- Relevance Gate operates correctly.
-- Atomic facts are extracted.
-- Explicit and inferred information are distinguished.
-- Importance and confidence remain independent.
-- Candidate provenance is preserved.
-- Invalid candidates are rejected safely.
-
-### 4.3 Entity & Relationship Management
-
-Verify:
-
-- Entity identification works.
-- Entity types follow approved models.
-- Aliases and mentions are maintained.
-- Entity relationships are persisted.
-- Memory relationships are maintained.
-- Ambiguous identities are not silently merged.
-
-### 4.4 Memory Resolution
-
-Verify:
-
-- Duplicate candidates are identified.
-- Related facts remain distinct where appropriate.
-- Contradictions are detected.
-- Corrections and updates are handled.
-- Superseded revisions are preserved.
-- Resolution operations are idempotent.
-
-### 4.5 Memory Storage & Indexing
-
-Verify:
-
-- Authoritative memories are persisted.
-- Immutable revisions are maintained.
-- Provenance remains intact.
-- Embeddings are generated and versioned.
-- Vector indexing works.
-- Keyword indexing works.
-- Index failures do not corrupt authoritative records.
-- Derived indexes can be reconciled.
-
-### 4.6 Memory Retrieval
-
-Verify:
-
-- Hybrid retrieval works.
-- Metadata filtering works.
-- Entity-aware retrieval works.
-- Ranking behaves as expected.
-- Confidence and evidence filtering work.
-- Dynamic Top-K selection works.
-- Historical and current information are distinguished.
-- Retrieval budgets are enforced.
-
-### 4.7 Consolidation & Maintenance
-
-Verify:
-
-- Related memories can be grouped.
-- Episodes are maintained.
-- Semantic representations preserve supporting evidence.
-- Derived profiles are maintained.
-- Freshness and retention utility are evaluated separately.
-- Decay does not automatically delete memories.
-- Stale derived representations can be recomputed.
-
-### 4.8 Forgetting & Deletion
-
-Verify:
-
-- Explicit forgetting instructions bypass normal extraction.
-- Deletion scope is validated.
-- Deletion dependencies are identified.
-- Tombstones prevent reintroduction.
-- Derived data is cleaned up.
-- Indexes and caches are invalidated.
-- Unrelated memories remain unaffected.
-- Deletion remains effective after recovery.
-
-## 5. End-to-end lifecycle testing
-
-Implement complete workflows using realistic test data.
-
-### Workflow A — Basic memory creation
-
-1. Submit a user message.
-2. Validate and register the input.
-3. Run relevance evaluation.
-4. Extract atomic facts.
-5. Evaluate importance and confidence.
-6. Generate memory candidates.
-7. Identify entities.
-8. Resolve candidates.
-9. Persist authoritative memories.
-10. Generate derived indexes.
-11. Retrieve the newly created memories.
-
-Expected result:
-
-The system creates traceable authoritative memories and makes them retrievable through the approved retrieval interface.
-
-### Workflow B — Duplicate memory handling
-
-1. Submit an initial fact.
-2. Allow it to become an authoritative memory.
-3. Submit a paraphrased version of the same fact.
-4. Run memory resolution.
-5. Verify the approved duplicate handling outcome.
-
-Expected result:
-
-Unnecessary duplicate memories are avoided while preserving relevant source evidence.
-
-### Workflow C — Memory correction
-
-1. Create an authoritative memory.
-2. Submit an explicit correction.
-3. Identify the existing memory.
-4. Evaluate the correction.
-5. Create an appropriate new revision.
-6. Verify historical revision preservation.
-7. Retrieve current and historical states.
-
-Expected result:
-
-The corrected information becomes authoritative without destroying historical context.
-
-### Workflow D — Contradictory information
-
-1. Create an initial memory.
-2. Submit a conflicting observation.
-3. Evaluate entity, attribute and temporal context.
-4. Apply the appropriate resolution outcome.
-5. Verify that unresolved contradictions are not silently discarded.
-
-Expected result:
-
-The system preserves conflicting evidence and distinguishes genuine updates from unresolved contradictions.
-
-### Workflow E — Entity relationship handling
-
-1. Submit facts involving multiple entities.
-2. Identify entities.
-3. Register aliases and mentions.
-4. Create supported relationships.
-5. Retrieve memories using entity context.
-
-Expected result:
-
-Related information can be retrieved without incorrectly merging distinct entities.
-
-### Workflow F — Memory retrieval
-
-1. Create several related and unrelated memories.
-2. Submit different query types.
-3. Execute hybrid retrieval.
-4. Apply contextual filters.
-5. Rank candidates.
-6. Evaluate Top-K selection.
-7. Verify provenance and temporal information.
-
-Expected result:
-
-The retrieval system returns relevant evidence-backed memories while excluding unauthorized or irrelevant information.
-
-### Workflow G — Consolidation
-
-1. Create a collection of related memories.
-2. Trigger consolidation.
-3. Generate appropriate episode representations.
-4. Generate supported semantic representations.
-5. Update derived profiles where justified.
-6. Modify one supporting memory.
-7. Verify derived-data invalidation and recomputation.
-
-Expected result:
-
-Derived representations remain consistent with their supporting memories.
-
-### Workflow H — Explicit forgetting
-
-1. Create an authoritative memory.
-2. Generate its embeddings and indexes.
-3. Associate it with an episode or derived profile.
-4. Submit an explicit forgetting request.
-5. Generate the deletion plan.
-6. Execute deletion.
-7. Verify cleanup across required storage layers.
-8. Attempt retrieval again.
-9. Attempt stale background-job processing.
-
-Expected result:
-
-The forgotten information is no longer retrievable or reintroduced, while unrelated memories remain intact.
-
-## 6. Integration contract validation
-
-Validate all internal interfaces between Memory Engine components.
-
-Requirements:
-
-- Consistent identifiers.
-- Compatible data models.
-- Schema version handling.
-- Explicit ownership context.
-- Consistent timestamps.
-- Consistent lifecycle states.
-- Structured error responses.
-- Idempotency support.
-- Trace and correlation identifiers.
-- Provenance propagation.
-
-Do not introduce tightly coupled component dependencies.
-
-Keep domain logic, application services and persistence boundaries consistent with Phase 8.1.
-
-## 7. Database and storage integration
+### Document intelligence
+
+- Document registration.
+- Original file storage.
+- Document versioning.
+- Parsing and structure extraction.
+- Chunking.
+- Embedding generation.
+- Hybrid indexing.
+- Document retrieval.
+- Evidence selection.
+- Answer assembly.
+- Citation and provenance validation.
+- Document lifecycle and deletion.
+
+### Shared infrastructure
+
+Validate the approved shared infrastructure used by both capabilities:
+
+- PostgreSQL.
+- SQLAlchemy.
+- Alembic.
+- pgvector.
+- Object storage.
+- RabbitMQ and Celery where implemented.
+- Logging and observability.
+- Configuration and security.
+- Background processing.
+
+Shared infrastructure must not collapse the separate business responsibilities of the two domains.
+
+## 4. Personal memory end-to-end testing
+
+Validate the complete personal memory lifecycle:
+
+`Input → Ingestion → Relevance Gate → Extraction → Evaluation → Candidate → Resolution → Storage → Indexing → Retrieval → Consolidation`
+
+Test the following scenarios.
+
+### 4.1 Basic memory lifecycle
+
+- User submits a preference.
+- User submits a goal.
+- User submits a decision.
+- User submits an important event.
+- User submits a commitment.
+- Raven extracts eligible facts.
+- Candidates are evaluated.
+- Valid candidates enter memory resolution.
+- Approved memories are persisted.
+- Relevant memories can be retrieved.
+
+### 4.2 Memory updates and contradictions
+
+- User corrects an existing fact.
+- User changes a preference.
+- User updates a goal.
+- Two sources provide conflicting information.
+- A new fact supersedes an old fact.
+- Historical information remains available where appropriate.
+- Current information is correctly identified.
+
+### 4.3 Entity and relationship integration
+
+- Entity extraction and registration.
+- Alias handling.
+- Entity-to-memory relationships.
+- Entity-to-entity relationships.
+- Memory-to-memory relationships.
+- Duplicate entity handling.
+- Ambiguous entity handling.
+
+### 4.4 Consolidation
+
+- Episodic grouping.
+- Semantic consolidation.
+- Derived profile updates.
+- Freshness evaluation.
+- Retention utility evaluation.
+- Derived-data consistency.
+- Provenance preservation.
+
+### 4.5 Forgetting
+
+- Delete one memory.
+- Delete related derived data.
+- Remove applicable embeddings and indexes.
+- Handle concurrent operations.
+- Recover partial deletion.
+- Verify deletion completion.
+
+## 5. Document intelligence end-to-end testing
+
+Validate the complete document lifecycle:
+
+`Upload → Validation → Registration → Storage → Parsing → Structure Extraction → Chunking → Embedding → Indexing → Retrieval → Evidence Selection → Answer Assembly → Citation Validation`
+
+### 5.1 Document upload and registration
+
+Test:
+
+- Valid PDF upload.
+- Valid DOCX upload.
+- Valid TXT upload.
+- Invalid file content.
+- Unsupported format.
+- Extension and actual-format mismatch.
+- Oversized file.
+- Duplicate request.
+- Identical content uploaded as a distinct document.
+- Multiple versions of a document.
+- Ownership enforcement.
+- Original object-storage reference.
+
+Verify that successful registration does not falsely imply that parsing or indexing has completed.
+
+### 5.2 Parsing and structure extraction
+
+Test:
+
+- Text-based PDF.
+- Multi-page PDF.
+- DOCX with headings.
+- DOCX with lists.
+- TXT document.
+- Empty document.
+- Malformed document.
+- Tables where supported.
+- Document with mixed structural content.
+- Extraction failure.
+- Worker interruption.
+
+Verify that source location and document-version provenance are retained.
+
+Scanned-document OCR must be tested only if the OCR capability has been explicitly selected and implemented.
+
+### 5.3 Chunking
+
+Test:
+
+- Short document.
+- Long document.
+- Multiple sections.
+- Heading-aware boundaries.
+- Paragraph boundaries.
+- Page boundaries.
+- Table-related content where supported.
+- Overlapping chunks where configured.
+- Chunk ordering.
+- Chunk provenance.
+- Chunk size constraints.
+- Duplicate processing.
+
+Ensure that chunking does not silently discard meaningful source content or destroy citation locations.
+
+### 5.4 Embedding and indexing
+
+Test:
+
+- Successful embedding generation.
+- Embedding dimension validation.
+- Invalid vector values.
+- Embedding model metadata.
+- Repeated embedding requests.
+- Failed embedding generation.
+- Vector indexing.
+- Full-text indexing.
+- Partial indexing failure.
+- Index reconciliation.
+- Document version changes.
+- Stale index detection.
+
+Document embeddings must remain separate from personal memory embeddings at the logical level.
+
+### 5.5 Document retrieval
+
+Test:
+
+- Exact keyword query.
+- Semantic query.
+- Metadata-filtered retrieval.
+- Document-specific retrieval.
+- Version-specific retrieval.
+- Page-specific evidence.
+- Multi-document retrieval.
+- Hybrid retrieval.
+- Duplicate candidate aggregation.
+- Ranking and filtering.
+- No relevant results.
+- Retrieval timeout.
+- Vector search failure.
+- Keyword search failure.
+
+Retrieval must respect ownership and document lifecycle state.
+
+### 5.6 Evidence selection and answer assembly
+
+Validate that document-grounded answers:
+
+- Use retrieved document evidence.
+- Preserve relevant qualifications.
+- Preserve numerical values and units.
+- Preserve dates and version context.
+- Avoid unsupported claims.
+- Distinguish conflicting passages.
+- Indicate when evidence is insufficient.
+- Preserve page, section, or other source-location references.
+- Provide citations linked to the correct document version.
+
+The answer-generation design must follow the approved non-generative processing architecture.
+
+Use extractive methods, conventional NLP, deterministic templates, and evidence-selection logic.
+
+Do not introduce generative LLM APIs or locally hosted generative LLMs.
+
+### 5.7 Citation validation
+
+Test:
+
+- Citation points to the correct document.
+- Citation points to the correct version.
+- Citation points to the correct chunk.
+- Page and section references are accurate where available.
+- Deleted sources cannot be cited as currently accessible evidence.
+- Unsupported claims do not receive fabricated citations.
+- Missing location metadata is reported honestly.
+- Multiple supporting passages can be represented.
+
+## 6. Personal memory and document boundary tests
+
+This is a critical Phase 8 acceptance area.
 
 Validate:
 
-- PostgreSQL connectivity.
-- SQLAlchemy persistence.
-- Alembic migrations.
-- Schema ownership.
-- Foreign-key integrity.
-- Transaction boundaries.
-- Optimistic concurrency.
-- pgvector integration.
-- PostgreSQL full-text search.
-- Object storage references.
-- Derived-data consistency.
-- Deletion reconciliation.
+1. Uploading a document does not automatically create personal memories.
+2. Document chunks are not stored as atomic memories.
+3. Document embeddings are not treated as memory embeddings.
+4. Personal memory retrieval does not return document chunks by default.
+5. Document retrieval does not silently modify personal memory.
+6. Document-derived memory extraction requires an authorized workflow.
+7. Document-derived candidates preserve document provenance.
+8. Document-derived candidates use the normal memory resolution lifecycle.
+9. Deleting a document does not automatically delete unrelated personal memories.
+10. Deleting a document invalidates its applicable retrieval artifacts.
+11. Both domains enforce user ownership.
+12. A future unified retrieval interface preserves source-domain identity.
 
-Test database migration from a clean environment and from the preceding supported schema version.
+## 7. Deletion integration tests
 
-Do not assume migration correctness based only on successful migration generation.
+Validate deletion across the complete personal memory and document lifecycles.
 
-## 8. Background processing integration
+### Personal memory
 
-Validate the approved RabbitMQ and Celery architecture.
-
-Test:
-
-- Task publication.
-- Task consumption.
-- Idempotent task execution.
-- Retry behavior.
-- Bounded backoff.
-- Dead-letter handling.
-- Failed task recovery.
-- Processing status updates.
-- Cooperative cancellation.
-- Outbox reconciliation where implemented.
-
-Verify that authoritative workflow state remains consistent with background task outcomes.
-
-## 9. Security and privacy validation
-
-Security is a release-blocking requirement.
-
-Test:
-
-### Ownership isolation
-
-- Users cannot retrieve other users' memories.
-- Users cannot access other users' entities.
-- Users cannot access other users' source content.
-- Users cannot modify another user's memory records.
-- Users cannot delete another user's memories.
-
-### Data protection
-
-- Secrets are not exposed in logs.
-- Sensitive content is not unnecessarily logged.
-- Object storage references are access-controlled.
-- Database operations enforce ownership.
-- Background jobs preserve the correct user context.
-
-### Deletion integrity
-
-- Deleted memories cannot reappear.
-- Stale jobs cannot recreate deleted records.
-- Derived indexes cannot expose deleted information.
-- Backup restoration reapplies deletion protection.
-
-### Input safety
-
-- Untrusted source content cannot bypass validation.
-- Malformed files are rejected safely.
-- Explicit instructions are routed through approved workflows.
-- Source content cannot override system policies.
-
-Do not treat a successful happy-path test as sufficient security validation.
-
-## 10. Reliability and failure-injection testing
-
-Simulate failures across the complete lifecycle.
-
-Scenarios include:
-
-- Database unavailable.
-- Object storage unavailable.
-- Message broker unavailable.
-- Background worker termination.
-- Embedding model unavailable.
-- Partial persistence failure.
-- Concurrent memory updates.
-- Duplicate ingestion.
-- Duplicate processing tasks.
-- Stale indexing jobs.
-- Interrupted consolidation.
-- Interrupted deletion.
-- Cache invalidation failure.
-
-Verify:
-
-- No false success reporting.
-- No unintended duplicate authoritative records.
-- No silent data corruption.
-- Safe retries.
-- Recoverable partial operations.
-- Preservation of completed work.
-- Accurate processing status.
-
-## 11. Performance benchmarking
-
-Measure performance using representative workloads.
-
-### Ingestion
-
-Measure:
-
-- Request validation latency.
-- Source registration latency.
-- Persistence latency.
-- Throughput.
-
-### Extraction
-
-Measure:
-
-- Relevance Gate latency.
-- Extraction latency.
-- Candidate generation throughput.
-
-### Resolution
-
-Measure:
-
-- Matching latency.
-- Duplicate detection latency.
-- Resolution throughput.
-
-### Storage and indexing
-
-Measure:
-
-- Database write latency.
-- Embedding generation latency.
-- Vector indexing latency.
-- Keyword indexing latency.
-
-### Retrieval
-
-Measure:
-
-- Vector retrieval latency.
-- Keyword retrieval latency.
-- Hybrid retrieval latency.
-- Ranking latency.
-- End-to-end retrieval latency.
-
-### Consolidation and deletion
-
-Measure:
-
-- Consolidation job duration.
-- Profile recomputation duration.
-- Deletion propagation duration.
-- Reconciliation duration.
-
-Performance targets must be established using representative workload assumptions.
-
-Do not invent benchmark results or claim scalability without measurements.
-
-## 12. Retrieval and extraction quality evaluation
-
-Maintain representative evaluation datasets.
-
-Evaluate extraction quality through:
-
-- Precision.
-- Recall.
-- Atomicity.
-- Classification accuracy.
-- Confidence calibration.
-- False memory creation rate.
-
-Evaluate retrieval quality through:
-
-- Precision@K.
-- Recall@K.
-- Mean Reciprocal Rank.
-- nDCG@K.
-- Evidence coverage.
-- Temporal correctness.
-
-Evaluate resolution quality through:
-
-- Duplicate detection precision and recall.
-- False merge rate.
-- Contradiction detection quality.
-- Correction handling accuracy.
-
-Evaluate consolidation quality through:
-
-- Episode grouping quality.
-- Derived fact support coverage.
-- Profile correctness.
-- Temporal correctness.
-
-All evaluation results must be reproducible and associated with dataset and model versions.
-
-## 13. Regression testing
-
-Maintain a regression suite covering all critical behaviors.
-
-Every relevant change must be checked against:
-
-- Memory ownership.
+- Authoritative memory.
+- Revisions.
+- Candidates.
 - Provenance.
-- Historical revisions.
-- Duplicate handling.
-- Contradiction handling.
-- Retrieval correctness.
-- Temporal integrity.
-- Consolidation consistency.
-- Deletion propagation.
+- Relationships.
+- Episodes.
+- Derived profiles.
+- Embeddings.
+- Keyword indexes.
+- Cached retrieval results.
+- Pending jobs.
+
+### Documents
+
+- Original files.
+- Document versions.
+- Extracted text.
+- Structural representations.
+- OCR artifacts, where applicable.
+- Chunks.
+- Chunk embeddings.
+- Vector indexes.
+- Keyword indexes.
+- Cached document retrieval results.
+- Pending parsing, chunking, embedding, and indexing jobs.
+
+### Derived personal memories
+
+Test:
+
+- Document-derived candidate deletion.
+- Memory with only one supporting document.
+- Memory with multiple independent sources.
+- Memory supported by both a document and user message.
+- Preservation of independent personal memories.
+- Re-evaluation of affected memories where required.
+
+### Recovery
+
+Test:
+
+- Partial deletion.
+- Worker interruption.
+- Retry.
+- Stale worker completion.
+- Database restoration.
+- Tombstone reapplication.
+- Post-recovery verification.
+
+Do not report successful deletion unless the required verification process passes.
+
+## 8. Security and privacy testing
+
+Validate:
+
+- User isolation.
+- Authentication and authorization.
+- Document ownership.
+- Memory ownership.
+- Cross-user retrieval prevention.
+- Cross-user deletion prevention.
+- Secure object-storage access.
+- Safe file handling.
+- Malformed input handling.
+- Untrusted document content handling.
+- Sensitive-data protection in logs.
+- Deletion authorization.
+- Pending-job authorization checks.
+
+No user must be able to retrieve or modify another user's private memories or documents.
+
+## 9. Reliability and failure injection
+
+Test failures across the complete pipeline.
+
+Examples:
+
+- PostgreSQL unavailable.
+- Object storage unavailable.
+- RabbitMQ unavailable.
+- Background worker terminated.
+- Parsing failure.
+- Embedding failure.
+- Vector indexing failure.
+- Full-text indexing failure.
+- Database transaction failure.
+- Duplicate message delivery.
+- Timeout.
+- Concurrent update.
+- Stale processing operation.
+- Partial deletion.
+- Service restart.
+
+Validate:
+
+- Bounded retries.
 - Idempotency.
-- Concurrency.
-- Error recovery.
+- Recoverable operation state.
+- Accurate error reporting.
+- No false completion.
+- No silent data loss.
+- No unauthorized data recreation.
+- Preservation of completed work where appropriate.
 
-Regression tests must prevent previously resolved data integrity issues from returning.
+## 10. Quality evaluation
 
-## 14. Documentation and operational readiness
+### Personal memory quality
 
-Update the Memory Engine documentation to reflect actual implemented behavior.
+Evaluate:
 
-Document:
+- Extraction precision.
+- Extraction recall.
+- Candidate quality.
+- Duplicate detection.
+- Contradiction handling.
+- Confidence calibration.
+- Retrieval relevance.
+- Temporal correctness.
+- Provenance completeness.
+- Deletion correctness.
+
+### Document intelligence quality
+
+Evaluate:
+
+- Parsing completeness.
+- Structure preservation.
+- Chunk quality.
+- Chunk provenance accuracy.
+- Embedding consistency.
+- Retrieval relevance.
+- Evidence coverage.
+- Citation correctness.
+- Unsupported-answer rate.
+- Version correctness.
+
+Use representative and documented test datasets.
+
+Do not claim quality metrics without actually running the evaluation.
+
+## 11. Performance testing
+
+Measure:
+
+- Memory ingestion latency.
+- Memory retrieval latency.
+- Document upload latency.
+- Document processing duration.
+- Parsing throughput.
+- Chunking throughput.
+- Embedding throughput.
+- Indexing latency.
+- Document retrieval latency.
+- Deletion duration.
+- Database resource utilization.
+- Worker utilization.
+
+Separate synchronous request latency from background-processing completion time.
+
+Establish baselines before introducing optimizations.
+
+Do not add infrastructure solely to improve an unmeasured hypothetical bottleneck.
+
+## 12. Observability
+
+Validate logs, metrics, and traces across both domains.
+
+Use the approved correlation identifiers.
+
+Track:
+
+- Request IDs.
+- Execution IDs.
+- Task IDs.
+- Message IDs.
+- Correlation IDs.
+- Trace and span IDs.
+- Memory IDs.
+- Document IDs.
+- Document version IDs.
+- Processing operation IDs.
+
+Metrics must distinguish personal memory processing from document processing.
+
+Avoid logging full personal memory content or document content.
+
+## 13. Documentation and implementation verification
+
+Verify that documentation matches the actual implementation.
+
+Update relevant documentation to reflect:
 
 - Implemented components.
-- Internal interfaces.
-- Data models and migrations.
-- Configuration.
-- Background workers.
-- Operational commands.
-- Error handling.
-- Logging and metrics.
+- Actual API contracts.
+- Actual models and migrations.
+- Processing behavior.
+- Supported formats.
+- OCR support or limitations.
+- Retrieval behavior.
+- Citation behavior.
+- Deletion guarantees.
+- Security controls.
 - Known limitations.
-- Recovery procedures.
-- Testing commands.
 
-Clearly distinguish implementation facts from planned capabilities.
+Do not mark a feature implemented simply because its plan exists.
 
-Do not mark a capability complete unless it has been implemented and verified.
+## 14. Acceptance criteria
 
-## 15. Acceptance criteria
+Phase 8 integration and testing is complete when:
 
-Phase 8.11 is complete only when:
+1. The personal memory lifecycle works end to end.
+2. Memory resolution preserves history and handles conflicts safely.
+3. Memory retrieval is relevant and provenance-aware.
+4. Consolidation preserves authoritative data and source references.
+5. Personal memory deletion propagates correctly.
+6. Document upload and registration work.
+7. Document parsing and chunking work for the supported formats.
+8. Document indexing works.
+9. Document retrieval returns relevant evidence.
+10. Answer assembly uses the approved non-generative architecture.
+11. Citations preserve document and version provenance.
+12. Personal memory and document intelligence remain separate domains.
+13. Authorized document-to-memory extraction works through the normal candidate lifecycle.
+14. Document deletion propagates to applicable derived data.
+15. User isolation and authorization tests pass.
+16. Failure and recovery tests pass.
+17. Required quality evaluations are completed.
+18. Performance baselines are documented.
+19. Documentation matches the actual implementation.
+20. All required acceptance tests pass.
 
-- [ ] All Memory Engine components are integrated.
-- [ ] Internal interfaces and contracts are validated.
-- [ ] Complete lifecycle workflows pass.
-- [ ] Database migrations work.
-- [ ] PostgreSQL and pgvector integration works.
-- [ ] Background processing is reliable.
-- [ ] Ownership and privacy tests pass.
-- [ ] Concurrency tests pass.
-- [ ] Failure recovery tests pass.
-- [ ] Extraction quality evaluation is available.
-- [ ] Resolution quality evaluation is available.
-- [ ] Retrieval quality evaluation is available.
-- [ ] Consolidation consistency is verified.
-- [ ] Deletion propagation is verified.
-- [ ] Regression tests pass.
-- [ ] Performance benchmarks are documented.
-- [ ] Operational documentation reflects actual implementation.
-- [ ] No unresolved critical security or data integrity defects remain.
+## 15. Final Phase 8 completion report
 
-## 16. Implementation constraints
+Claude Code must produce a final report containing:
 
-Claude Code must:
-
-1. Inspect the repository before modifications.
-2. Reuse all Phase 8 implementations.
-3. Follow approved architecture, data models, algorithms and technology decisions.
-4. Avoid redesigning already approved components without a documented reason.
-5. Preserve ownership and privacy boundaries.
-6. Preserve provenance and historical integrity.
-7. Treat deletion verification as release-critical.
-8. Run the full relevant test suite.
-9. Record exact commands and results.
-10. Distinguish passing tests from untested behavior.
-11. Avoid generative LLM functionality.
-12. Avoid implementing document RAG until the final Phase 8 review.
-13. Place source code inside `memory-engine/`.
-14. Place tests inside `tests/`.
-15. Do not proceed to Research Engine implementation automatically.
-
-Any architectural conflict or critical implementation gap must be reported with a recommended resolution.
-
-## 17. Final completion report
-
-Claude Code must provide a consolidated Phase 8 report containing:
-
-### A. Implementation summary
+### Implementation summary
 
 - Components implemented.
-- Files created or modified.
-- Dependencies introduced.
-- Database migrations.
-- Background workers.
-- Internal interfaces.
+- Source-code locations.
+- Database models and migrations.
+- API and internal contracts.
+- Background-processing components.
+- Personal memory capabilities.
+- Document intelligence capabilities.
 
-### B. Testing results
+### Verification summary
 
-- Unit tests.
-- Component tests.
-- Integration tests.
-- End-to-end tests.
-- Security tests.
-- Reliability tests.
-- Regression tests.
+- Test commands.
+- Test results.
+- Coverage results.
+- Quality evaluation results.
+- Performance baselines.
+- Security and isolation results.
+- Deletion verification results.
 
-### C. Quality evaluation
+### Limitations
 
-- Extraction metrics.
-- Resolution metrics.
-- Retrieval metrics.
-- Consolidation metrics.
+- Unsupported formats.
+- OCR limitations.
+- Retrieval limitations.
+- Known performance bottlenecks.
+- Deferred capabilities.
+- Outstanding architectural decisions.
 
-### D. Performance results
-
-- Measured latency.
-- Throughput.
-- Resource usage.
-- Identified bottlenecks.
-
-### E. Reliability and privacy
-
-- Ownership isolation.
-- Failure recovery.
-- Deletion verification.
-- Known limitations.
-
-### F. Completion status
+### Completion status
 
 Classify each capability as:
 
-- Implemented and verified.
-- Implemented but not fully evaluated.
+- Complete and verified.
+- Implemented but not fully verified.
 - Partially implemented.
-- Not implemented.
+- Deferred.
 - Blocked.
 
-Do not use a single completion percentage to conceal incomplete or unverified critical capabilities.
+Do not label Phase 8 complete if a critical security, privacy, data-integrity, or acceptance requirement remains unresolved.
 
-## 18. Definition of done
+## 16. Claude Code execution instructions
 
-Phase 8.11 is complete when the Memory Engine operates as an integrated system and all critical lifecycle, security, privacy, data integrity and recovery requirements have been tested.
+Before integration:
 
-The implementation must have reproducible evidence of correctness and a documented list of remaining limitations.
+1. Inspect the existing Memory Engine implementation.
+2. Read all Phase 8 implementation plans.
+3. Review the actual tests and migrations.
+4. Identify missing integration points.
+5. Identify architecture deviations.
+6. Prepare an integration and test execution plan.
 
-**Phase 8 is complete only when the Memory Engine can reliably ingest, form, resolve, store, retrieve, maintain and forget memories as one coherent system.**
+Do not rewrite functioning components unnecessarily.
+
+Do not introduce generative LLM dependencies.
+
+Do not mark tests as passing without executing them.
+
+After completing the work, produce the final Phase 8 report described above.
+
+Do not automatically proceed to Phase 9.
