@@ -13,6 +13,11 @@ It defines how Raven:
 - Resolves duplicates, entities and contradictions.
 - Retrieves relevant information.
 - Consolidates and maintains memories.
+- Processes uploaded documents.
+- Extracts and preserves document structure.
+- Generates document chunks and embeddings.
+- Retrieves evidence from documents.
+- Produces evidence-grounded document answers.
 - Discovers and verifies external information.
 - Manages research sessions and comparisons.
 - Plans and coordinates agent execution.
@@ -52,6 +57,7 @@ Processing should rely on:
 - Graph and relationship algorithms.
 - Structured validation.
 - Deterministic decision policies.
+- Extractive processing and structured answer templates.
 
 Non-generative models may be evaluated where appropriate.
 
@@ -65,6 +71,7 @@ Every processing operation must respect:
 - Data retention policies.
 - Explicit forgetting and deletion.
 - Secure handling of external content.
+- Document-level access controls.
 
 ### 2.5 Resource Awareness
 
@@ -77,6 +84,7 @@ Algorithms must account for:
 - External service usage.
 - Concurrency limits.
 - Execution budgets.
+- Embedding and retrieval costs.
 
 ### 2.6 Observability
 
@@ -136,6 +144,8 @@ Raven must distinguish:
 - Source reliability.
 - Verification status.
 - Freshness.
+- Evidence coverage.
+- Provenance.
 
 These dimensions must not be treated as interchangeable.
 
@@ -169,17 +179,34 @@ Raven must preserve the distinction between:
 
 Historical information must not silently replace current information.
 
+For documents, Raven must also preserve the distinction between historical and current document versions.
+
 ### 4.6 Graceful Degradation
 
 When a component or dependency fails, Raven should preserve completed work and return partial results where appropriate.
 
 A failed operation must never be silently represented as successful.
 
+### 4.7 Source and Evidence Preservation
+
+Document-derived information must retain its relationship to the original document.
+
+Where available, preserve:
+
+- Document identity.
+- Document version.
+- Extracted representation.
+- Chunk identity.
+- Page or section location.
+- Processing and extraction metadata.
+
+A retrieved passage must remain traceable to its source.
+
 ---
 
 ## 5. Phase 6 Documentation
 
-Phase 6 is divided into ten subphases.
+Phase 6 is divided into eleven subphases.
 
 | Subphase | Document | Scope |
 |---|---|---|
@@ -193,8 +220,28 @@ Phase 6 is divided into ten subphases.
 | 6.8 | `research-retrieval-comparison.md` | Research retrieval, freshness and comparison |
 | 6.9 | `orchestrator-algorithms.md` | Intent routing, planning, scheduling and context management |
 | 6.10 | `execution-reliability.md` | Retries, checkpoints, cancellation, recovery and response assembly |
+| 6.11 | `document-processing-rag.md` | Document extraction, structure-aware chunking, embedding, hybrid retrieval, evidence selection, extractive answer assembly and citation validation |
 
 Each document will contain the algorithms and decision logic for its respective area.
+
+### 5.1 Memory and Document Intelligence Boundaries
+
+Memory processing and document intelligence are separate logical domains within the Memory Engine.
+
+**Personal memory algorithms** process validated information about the user.
+
+**Document intelligence algorithms** process uploaded documents and their derived representations.
+
+The distinction must be preserved:
+
+- Document chunks are not atomic personal memories.
+- Document embeddings are logically separate from personal memory embeddings.
+- Document retrieval does not automatically modify personal memory.
+- Document-derived memory extraction requires explicit authorization.
+- Document-derived facts must enter the normal memory candidate and resolution lifecycle.
+- Deleting a document must account for its derived artifacts and provenance dependencies.
+
+Both domains may reuse approved infrastructure such as PostgreSQL, pgvector and object storage.
 
 ---
 
@@ -210,6 +257,7 @@ Algorithms must be evaluated against more than whether they successfully execute
 - Contradiction handling.
 - Retrieval relevance.
 - Memory freshness.
+- Provenance completeness.
 - Deletion completeness.
 
 ### Research Engine
@@ -233,6 +281,21 @@ Algorithms must be evaluated against more than whether they successfully execute
 - Cancellation correctness.
 - Response completeness.
 
+### Document Intelligence
+
+- Document extraction completeness.
+- Structural preservation.
+- Reading-order accuracy.
+- Chunking quality.
+- Chunk provenance accuracy.
+- Embedding consistency.
+- Retrieval precision and recall.
+- Evidence coverage.
+- Citation correctness.
+- Unsupported-answer rate.
+- Document version correctness.
+- Deletion propagation completeness.
+
 Quantitative thresholds and evaluation datasets will be defined during the testing and evaluation phase.
 
 ---
@@ -250,6 +313,8 @@ Phase 6 depends on the specifications established in earlier phases.
 | Phase 5 — Data Models & Database Design | Entity definitions, ownership, relationships and lifecycle rules |
 
 Phase 6 must refine these specifications into algorithmic detail without silently changing finalized architectural decisions.
+
+Document Intelligence algorithms must follow the approved document models, versioning, provenance, embedding metadata and deletion relationships established in Phase 5.
 
 If a genuine architectural conflict is discovered, it must be documented and resolved before implementation.
 
@@ -270,6 +335,16 @@ A Phase 6 algorithm is considered complete when it has:
 9. Complexity and resource considerations.
 10. Testable acceptance criteria.
 
+For document intelligence algorithms, also verify:
+
+- Source-document provenance.
+- Document version handling.
+- Chunk-location preservation.
+- Evidence-grounded retrieval.
+- Citation validation.
+- Personal memory and document separation.
+- Deletion dependencies.
+
 Completion of Phase 6 means the algorithm specifications are ready for technology selection and implementation planning.
 
 It does not mean the algorithms have already been implemented, benchmarked or tested.
@@ -287,6 +362,8 @@ After Phase 6, Raven will evaluate and finalize:
 - Vector storage.
 - Search infrastructure.
 - Embedding models.
+- Document parsing and extraction libraries.
+- OCR capabilities, if required.
 - Messaging and background processing.
 - Infrastructure and deployment.
 - Monitoring and observability.
