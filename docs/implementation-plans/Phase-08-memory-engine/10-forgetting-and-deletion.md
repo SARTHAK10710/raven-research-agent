@@ -1,600 +1,444 @@
-# Phase 8.10 — Forgetting & Deletion Implementation Plan
+# 8.10 — Forgetting and Deletion
 
 ## 1. Objective
 
-Implement the Memory Engine's forgetting and deletion management capabilities.
+Implement a reliable, auditable, and recoverable forgetting and deletion system for the Memory Engine.
 
-The deletion system must accept authorized forgetting requests, identify the information affected, determine its dependencies and propagate deletion across authoritative records and derived representations.
+The system must support deletion across two separate information domains:
 
-It must preserve unrelated memories and prevent deleted information from reappearing through indexes, caches, background jobs or backup restoration.
+1. Personal memory.
+2. Document intelligence.
 
-### Primary objectives
+Deletion must propagate to applicable authoritative records, derived data, indexes, cached representations, and pending processing operations.
 
-- Process explicit forgetting instructions.
-- Support targeted memory deletion.
-- Identify related and dependent records.
-- Propagate deletion across storage layers.
-- Remove or invalidate embeddings and indexes.
-- Invalidate affected derived representations.
-- Handle asynchronous deletion safely.
-- Maintain deletion operation state.
-- Prevent deleted information from being reintroduced.
-- Support deletion reconciliation.
-- Enforce privacy and ownership boundaries.
-- Provide verifiable deletion outcomes.
+The system must preserve ownership boundaries and avoid deleting unrelated information.
 
 ## 2. Architecture references
 
-Claude Code must review:
+Read:
 
-1. `PROJECT_ARCHITECTURE.md`
-2. `docs/architecture/` — Memory Engine architecture.
-3. `docs/data-models/` — approved Memory Engine data models.
-4. `docs/algorithms/memory/04-memory-consolidation-maintenance.md`
-5. `docs/algorithms/memory/02-memory-resolution.md`
-6. `docs/algorithms/shared/01-shared-algorithm-framework.md`
-7. `docs/technology/02-database-and-storage-architecture.md`
-8. `docs/technology/03-vector-search-and-embedding-infrastructure.md`
-9. `docs/technology/04-background-processing-and-messaging.md`
-10. `docs/technology/06-api-security-and-internal-communication.md`
-11. `docs/implementation-plans/phase-08-memory-engine/02-database-and-persistence.md`
-12. `docs/implementation-plans/phase-08-memory-engine/07-memory-storage-and-indexing.md`
-13. `docs/implementation-plans/phase-08-memory-engine/09-consolidation-and-maintenance.md`
+- `PROJECT_ARCHITECTURE.md`
+- `docs/architecture/`
+- `docs/data-models/`
+- `docs/algorithms/`
+- `docs/technology/`
+- `docs/technical-decisions.md`
+- `docs/implementation-plans/phase-08-memory-engine/02-database-and-persistence.md`
+- `docs/implementation-plans/phase-08-memory-engine/05-entity-and-relationship-management.md`
+- `docs/implementation-plans/phase-08-memory-engine/06-memory-resolution.md`
+- `docs/implementation-plans/phase-08-memory-engine/07-memory-storage-and-indexing.md`
+- `docs/implementation-plans/phase-08-memory-engine/12-document-rag-pipeline.md`
 
-The approved Phase 5 deletion, retention, provenance and lifecycle models are authoritative.
+Follow the approved deletion and lifecycle models.
 
-Do not introduce a new deletion architecture or retention policy without identifying the exact gap.
+## 3. Deletion principles
 
-## 3. Scope
+The deletion system must follow these principles:
 
-### Included
+- User ownership must always be verified.
+- Deletion must be idempotent.
+- Deletion must be traceable.
+- Deletion must propagate to applicable derived data.
+- Unrelated information must remain intact.
+- Partial failures must be recoverable.
+- Pending operations must not recreate deleted data.
+- Backups must respect approved retention and recovery policies.
+- Completion must not be reported before required deletion checks pass.
 
-- Explicit forgetting instruction handling.
-- Deletion request validation.
-- Target identification.
-- Ownership and authorization checks.
-- Dependency discovery.
-- Deletion planning.
-- Deletion operation tracking.
-- Authoritative memory deletion.
-- Revision and candidate cleanup.
-- Entity and relationship cleanup.
-- Episode and profile invalidation.
-- Embedding deletion.
-- Vector and keyword index cleanup.
-- Cache invalidation.
-- Background task cancellation or suppression where appropriate.
-- Deletion retries and reconciliation.
-- Backup restoration safeguards.
-- Deletion verification.
-- Security and reliability testing.
+A deletion request is a high-priority operation and must not be blocked behind ordinary memory extraction or document processing.
 
-### Excluded
+## 4. Deletion request types
 
-- User-facing conversation response generation.
-- Global account deletion unless explicitly supported by the approved architecture.
-- Legal or regulatory retention policy design.
-- Infrastructure-wide backup destruction policy beyond the approved deletion guarantees.
-- Document RAG deletion extensions that have not yet been incorporated into the final Phase 8 review.
+Support the deletion scopes approved by the data model and API contracts.
 
-Document RAG-specific deletion dependencies will be added during the final Phase 8 architecture review.
+Logical deletion requests may include:
 
-## 4. Deletion architecture
+### Personal memory
 
-Implement the following logical components.
+- Delete a specific memory.
+- Forget a specific fact.
+- Delete a group of related memories.
+- Delete an applicable memory source.
+- Delete a user's personal memory data within an authorized scope.
 
-### 4.1 Forgetting Request Handler
+### Document intelligence
 
-Responsibilities:
+- Delete a specific document.
+- Delete a specific document version where supported.
+- Delete document-derived processing artifacts.
+- Delete document retrieval representations.
+- Delete document-derived personal memories where explicitly included in the deletion request or required by the approved policy.
 
-- Receive an explicit forgetting instruction.
-- Identify the requested deletion scope.
-- Validate the request.
-- Verify the authenticated user.
-- Resolve the target memory or information reference.
-- Create a deletion operation.
-- Initiate the deletion workflow.
+The exact API contract and supported deletion scopes must follow the approved architecture.
 
-Forgetting requests must bypass ordinary memory relevance evaluation and extraction.
+## 5. Deletion lifecycle
 
-An explicit forgetting instruction must never be converted into a normal memory candidate.
+Implement deletion as a controlled workflow:
 
-### 4.2 Deletion Scope Resolver
+1. Receive the deletion request.
+2. Authenticate the requesting user.
+3. Validate ownership and authorization.
+4. Determine the requested deletion scope.
+5. Discover dependent records and derived data.
+6. Create or register the deletion operation.
+7. Mark the operation as requested or pending.
+8. Prevent conflicting new processing.
+9. Execute deletion across applicable storage and indexes.
+10. Reconcile incomplete operations.
+11. Verify deletion completion.
+12. Record the final outcome.
 
-Determine what information the user intends to forget.
+Deletion operations must be recoverable after worker interruptions or service failures.
 
-Supported scopes must follow the approved deletion model.
+## 6. Personal memory deletion
 
-Potential targets include:
-
-- Individual memory.
-- Related memory group.
-- Specific fact.
-- Memory associated with an entity.
-- A defined memory collection.
-
-Do not assume that forgetting one fact authorizes deleting every memory associated with the same entity.
-
-For example:
-
-If the user asks Raven to forget their previous project technology, Raven must not automatically delete unrelated project goals, decisions or commitments.
-
-Ambiguous requests must be resolved safely.
-
-Where the target cannot be established reliably, request clarification rather than performing broad deletion.
-
-### 4.3 Dependency Discovery Engine
-
-Identify records and derived representations that depend on the deletion target.
+The deletion dependency graph must account for the approved personal memory models.
 
 Potential dependencies include:
 
-- Atomic memories.
+- Authoritative memory records.
 - Memory revisions.
-- Memory candidates.
-- Source associations.
-- Provenance references.
+- Memory candidates where applicable.
+- Source references.
+- Provenance.
 - Entity mentions.
 - Entity relationships.
 - Memory relationships.
-- Episodes and episode memberships.
-- Derived profiles.
-- Profile-memory associations.
-- Embeddings.
-- Vector indexes.
+- Episode membership.
+- Derived profiles and associations.
+- Memory embeddings.
 - Keyword indexes.
 - Cached retrieval results.
-- Pending processing jobs.
+- Pending memory-processing jobs.
 
-The dependency graph must be based on actual stored relationships and approved data models.
+Deleting a memory must not automatically delete unrelated memories simply because they reference the same entity or topic.
 
-Do not delete unrelated information simply because it is connected to the same user or entity.
+Where a derived profile or episode contains information from a deleted memory, apply the approved recomputation or deletion policy.
 
-### 4.4 Deletion Planner
+## 7. Document deletion
 
-Create a deterministic deletion plan before executing destructive operations.
+Deleting a document must account for the complete document-processing lifecycle.
 
-The plan must identify:
+### 7.1 Original documents
 
-- Target records.
-- Dependent records.
-- Required cleanup operations.
-- Storage locations.
-- Indexes and caches affected.
-- Background jobs requiring invalidation.
-- Operations that can execute independently.
-- Operations that require ordering.
-- Expected verification checks.
+Delete or invalidate applicable:
 
-The deletion planner must distinguish authoritative records from derived data.
+- Original document objects.
+- Document versions.
+- Object-storage references.
+- Upload artifacts.
+- Temporary files.
+- Retained copies governed by the document's deletion policy.
 
-### 4.5 Deletion Executor
+The system must verify that the applicable object references are no longer accessible.
 
-Execute the approved deletion plan.
+### 7.2 Extracted content
 
-Responsibilities:
+Delete applicable:
 
-- Remove or invalidate authoritative records according to the approved lifecycle.
-- Remove dependent records where required.
-- Remove derived representations.
-- Propagate deletion to indexes and caches.
-- Handle asynchronous cleanup.
-- Record operation outcomes.
-- Support safe retries.
+- Extracted text.
+- Structural extraction output.
+- Table and layout artifacts.
+- OCR output, if generated.
+- Temporary parser artifacts.
+- Intermediate representations.
 
-Deletion must be scoped to the authenticated user's authorized information.
+Derived content must not remain retrievable after the applicable deletion has completed.
 
-### 4.6 Deletion State Manager
+### 7.3 Document chunks
 
-Use the approved Deletion Operation model.
+Delete applicable:
 
-Maintain explicit operation states.
+- Chunk records.
+- Chunk text.
+- Chunk metadata.
+- Page and section references.
+- Chunk ordering records.
+- Chunk checksums.
+- Version-specific chunk associations.
 
-At minimum, the implementation must distinguish:
+Do not leave orphaned chunks that can still appear in retrieval results.
 
-- Request accepted.
-- Deletion planned.
-- Deletion in progress.
-- Partial failure.
-- Reconciliation required.
+### 7.4 Document embeddings and indexes
+
+Delete or invalidate applicable:
+
+- Chunk embeddings.
+- Vector index entries.
+- Full-text search entries.
+- Keyword indexes.
+- Cached document retrieval results.
+- Cached evidence selections.
+- Other derived search representations.
+
+A document deletion must not leave an accessible embedding that can retrieve deleted content.
+
+### 7.5 Pending operations
+
+Cancel or invalidate applicable:
+
+- Parsing jobs.
+- OCR jobs.
+- Chunking jobs.
+- Embedding jobs.
+- Indexing jobs.
+- Retrieval-related background operations.
+- Retry and scheduled processing operations.
+
+A stale worker must not recreate deleted document artifacts after deletion has been requested.
+
+Every worker must validate the applicable document lifecycle state before committing results.
+
+## 8. Document-derived personal memories
+
+Document-derived memories require special handling.
+
+A document may have contributed evidence to an independently persisted personal memory.
+
+Deleting the source document must not silently delete every personal memory that happens to discuss the same topic.
+
+The system must distinguish:
+
+1. Personal memories independently established through user messages or other sources.
+2. Personal memories explicitly derived from the document.
+3. Memories supported by multiple independent sources.
+4. Memories whose only supporting evidence is the deleted document.
+
+Where the provenance model supports it:
+
+- Identify affected memory candidates and authoritative memories.
+- Determine whether other valid evidence remains.
+- Apply the approved provenance and deletion policy.
+- Re-evaluate affected memories when necessary.
+- Preserve unrelated independent memories.
+- Remove unsupported derived claims when required by the approved policy.
+
+Do not invent automatic deletion behavior where the approved policy is ambiguous. Report the ambiguity and request an architectural decision.
+
+## 9. Deletion across storage systems
+
+The system must account for:
+
+- PostgreSQL records.
+- Object storage.
+- pgvector.
+- Full-text search indexes.
+- Cached results.
+- Background-processing queues.
+- Temporary files.
+- Other approved derived stores.
+
+PostgreSQL and object storage do not share a single ACID transaction.
+
+Use the approved multi-stage deletion and reconciliation design.
+
+A failed deletion in one system must not cause the entire operation to be incorrectly marked complete.
+
+## 10. Deletion state and idempotency
+
+Use the approved deletion-operation model and lifecycle.
+
+Conceptual states may include:
+
+- Requested.
+- Validating.
+- Planned.
+- In progress.
+- Partially completed.
+- Retry required.
+- Verification pending.
 - Completed.
 - Failed.
+- Cancelled, where permitted.
 
-Use the exact approved status vocabulary where already defined.
-
-Do not introduce conflicting lifecycle states.
-
-### 4.7 Deletion Verification Engine
-
-Verify that deletion has propagated to all required locations.
-
-Verification must consider:
-
-- Authoritative records.
-- Historical revisions.
-- Candidates.
-- Entity associations.
-- Derived profiles.
-- Episodes.
-- Embeddings.
-- Vector indexes.
-- Keyword indexes.
-- Caches.
-- Pending processing tasks.
-- Applicable object storage references.
-
-A deletion operation must not be reported as fully complete while required cleanup remains unresolved.
-
-## 5. Deletion workflow
-
-Implement the following logical sequence:
-
-1. Receive an explicit forgetting request.
-2. Authenticate the requesting user.
-3. Validate the deletion request.
-4. Resolve the intended deletion scope.
-5. Verify ownership of the target.
-6. Create a deletion operation record.
-7. Identify authoritative target records.
-8. Discover dependent records and derived representations.
-9. Construct a deletion plan.
-10. Validate that the plan does not include unauthorized or unrelated records.
-11. Establish the required deletion protection or tombstone.
-12. Execute authoritative deletion operations.
-13. Propagate deletion to dependent records.
-14. Remove or invalidate embeddings and indexes.
-15. Invalidate affected episodes and derived profiles.
-16. Suppress or cancel pending processing that could reintroduce deleted information.
-17. Reconcile incomplete operations.
-18. Verify deletion outcomes.
-19. Mark the operation complete only when required checks pass.
-20. Preserve the minimum permitted deletion-operation audit information.
-
-The workflow must be recoverable after interruption.
-
-## 6. Deletion consistency and ordering
-
-Deletion crosses multiple storage and processing boundaries.
-
-PostgreSQL, object storage, background workers, vector indexes and caches do not share one atomic transaction.
-
-Therefore, implement a controlled multi-stage deletion workflow.
-
-### Required principles
-
-- Create the deletion operation before executing destructive work.
-- Persist the deletion protection state.
-- Prevent normal retrieval from returning information under deletion.
-- Make each cleanup operation idempotent.
-- Track completion independently for each required dependency.
-- Retry failed operations within bounded limits.
-- Support reconciliation after process or worker failure.
-- Do not mark deletion complete prematurely.
-
-Use the approved messaging and transaction architecture.
-
-Where appropriate, use transactional outbox patterns for reliable background task publication.
-
-## 7. Tombstones and deletion protection
-
-Implement the approved deletion tombstone strategy.
-
-A tombstone acts as a durable signal that information must remain deleted or excluded.
+Exact persisted state values must follow the approved data model.
 
 Requirements:
 
-- Associate tombstones with the correct deletion scope.
-- Preserve the minimum identifiers necessary to enforce deletion.
-- Prevent deleted records from being reactivated.
-- Prevent stale background jobs from recreating deleted information.
-- Apply tombstones during backup restoration.
-- Support safe reconciliation.
+- Repeated deletion requests must not cause inconsistent state.
+- Retried operations must not recreate deleted records.
+- Each dependency must be identifiable.
+- Each deletion stage must be traceable.
+- A completed operation must have verification evidence.
 
-Tombstones must not contain the original sensitive content unnecessarily.
+## 11. Concurrency and stale workers
 
-Do not remove deletion protection while dependent cleanup remains incomplete.
+Deletion must be safe when other operations are running concurrently.
 
-## 8. Dependency-specific deletion
+Examples:
 
-### 8.1 Authoritative memories and revisions
-
-Remove or invalidate all memory records within the approved deletion scope.
-
-Ensure historical revisions cannot continue to appear in retrieval results.
-
-### 8.2 Candidates and processing records
-
-Identify pending or unprocessed candidates derived from deleted information.
-
-Prevent them from becoming active memories after deletion.
-
-Preserve only the minimum operational information needed for safe processing and auditing.
-
-### 8.3 Entities and relationships
-
-Remove entity mentions and relationships that are exclusively dependent on deleted information.
-
-Do not automatically delete an entity if unrelated memories still reference it.
-
-### 8.4 Episodes
-
-Re-evaluate episode membership after deleting supporting memories.
-
-Remove or rebuild affected episodes where required.
-
-Do not leave an episode presenting deleted information as current evidence.
-
-### 8.5 Derived profiles
-
-Identify profile attributes supported by deleted memories.
-
-Invalidate affected derived representations and recompute them from remaining valid evidence.
-
-Do not delete unrelated profile attributes.
-
-### 8.6 Embeddings and indexes
-
-Remove affected embedding records.
-
-Update vector indexes.
-
-Update keyword indexes.
-
-Invalidate stale search representations.
-
-Verify that deleted information cannot be retrieved through alternative search paths.
-
-### 8.7 Caches
-
-Invalidate cached results containing deleted information.
-
-Use appropriate invalidation identifiers and versioning.
-
-Do not rely only on cache expiration for explicit deletion.
-
-### 8.8 Object storage
-
-Remove original content objects only when the deletion scope and approved retention policy require it.
-
-Verify that object references are no longer accessible.
-
-Handle storage failures through tracked retries and reconciliation.
-
-## 9. Concurrency and race-condition handling
-
-Deletion must take priority over normal memory creation and indexing when both operations affect the same information.
-
-Consider these scenarios:
-
-- A memory is being updated while deletion is requested.
-- An embedding job is running during deletion.
-- A stale extraction job attempts to recreate a deleted memory.
-- A background consolidation job is processing a target memory.
-- A retrieval request begins while deletion is underway.
-
-Required safeguards:
-
-1. Establish deletion protection before dependent cleanup.
-2. Check deletion state before committing relevant background work.
-3. Prevent stale jobs from reintroducing deleted records.
-4. Cancel or invalidate affected jobs where possible.
-5. Apply tombstone checks during persistence.
-6. Reconcile operations after concurrent changes.
-7. Verify the final state.
-
-Deletion must not be defeated by a delayed retry or stale worker.
-
-## 10. Backup and restoration safeguards
-
-Follow the approved Phase 7 backup and recovery architecture.
-
-Deletion protection must survive backup restoration.
+- Memory extraction is in progress.
+- Document parsing is in progress.
+- Embedding generation is in progress.
+- A document is being re-uploaded.
+- Indexing is in progress.
+- A retrieval request is already running.
 
 Requirements:
 
-- Maintain deletion records or tombstones outside the restoration point where necessary.
-- Reapply deletion protection after restoring database backups.
-- Reconcile restored records against completed deletion operations.
-- Rebuild affected derived indexes only from valid remaining records.
-- Prevent deleted information from reappearing after recovery.
+- Establish the deletion state before allowing conflicting work to commit.
+- Use the approved ownership and concurrency controls.
+- Validate operation and document or memory versions before committing worker output.
+- Cancel pending work where possible.
+- Ensure non-interruptible work cannot reintroduce deleted data.
+- Make cleanup idempotent.
 
-The exact backup retention and infrastructure-level destruction policies remain governed by the approved infrastructure and applicable retention requirements.
+A worker that finishes after deletion has started must revalidate the source lifecycle before persisting derived data.
 
-Do not claim that removing a live database record immediately removes every historical backup copy.
+## 12. Backup and recovery
 
-The implementation must clearly document what is and is not covered by the deletion guarantee.
+Deletion must follow the approved backup and disaster-recovery architecture.
 
-## 11. Failure handling
+Where immediate physical removal from retained backups is not technically supported:
 
-| Scenario | Expected behavior |
-|---|---|
-| Ambiguous deletion request | Request clarification |
-| Unauthorized target | Deny deletion |
-| Target not found | Return a safe not-found result |
-| Partial deletion | Record incomplete operation and reconcile |
-| Object storage unavailable | Preserve deletion state and retry |
-| Vector cleanup failure | Keep deletion incomplete and retry |
-| Cache invalidation failure | Record and reconcile |
-| Background job running | Cancel or invalidate safely |
-| Stale job attempts recreation | Reject using deletion protection |
-| Database interruption | Recover from persisted deletion operation |
-| Worker interruption | Resume incomplete operations |
-| Backup restored | Reapply deletion tombstones |
-| Verification failure | Do not report completion |
+- Apply the approved backup retention policy.
+- Maintain deletion tombstones or equivalent durable deletion records.
+- Prevent deleted records from being reintroduced during restore.
+- Reapply applicable deletion operations after recovery.
+- Verify that restored systems do not expose deleted content.
 
-Do not convert a partial deletion into a successful deletion response.
+Do not claim that deletion is complete across every backup copy unless the approved retention and verification process supports that claim.
 
-## 12. Testing requirements
+## 13. Security and privacy
 
-### Unit tests
+Implement:
 
-Test:
-
-- Forgetting request validation.
-- Deletion scope resolution.
+- Authentication.
 - Ownership validation.
-- Dependency discovery.
-- Deletion plan construction.
-- Tombstone creation.
-- Operation state transitions.
-- Idempotent deletion actions.
-- Verification logic.
+- Authorization for deletion scope.
+- Protection against cross-user deletion.
+- Secure object deletion.
+- Safe operation logging.
+- Restricted access to deletion metadata.
+- Auditability without unnecessary content retention.
 
-### Component tests
+Deletion logs must not unnecessarily preserve the sensitive content that the user asked to delete.
 
-Test:
+## 14. Observability
 
-- Individual memory deletion.
-- Related memory deletion.
-- Revision deletion.
-- Candidate invalidation.
-- Entity mention cleanup.
-- Relationship cleanup.
-- Episode invalidation.
-- Profile recomputation.
-- Embedding deletion.
-- Vector index cleanup.
-- Keyword index cleanup.
-- Cache invalidation.
+Track:
 
-### Security tests
+- Deletion request count.
+- Deletion scope.
+- Processing duration.
+- Dependency count.
+- Completed stages.
+- Failed stages.
+- Retry count.
+- Verification outcome.
+- Stale worker conflicts.
+- Orphaned artifact detection.
 
-Test:
+Use the approved correlation identifiers.
 
-- Cross-user deletion attempts.
-- Unauthorized target references.
-- Overly broad deletion scopes.
-- Tombstone tampering.
-- Unauthorized deletion operation access.
-- Sensitive information leakage through deletion logs.
+Avoid logging full memory contents or document contents.
+
+## 15. Testing requirements
+
+### Personal memory deletion tests
+
+- Delete one memory.
+- Delete a memory with revisions.
+- Delete related derived data.
+- Delete an applicable source.
+- Delete with entity relationships.
+- Delete with episode and profile dependencies.
+- Delete with multiple provenance sources.
+- Duplicate deletion request.
+- Cross-user deletion attempt.
+
+### Document deletion tests
+
+- Delete an uploaded document.
+- Delete a document with multiple versions.
+- Delete original object-storage content.
+- Delete extracted text.
+- Delete chunks.
+- Delete embeddings.
+- Delete full-text index entries.
+- Invalidate cached retrieval results.
+- Cancel pending parsing.
+- Cancel pending OCR where supported.
+- Cancel pending chunking.
+- Cancel pending embedding and indexing.
+- Retry after partial deletion.
+- Cross-user deletion attempt.
+
+### Document-derived memory tests
+
+- Delete a document whose content produced a candidate.
+- Delete a document that supports an active memory.
+- Preserve an independently supported memory.
+- Re-evaluate a memory with multiple sources.
+- Handle a memory supported only by the deleted document.
+- Verify that unrelated memories remain intact.
 
 ### Reliability tests
 
-Test:
+- Database unavailable.
+- Object storage unavailable.
+- Vector index unavailable.
+- Worker interruption.
+- Concurrent deletion.
+- Stale worker completion.
+- Repeated deletion.
+- Restore with deletion tombstones.
+- Partial deletion recovery.
+- Verification failure.
 
-- Partial cleanup failures.
-- Duplicate deletion requests.
-- Concurrent deletion requests.
-- Database interruption.
-- Object storage interruption.
-- Worker restart.
-- Delayed background jobs.
-- Stale indexing jobs.
-- Backup restoration with tombstone reapplication.
-- Reconciliation after incomplete operations.
+## 16. Acceptance criteria
 
-### Critical regression tests
+This plan is complete when:
 
-Verify that:
+1. Deletion requests are authenticated and authorized.
+2. Personal memory deletion propagates across applicable dependencies.
+3. Document deletion propagates across originals and derived artifacts.
+4. Document embeddings and search indexes are removed or invalidated.
+5. Pending jobs cannot recreate deleted content.
+6. Document-derived personal memories are handled according to provenance and approved policy.
+7. Unrelated personal memories are preserved.
+8. Deletion operations are idempotent.
+9. Partial failures can be recovered.
+10. Backup restoration respects deletion records.
+11. Completion is supported by verification evidence.
+12. Required privacy, security, and reliability tests pass.
 
-- Deleted information cannot be retrieved.
-- Deleted information cannot be reactivated by stale jobs.
-- Unrelated memories remain available.
-- Historical revisions within the deletion scope are no longer accessible.
-- Deletion remains effective after recovery and reindexing.
+## 17. Out of scope
 
-## 13. Observability and auditability
+This plan does not implement:
 
-Record structured deletion events for:
+- General document parsing.
+- OCR.
+- Chunking.
+- Embedding generation.
+- Normal document retrieval.
+- Memory extraction.
+- Full backup infrastructure.
+- Cross-engine deletion orchestration beyond the approved Memory Engine interface.
 
-- Forgetting request received.
-- Target resolved.
-- Deletion plan created.
-- Deletion protection established.
-- Authoritative records removed.
-- Derived data invalidated.
-- Index cleanup completed.
-- Cache cleanup completed.
-- Reconciliation started.
-- Verification completed.
-- Deletion failed.
+## 18. Claude Code execution instructions
 
-Maintain the minimum necessary audit information:
+Before implementation:
 
-- Deletion operation identifier.
-- Authorized owner reference.
-- Operation timestamps.
-- Scope classification.
-- Processing status.
-- Cleanup stage outcomes.
-- Verification result.
+1. Inspect existing deletion and lifecycle implementations.
+2. Read the approved Phase 5 data models and Phase 6 lifecycle algorithms.
+3. Inspect object-storage, vector-index, and background-worker integrations.
+4. Reconcile document-derived memory provenance and deletion behavior.
+5. Identify any unresolved backup, retention, or cross-source deletion policies.
+6. Propose the minimum required changes.
 
-Do not retain deleted source content in deletion audit records.
+Do not silently invent deletion semantics or claim physical deletion from systems that cannot verify it.
 
-Do not log sensitive content merely to prove that deletion occurred.
+After implementation, report:
 
-## 14. Acceptance criteria
+- Files created or modified.
+- Deletion scopes supported.
+- Dependency discovery behavior.
+- Storage and index cleanup.
+- Pending-job handling.
+- Backup and recovery behavior.
+- Tests executed and results.
+- Verification evidence.
+- Known limitations.
 
-Phase 8.10 is complete only when:
-
-- [ ] Explicit forgetting requests are recognized.
-- [ ] Forgetting bypasses ordinary extraction.
-- [ ] Deletion scope is validated.
-- [ ] User ownership is enforced.
-- [ ] Dependency discovery works.
-- [ ] Deletion plans are generated and validated.
-- [ ] Deletion operations are tracked.
-- [ ] Tombstone or equivalent deletion protection is implemented.
-- [ ] Authoritative memories and revisions are handled.
-- [ ] Dependent candidates and relationships are handled.
-- [ ] Episodes and profiles are invalidated or recomputed.
-- [ ] Embeddings and indexes are cleaned up.
-- [ ] Caches are invalidated.
-- [ ] Pending jobs cannot recreate deleted information.
-- [ ] Partial failures can be reconciled.
-- [ ] Backup restoration safeguards are implemented.
-- [ ] Deletion verification is available.
-- [ ] Unrelated memories remain unaffected.
-- [ ] Security and reliability tests pass.
-- [ ] Deletion completion is never reported prematurely.
-
-## 15. Implementation constraints
-
-Claude Code must:
-
-1. Inspect the repository before modifying files.
-2. Reuse Phase 8.1–8.9 implementations.
-3. Follow approved Phase 5 deletion models.
-4. Follow Phase 6 deletion and lifecycle algorithms.
-5. Follow Phase 7 storage and backup decisions.
-6. Enforce ownership at every deletion boundary.
-7. Treat deletion as a multi-stage recoverable operation.
-8. Implement idempotent cleanup.
-9. Preserve tombstone protection.
-10. Prevent stale jobs from recreating deleted information.
-11. Preserve unrelated memories.
-12. Avoid claiming complete backup destruction unless the infrastructure actually guarantees it.
-13. Avoid generative LLM functionality.
-14. Avoid implementing document RAG deletion extensions in this milestone.
-15. Place source code inside `memory-engine/`.
-16. Place tests inside `tests/`.
-17. Do not proceed to Phase 8.11 automatically.
-
-If an approved data model cannot support a required deletion dependency, report the exact gap and recommend the smallest safe change before modifying the architecture.
-
-## 16. Completion report
-
-Claude Code must provide:
-
-1. Summary of deletion functionality.
-2. Files created or modified.
-3. Deletion models and interfaces used.
-4. Deletion scope resolution approach.
-5. Dependency discovery implementation.
-6. Tombstone implementation.
-7. Derived-data cleanup behavior.
-8. Background job suppression strategy.
-9. Reconciliation and verification behavior.
-10. Backup restoration safeguards.
-11. Tests executed and exact results.
-12. Known limitations.
-13. Deviations from approved specifications.
-14. Acceptance criteria status.
-
-Clearly distinguish deletion from live systems, deletion from derived indexes and caches, and any backup-retention limitations.
-
-## 17. Definition of done
-
-Phase 8.10 is complete when Raven can safely process an authorized forgetting request, identify and clean up all required dependent representations, prevent deleted information from reappearing, and verify the result without affecting unrelated memories.
-
-**A deletion request is complete only when every required deletion dependency has been accounted for and verified.**
+Do not automatically proceed to plan 8.11.
