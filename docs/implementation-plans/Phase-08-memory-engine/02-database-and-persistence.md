@@ -1,687 +1,502 @@
-# Phase 8.2 — Database & Persistence
+# 8.2 — Database and Persistence
 
 ## 1. Objective
 
-Implement the Memory Engine's database and persistence foundation.
+Implement the Memory Engine's persistence layer using the approved Raven data architecture.
 
-This milestone translates the approved Memory Engine data models into working database models, migrations, repositories, and transaction-management capabilities.
+This plan covers persistence for:
 
-The implementation must preserve:
+1. Personal memory records.
+2. Document intelligence records.
+3. Their associated metadata, provenance, relationships, and derived data.
 
-- Memory Engine data ownership.
-- User-level data isolation.
-- Referential integrity.
-- Provenance.
-- Temporal history.
-- Version management.
-- Controlled updates.
-- Deletion lifecycle requirements.
-- Idempotency and concurrency safety.
+Personal memory and document intelligence must remain separate logical domains, even when they share PostgreSQL, pgvector, object storage, and background-processing infrastructure.
 
-**Implementation location:** `memory-engine/`
+The implementation must follow the approved Phase 5 data models and Phase 7 technology decisions. This plan does not authorize inventing or silently changing the underlying data model.
 
-**Implementation plan location:** `docs/implementation-plans/phase-08-memory-engine/02-database-and-persistence.md`
+## 2. Architecture references
 
----
+Read and reconcile the following before implementation:
 
-## 2. Architecture References
-
-Claude Code must read these documents before implementation.
-
-### Data Models
-
-- `docs/data-models/`
-- Memory Engine Data Models.
-- Core Entities & Relationships.
-- Relationships and Lifecycle.
-- Shared Infrastructure Data Models.
-
-Pay particular attention to the approved Memory Engine model decisions covering:
-
-- Memory Sources.
-- Memory Candidates.
-- Atomic Memories.
-- Memory Revisions.
-- Entities and Aliases.
-- Entity Mentions.
-- Entity Relationships.
-- Memory Relationships.
-- Episodes and Episode Memberships.
-- Derived Profiles.
-- Provenance.
-- Embedding Metadata.
-- Category Assignments.
-- Deletion Operations.
-- Processing Events.
-
-### Architecture
-
+- `PROJECT_ARCHITECTURE.md`
 - `docs/architecture/`
-- Memory Engine ownership and boundaries.
-- User isolation.
-- Data lifecycle and deletion requirements.
-
-### Algorithms
-
-- `docs/algorithms/memory/`
-- `docs/algorithms/shared/`
-
-### Technology
-
+- `docs/data-models/`
+- `docs/technical-decisions.md`
 - `docs/technology/01-baseline-technology-stack.md`
 - `docs/technology/02-database-and-storage-architecture.md`
 - `docs/technology/03-vector-search-and-embedding-infrastructure.md`
+- `docs/technology/04-background-processing-and-messaging.md`
 
-### Central Decisions
+Relevant data-model specifications include:
 
-- `docs/technical-decisions.md`
+- Memory Engine models.
+- Research Engine models.
+- Orchestrator models.
+- Shared infrastructure models.
+- Relationships and lifecycle.
 
-If any referenced model or decision is missing or ambiguous, report it rather than silently designing a replacement.
+If the existing specifications do not define a required document entity or relationship, identify the gap and propose an amendment before implementing it.
 
----
+## 3. Persistence architecture
 
-## 3. Technology Requirements
+### 3.1 Database
 
-Use the approved database stack:
+Use the approved baseline:
 
-| Responsibility | Technology |
-|---|---|
-| Relational database | PostgreSQL |
-| ORM | SQLAlchemy |
-| Migration management | Alembic |
-| Database validation | Pydantic where appropriate |
-| Primary language | Python |
-| Testing | pytest |
+- PostgreSQL as the primary relational database.
+- SQLAlchemy as the ORM.
+- Alembic for database migrations.
+- pgvector for vector storage.
+- Pydantic for validation at application boundaries.
 
-Use the versions and dependency conventions established in Phase 8.1.
-
-Do not introduce a second ORM or migration framework.
-
----
-
-## 4. Database Ownership and Boundaries
-
-The Memory Engine owns its authoritative memory-related records.
-
-It must not directly own or modify:
-
-- Research Engine records.
-- Orchestrator execution records.
-- Shared identity records.
-- Shared infrastructure configuration.
-
-Cross-engine access must use approved interfaces and typed references.
-
-### 4.1 Database organization
-
-The approved initial database architecture uses PostgreSQL with logical separation between:
+Use the existing PostgreSQL deployment and logical schema ownership defined in Phase 7:
 
 - `memory`
 - `research`
 - `orchestrator`
 - `shared`
 
-The Memory Engine's records must remain within its designated ownership boundary.
+Do not introduce another database deployment or a separate document database without an approved architectural decision.
 
-Claude Code must inspect the existing database structure before deciding how to initialize or access these schemas.
+### 3.2 Ownership boundaries
 
-Do not create duplicate databases or schemas without architectural justification.
+The Memory Engine owns its personal memory and document intelligence records.
 
-### 4.2 Database access
+The Memory Engine must not directly own Research Engine or Orchestrator business records.
 
-- Use controlled database sessions.
-- Use parameterized queries through SQLAlchemy.
-- Enforce ownership at the persistence boundary.
-- Avoid unrestricted database access from application modules.
-- Keep transaction boundaries explicit.
-- Do not expose internal database sessions through public engine interfaces.
+Cross-engine references must follow the approved interface and typed-reference boundaries.
 
----
+### 3.3 Personal memory and document separation
 
-## 5. Database Model Implementation
+Maintain separate logical persistence domains for:
 
-Implement the approved Memory Engine entities using SQLAlchemy.
+**Personal memory**
+- Memory sources.
+- Memory candidates.
+- Atomic memories.
+- Memory revisions.
+- Entities and aliases.
+- Entity and memory relationships.
+- Episodes and episode membership.
+- Derived profiles and associations.
+- Memory provenance.
+- Memory embedding metadata.
+- Category assignments.
+- Processing and deletion records.
 
-The implementation must follow the existing data-model specifications.
+**Document intelligence**
+- Document identity and ownership.
+- Document versions.
+- Original object-storage references.
+- Extracted document representations.
+- Document chunks.
+- Chunk location and provenance.
+- Document embedding metadata.
+- Document processing status and operation history.
+- Document indexing and deletion dependencies.
 
-### 5.1 Core model groups
+These are logical responsibilities, not permission to create duplicate or conflicting tables.
 
-**Source and ingestion records**
+Before creating document-specific tables, reconcile the proposed entities with the existing Phase 5 data-model specifications. Use their approved names and relationships where available.
 
-- Memory Source.
-- Source Processing History.
+Do not represent a document chunk as an atomic personal memory.
 
-**Memory records**
+## 4. Document persistence model
 
-- Memory Candidate.
-- Atomic Memory.
-- Memory Revision.
-- Memory Category Assignment.
-- Memory Correction Request, where required.
+### 4.1 Document identity
 
-**Entity records**
+A document must have a stable identity independent of its file versions.
 
-- Entity.
-- Entity Alias.
-- Entity Mention.
-- Entity Resolution History.
-- Entity Relationship.
+The persistence design must support:
 
-**Memory relationship records**
+- Unique document identity.
+- User ownership.
+- Document metadata.
+- Original filename and detected format.
+- Creation and registration timestamps.
+- Current processing state.
+- Current version reference.
+- Retention and deletion state.
 
-- Memory Relationship.
+A filename must not be treated as a unique document identifier.
 
-**Episodic and profile records**
+### 4.2 Document versions
 
-- Episode.
-- Episode Membership.
-- Episode Milestone, where required.
-- Derived Profile.
-- Profile-Memory Association.
-- Profile Refresh History.
+A document version represents a specific uploaded or updated content state.
 
-**Provenance and derived data**
+The design must preserve:
 
-- Provenance Records.
-- Embedding Metadata.
-- Consolidation Results, where required.
+- Version identity.
+- Parent document reference.
+- Content checksum.
+- Original file reference.
+- Detected media type.
+- File size.
+- Upload timestamp.
+- Extraction status.
+- Version-specific processing metadata.
 
-**Lifecycle records**
+An updated document must not silently overwrite the historical version.
 
-- Deletion Operation.
-- Processing Events.
-- Relevant maintenance and reconciliation records.
+The system must be able to distinguish content retrieved from an older version from content retrieved from the current version.
 
-This inventory must be reconciled against the actual approved data-model documents before implementation.
+### 4.3 Extracted content
 
-Do not create a table merely because a concept appears in this list. Follow the exact ownership and persistence decisions in the approved specifications.
+Extracted content is derived from the original document.
 
-### 5.2 Model design requirements
+The persistence design must support:
 
-Each model must define appropriate:
+- Extracted text.
+- Structural information.
+- Page and section references.
+- Table or layout references where extraction supports them.
+- Extraction method and version.
+- Extraction status.
+- Links to the source document version.
 
-- Primary key.
-- Foreign keys.
-- Ownership scope.
-- Required fields.
-- Optional fields.
-- Data types.
-- Constraints.
-- Relationships.
-- Timestamps.
-- Version fields.
-- Lifecycle status.
-- Index requirements.
+Original documents remain authoritative source artifacts. Extracted content is derived data and must retain a traceable relationship to its source.
 
-Use opaque unique identifiers according to the approved data model conventions.
+### 4.4 Document chunks
 
-Do not assume that every entity requires every common metadata field. Apply the model-specific specification.
+Chunks are derived retrieval units created from extracted content.
 
----
+The model must support:
 
-## 6. User Isolation and Ownership
+- Stable chunk identity.
+- Parent document and version references.
+- Chunk sequence or ordering.
+- Extracted text.
+- Page, section, or location metadata.
+- Chunking strategy and version.
+- Content checksum.
+- Creation timestamp.
+- Indexing state.
 
-User isolation is a non-negotiable requirement.
+Chunk boundaries must not destroy source-location information.
 
-### Requirements
+The same source passage must be traceable back to its original document version and location.
 
-1. Private memory records must be scoped to their owner.
-2. Queries must enforce ownership.
-3. Relationships must not accidentally connect private records across users.
-4. Repository methods must validate ownership context.
-5. Entity resolution must respect private and shared entity boundaries.
-6. Cross-user data access must be rejected.
-7. Shared canonical entities must not expose private user associations.
-8. Ownership must never be determined from an untrusted request field alone.
+### 4.5 Document embedding metadata
 
-### Testing
+Document chunk embeddings must be logically separate from personal memory embeddings.
 
-Create tests that attempt:
+Track the applicable:
 
-- Accessing another user's Atomic Memory.
-- Accessing another user's Memory Candidate.
-- Linking records belonging to different users.
-- Retrieving private entity associations.
-- Updating or deleting another user's records.
+- Source chunk reference.
+- Embedding model identifier.
+- Model version.
+- Vector dimensions.
+- Preprocessing configuration.
+- Creation timestamp.
+- Indexing status.
 
-All unauthorized operations must fail safely.
+Use the approved pgvector infrastructure initially.
 
----
+Do not introduce a dedicated vector database unless workload measurements and an architectural decision justify it.
 
-## 7. Relationships and Referential Integrity
+### 4.6 Document processing operations
 
-Implement the approved relationship structure.
+Document processing must have durable operation state.
 
-### Requirements
+Support tracking:
 
-- Foreign keys for appropriate ownership and containment relationships.
-- Independent records for complex relationships and history.
-- Association records for many-to-many relationships.
-- Typed references for cross-engine relationships.
-- Appropriate uniqueness constraints.
-- Controlled deletion behavior.
+- Registration.
+- File validation.
+- Extraction.
+- Structure processing.
+- Chunking.
+- Embedding.
+- Indexing.
+- Retry and failure.
+- Deletion.
 
-### Important distinction
+Operation records must support idempotency and recovery after worker interruption.
 
-Do not automatically use cascading deletion for every relationship.
+Exact entity names and status values must follow the approved data-model and algorithm specifications.
 
-Some relationships require coordinated lifecycle processing, historical preservation, or explicit deletion workflows.
+## 5. Object storage
 
-Database cascade behavior must not bypass the Memory Engine's deletion architecture.
+Use the approved S3-compatible object-storage architecture for original documents and other large binary artifacts.
 
----
+PostgreSQL stores metadata and object references rather than unnecessarily storing large document binaries.
 
-## 8. Temporal and Version Management
+Object references must support:
 
-The Memory Engine must preserve historical changes.
+- Opaque object identifiers.
+- Ownership validation.
+- Content checksums.
+- Media-type metadata.
+- Access-control enforcement.
+- Lifecycle and deletion state.
 
-### 8.1 Versioning
+Do not expose raw storage credentials or unrestricted object paths through public APIs.
 
-Implement the approved model of:
+### 5.1 Database and object-storage consistency
 
-- Mutable current records where specified.
-- Immutable revision history.
-- Version identifiers.
-- Controlled updates.
-- Version conflict detection.
+PostgreSQL and object storage do not share a single ACID transaction.
 
-### 8.2 Temporal information
+Implement a recoverable workflow:
 
-Where required, preserve:
+1. Register the intended operation.
+2. Validate ownership and file metadata.
+3. Store the object.
+4. Persist or finalize the database reference.
+5. Verify the relationship.
+6. Record completion.
+7. Reconcile incomplete operations.
 
-- Valid time: when a fact applies in the real world.
-- Transaction time: when Raven recorded or changed the fact.
+Failed uploads or incomplete registrations must not create silently inconsistent records.
 
-These are separate concepts.
+Use the approved operation and reconciliation patterns.
 
-Do not use database creation timestamps as substitutes for real-world event timestamps.
+## 6. Database relationships and integrity
 
-### 8.3 Historical records
+Implement the relationships defined in Phase 5.
 
-Updates and corrections must not silently erase historical information.
-
-Historical records must remain retrievable according to the approved lifecycle and retrieval policies.
-
----
-
-## 9. Repository and Persistence Layer
-
-Implement a repository layer for controlled database access.
-
-Repositories should provide domain-oriented persistence operations.
-
-Potential repository boundaries:
-
-- Source Repository.
-- Candidate Repository.
-- Atomic Memory Repository.
-- Revision Repository.
-- Entity Repository.
-- Relationship Repository.
-- Episode Repository.
-- Profile Repository.
-- Provenance Repository.
-- Embedding Metadata Repository.
-- Deletion Operation Repository.
-
-The final grouping should follow the actual domain structure and avoid unnecessary fragmentation.
-
-### Repository responsibilities
-
-- Create records.
-- Retrieve records.
-- Update permitted fields.
-- Persist revisions.
-- Query by ownership.
-- Validate relationship references.
-- Handle optimistic concurrency.
-- Support transaction-aware operations.
-
-### Repository restrictions
-
-Repositories must not:
-
-- Perform memory extraction.
-- Decide whether two facts are duplicates.
-- Independently resolve contradictions.
-- Generate embeddings.
-- Perform final memory ranking.
-- Bypass domain validation.
-
-Those responsibilities belong to later milestones.
-
----
-
-## 10. Transaction Management
-
-Use SQLAlchemy transaction management with PostgreSQL ACID guarantees.
-
-### Requirements
-
-- Keep transactions short.
-- Commit related authoritative changes atomically where appropriate.
-- Roll back failed transactions.
-- Avoid holding transactions open during external operations.
-- Avoid holding transactions open during expensive NLP or embedding computation.
-- Make retryable operations idempotent.
-- Preserve transaction boundaries across repository and service layers.
-
-### 10.1 Optimistic concurrency
-
-Use version-based concurrency protection where required.
-
-If two operations attempt to update the same record:
-
-1. Validate the expected version.
-2. Detect a version conflict.
-3. Reject stale writes.
-4. Reload the current record.
-5. Re-evaluate the operation.
-6. Apply a new update only after validation.
-
-Never silently overwrite a newer memory revision.
-
-### 10.2 Transaction ownership
-
-Application services should coordinate transactions.
-
-Repositories should participate in the intended transaction rather than independently committing every operation.
-
----
-
-## 11. Indexing Foundation
-
-Create indexes based on the approved logical indexing strategy.
-
-Potential index categories:
+Enforce:
 
 - Primary keys.
-- User ownership.
-- Record lifecycle status.
-- Entity references.
-- Temporal fields.
-- Relationship lookups.
-- Frequently queried metadata.
-- Operational reconciliation fields.
-
-### Indexing rules
-
-- Avoid indexing every column.
-- Use composite indexes where query patterns justify them.
-- Validate uniqueness constraints.
-- Consider partial indexes for eligible active records.
-- Measure index overhead.
-- Document the reason for each non-obvious index.
-
-Vector indexes and embedding generation are covered by later milestones.
-
-Do not implement the complete vector search system here.
-
----
-
-## 12. Database Migrations
-
-Use Alembic for all database schema changes.
-
-### Requirements
-
-- Initialize or reuse the existing Alembic configuration.
-- Establish a clear migration history.
-- Use descriptive migration names.
-- Review generated migrations.
-- Preserve existing data.
-- Validate foreign keys and constraints.
-- Test fresh database creation.
-- Test upgrades from the previous schema.
-- Document migration dependencies.
-
-### Migration safety
-
-Never blindly accept autogenerated destructive migrations.
-
-Review:
-
-- Dropped columns.
-- Renamed columns.
-- Data type changes.
-- Foreign key changes.
-- Index changes.
-- Constraint changes.
-
-Prefer backward-compatible migrations.
-
-Do not claim a migration is reversible unless its downgrade behavior has been verified.
-
----
-
-## 13. Persistence of Derived Data
-
-Derived data must remain distinguishable from authoritative memory records.
-
-Examples:
-
-- Embedding metadata.
-- Derived profiles.
-- Semantic consolidation results.
-- Search-related metadata.
-
-Requirements:
-
-- Preserve source record references.
-- Track generation or processing versions where required.
-- Support stale-state detection.
-- Allow regeneration when appropriate.
-- Avoid treating derived data as the only authoritative copy.
-
-Vector values and pgvector index implementation belong to the vector-related implementation work, not the initial relational persistence scope of this milestone.
-
----
-
-## 14. Deletion and Retention Compatibility
-
-This milestone must prepare the database for the approved deletion architecture.
-
-Requirements:
-
-- Lifecycle status fields where specified.
-- Deletion operation records.
-- Referential integrity.
-- Identification of dependent records.
-- Support for deletion propagation.
-- Support for reconciliation.
-- Appropriate retention metadata.
-
-Do not implement the full deletion workflow yet.
-
-That belongs to Phase 8.10.
-
-Do not use database cascade deletion as a substitute for coordinated deletion of embeddings, indexes, archives, caches, and backups.
-
----
-
-## 15. Testing Requirements
-
-### 15.1 Model tests
-
-Test:
-
-- Model construction.
+- Foreign keys where appropriate.
+- Unique constraints.
+- Ownership constraints.
+- Valid relationship types.
 - Required fields.
-- Data types.
-- Constraints.
-- Unique identifiers.
-- Foreign keys.
-- Relationship integrity.
+- Referential integrity.
+- Version relationships.
+- Provenance relationships.
+- Valid lifecycle transitions.
 
-### 15.2 Repository tests
+Avoid unnecessary cross-schema coupling.
 
-Test:
+Do not introduce a graph database for entity relationships.
 
-- Create operations.
-- Read operations.
-- Update operations.
-- Ownership filtering.
-- Version handling.
-- Transaction rollback.
-- Missing records.
-- Invalid references.
+## 7. Repository and persistence layer
 
-### 15.3 Isolation tests
+Implement a clear separation between:
 
-Test cross-user access attempts and unauthorized relationship creation.
-
-### 15.4 Migration tests
-
-Test:
-
-- Fresh database initialization.
-- Upgrade from previous schema.
-- Migration consistency.
-- Constraint creation.
-- Index creation.
-
-### 15.5 Concurrency tests
-
-Test:
-
-- Concurrent updates.
-- Stale version updates.
-- Duplicate operations.
-- Transaction conflicts.
-
-### 15.6 Integrity tests
-
-Test that failed persistence does not produce false success and that authoritative records remain consistent.
-
-Use an isolated PostgreSQL test database for integration tests.
-
-SQLite-only tests are not sufficient to validate PostgreSQL-specific behavior.
-
----
-
-## 16. Expected Deliverables
-
-At completion, the repository should contain:
-
-- SQLAlchemy Memory Engine models.
-- Database connection and session management.
+- Domain models.
+- Persistence models.
+- Repository interfaces.
 - Repository implementations.
-- Transaction management conventions.
-- Alembic migration configuration.
-- Initial database migrations.
-- Appropriate indexes and constraints.
+- Transaction management.
+- Database session management.
+
+Repositories must enforce the ownership and access boundaries of the Memory Engine.
+
+Application services should not depend directly on raw SQL or ORM implementation details where repository abstractions are appropriate.
+
+Avoid creating excessive abstraction layers that do not provide a meaningful architectural benefit.
+
+## 8. Transactions and concurrency
+
+Follow the approved transaction and concurrency architecture.
+
+Requirements:
+
+- Keep transactions short.
+- Never hold database transactions open during long-running document extraction or embedding operations.
+- Use optimistic concurrency where specified.
+- Detect stale updates and version conflicts.
+- Use idempotency for retriable operations.
+- Preserve immutable revision history where required.
+- Ensure atomicity for related authoritative state changes.
+- Prevent concurrent processing from silently corrupting document or memory state.
+
+Long-running operations must be represented through durable workflow state rather than long database transactions.
+
+## 9. Indexing foundation
+
+Implement only the indexes required by the approved models and current implementation stages.
+
+Consider:
+
+- User and ownership lookups.
+- Document identity and version lookups.
+- Memory identity and revision lookups.
+- Relationship traversal.
+- Temporal queries.
+- Processing status.
+- Idempotency keys.
+- Deletion operation lookup.
+- Document chunk lookup.
+- Vector retrieval.
+- Full-text retrieval.
+
+Keep memory and document retrieval logically separate.
+
+Document chunk indexes must not cause document chunks to appear as personal memory records.
+
+Do not prematurely optimize index parameters without representative workload measurements.
+
+## 10. Embedding persistence
+
+Embedding vectors are derived data.
+
+The authoritative source must remain independently stored.
+
+Maintain separate logical indexing and lifecycle for:
+
+- Personal memory embeddings.
+- Document chunk embeddings.
+
+The shared pgvector infrastructure may be reused, but retrieval, ownership, model metadata, and deletion must preserve domain boundaries.
+
+Embedding generation and indexing must be recoverable.
+
+If embedding generation fails, the original memory or document must remain intact and its processing state must accurately reflect the failure or pending work.
+
+## 11. Migrations
+
+Use Alembic for schema migrations.
+
+Requirements:
+
+- Version-controlled migrations.
+- Reversible migrations where safely possible.
+- Explicit handling of destructive changes.
+- Backward compatibility where required.
+- Migration testing.
+- No silent data loss.
+- Clear migration documentation.
+
+Before generating migrations, reconcile the ORM definitions with the approved Phase 5 models.
+
+Do not generate tables simply because a proposed implementation class exists.
+
+## 12. Deletion and retention compatibility
+
+This plan establishes persistence support for deletion and retention.
+
+The full deletion workflow belongs to plan 8.10.
+
+The persistence design must allow deletion to cover:
+
+**Personal memory**
+- Authoritative memories.
+- Revisions.
+- Candidates.
+- Relationships.
+- Episodes and derived profiles.
+- Embeddings and indexes.
+- Applicable provenance and processing records.
+
+**Document intelligence**
+- Original document objects.
+- Document versions.
+- Extracted representations.
+- Chunks.
+- Embeddings.
+- Search indexes.
+- Cached retrieval data.
+- Pending document-processing operations.
+- Document-derived memory references.
+
+Deletion of a document must not automatically delete unrelated personal memories merely because they discuss the same subject.
+
+Where a personal memory was explicitly derived from a document, preserve the provenance relationship so the deletion policy can evaluate the dependency.
+
+Backup retention and tombstone reapplication must follow the approved lifecycle policy.
+
+## 13. Testing requirements
+
+### Database tests
+
+- Model creation and constraints.
+- Foreign-key integrity.
+- Unique constraints.
 - Ownership enforcement.
-- Version and temporal support.
-- Persistence tests.
-- Migration tests.
-- Documentation of implemented persistence behavior.
+- Version relationships.
+- Transaction rollback.
+- Optimistic concurrency.
+- Migration execution.
+- Repository behavior.
 
-The exact file layout must follow the established `memory-engine/` structure.
+### Document persistence tests
 
----
+- Document registration.
+- Multiple versions of one document.
+- Original object reference persistence.
+- Extracted representation persistence.
+- Chunk ordering and provenance.
+- Embedding metadata persistence.
+- Failed processing state.
+- Retry and idempotency.
+- User isolation.
+- Deletion dependency discovery.
 
-## 17. Acceptance Criteria
+### Memory and document isolation tests
 
-Phase 8.2 is complete only when:
+- Document chunks cannot be retrieved as personal memories by default.
+- Personal memory embeddings cannot be confused with document embeddings.
+- Cross-user document access is rejected.
+- Cross-user memory access is rejected.
+- Document version changes do not silently modify historical retrieval references.
 
-### Database
+### Failure tests
 
-- [ ] PostgreSQL connection works.
-- [ ] SQLAlchemy models represent approved data models.
-- [ ] Alembic migrations run successfully.
-- [ ] Fresh database initialization works.
-- [ ] Foreign keys and constraints are validated.
+- Database unavailable.
+- Object storage unavailable.
+- Partial object upload.
+- Database write failure.
+- Worker interruption.
+- Duplicate operation.
+- Concurrent update.
+- Migration failure.
 
-### Ownership
+## 14. Acceptance criteria
 
-- [ ] User-level isolation is enforced.
-- [ ] Cross-user access tests fail safely.
-- [ ] Engine ownership boundaries are preserved.
+This plan is complete when:
 
-### Persistence
+1. The database foundation matches the approved Phase 5 and Phase 7 architecture.
+2. Personal memory persistence works with the approved data models.
+3. Document identity and version persistence work.
+4. Original document objects can be referenced securely.
+5. Extracted content and chunk metadata can be persisted.
+6. Document and memory embeddings remain logically separate.
+7. User ownership is enforced.
+8. Transactions and concurrency controls are tested.
+9. Migrations execute successfully.
+10. Failure and recovery behavior is tested.
+11. Deletion dependencies can be identified.
+12. All required tests pass.
 
-- [ ] Repositories support required operations.
-- [ ] Transactions behave correctly.
-- [ ] Failed transactions roll back.
-- [ ] Optimistic concurrency is implemented where specified.
-- [ ] Historical versions are preserved.
+## 15. Out of scope
 
-### Quality
+This plan does not implement:
 
-- [ ] Repository tests pass.
-- [ ] PostgreSQL integration tests pass.
-- [ ] Migration tests pass.
-- [ ] Relevant linting and type checks pass.
-- [ ] No destructive schema behavior is introduced without approval.
-
-### Documentation
-
-- [ ] Implemented models are documented.
-- [ ] Migration procedures are documented.
-- [ ] Known limitations are reported.
-
----
-
-## 18. Out of Scope
-
-Do not implement:
-
-- Ingestion algorithms.
-- Fact extraction.
-- Relevance evaluation.
-- Entity resolution algorithms.
-- Duplicate detection.
-- Contradiction detection.
-- Memory ranking.
+- The complete ingestion pipeline.
+- Memory extraction and evaluation.
+- Memory resolution.
+- Document parsing and OCR.
+- Document chunking algorithms.
 - Embedding generation.
-- Vector indexing.
-- Hybrid retrieval.
-- Episodic consolidation.
-- Profile generation.
-- Full forgetting and deletion orchestration.
-- Production deployment.
+- Hybrid document retrieval.
+- Evidence selection and answer assembly.
+- Full deletion orchestration.
 
-These belong to later milestones.
+These responsibilities belong to their respective implementation plans.
 
----
+## 16. Claude Code execution instructions
 
-## 19. Claude Code Execution Instructions
+Before implementation:
 
-1. Inspect the existing database configuration before changing anything.
-2. Read the exact approved Memory Engine data models.
-3. Reconcile the model inventory against the source documents.
-4. Report ambiguities before implementing them.
-5. Reuse existing database infrastructure where compatible.
-6. Implement only the persistence scope of this milestone.
-7. Do not invent additional business entities.
-8. Do not modify Research or Orchestrator-owned records directly.
-9. Do not introduce another ORM or migration framework.
-10. Test using PostgreSQL.
-11. Report actual migration and test results.
-12. Do not proceed automatically to Phase 8.3.
+1. Inspect the repository and existing database configuration.
+2. Read the referenced Phase 5 and Phase 7 specifications.
+3. Identify existing models, migrations, repositories, and shared infrastructure.
+4. Reconcile document persistence requirements with the approved data models.
+5. Report missing or conflicting schema decisions.
+6. Propose the minimum required changes.
 
-Any major conflict involving data ownership, deletion, historical preservation, or security must be reported before implementation.
+Do not silently invent schema entities or alter approved models.
 
----
+After implementation, report:
 
-## 20. Completion Report
+- Files created or modified.
+- Models and relationships implemented.
+- Migrations created.
+- Dependencies added.
+- Tests executed and results.
+- Acceptance criteria satisfied.
+- Known limitations and unresolved decisions.
 
-Claude Code must report:
-
-- Files created.
-- Files modified.
-- SQLAlchemy models implemented.
-- Repositories implemented.
-- Database constraints and indexes.
-- Migrations created and executed.
-- Ownership and isolation tests.
-- Transaction and concurrency tests.
-- PostgreSQL integration test results.
-- Linting and type-checking results.
-- Known limitations.
-- Unresolved issues.
-- Acceptance criteria status.
-
-**Status:** Planned.
-
-**Next milestone:** Phase 8.3 — Ingestion Pipeline.
+Do not automatically proceed to plan 8.3.
