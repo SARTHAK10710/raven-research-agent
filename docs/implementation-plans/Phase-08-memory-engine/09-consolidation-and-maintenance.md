@@ -32,12 +32,12 @@ Claude Code must review:
 4. `docs/algorithms/memory/04-memory-consolidation-maintenance.md`
 5. `docs/algorithms/memory/02-memory-resolution.md`
 6. `docs/algorithms/shared/01-shared-algorithm-framework.md`
-7. `docs/technology/01-baseline-technology-stack.md`
-8. `docs/technology/02-database-and-storage-architecture.md`
-9. `docs/technology/04-background-processing-and-messaging.md`
-10. `docs/implementation-plans/phase-08-memory-engine/06-memory-resolution.md`
-11. `docs/implementation-plans/phase-08-memory-engine/07-memory-storage-and-indexing.md`
-12. `docs/implementation-plans/phase-08-memory-engine/08-memory-retrieval.md`
+7. `docs/technical-decisions/01-baseline-technology-stack.md`
+8. `docs/technical-decisions/02-database-and-storage-architecture.md`
+9. `docs/technical-decisions/04-background-processing-and-messaging.md`
+10. `docs/implementation-plans/Phase-08-memory-engine/06-memory-resolution.md`
+11. `docs/implementation-plans/Phase-08-memory-engine/07-memory-storage-and-indexing.md`
+12. `docs/implementation-plans/Phase-08-memory-engine/08-memory-retrieval.md`
 
 The approved Phase 5 models and Phase 6 algorithms are authoritative.
 

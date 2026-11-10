@@ -16,7 +16,7 @@ The objective is to create a clean, modular, testable, and maintainable foundati
 
 **Implementation plan location:**
 
-`docs/implementation-plans/phase-08-memory-engine/01-foundation-and-project-setup.md`
+`docs/implementation-plans/Phase-08-memory-engine/01-foundation-and-project-setup.md`
 
 ---
 
@@ -42,15 +42,15 @@ Claude Code must read and follow the relevant approved documents before implemen
 
 ### Technology
 
-- `docs/technology/01-baseline-technology-stack.md`
-- `docs/technology/02-database-and-storage-architecture.md`
-- `docs/technology/03-vector-search-and-embedding-infrastructure.md`
-- `docs/technology/04-background-processing-and-messaging.md`
-- `docs/technology/05-nlp-and-machine-learning-stack.md`
-- `docs/technology/06-api-security-and-internal-communication.md`
-- `docs/technology/07-observability-and-testing-infrastructure.md`
-- `docs/technology/08-deployment-and-environment-architecture.md`
-- `docs/technical-decisions.md`
+- `docs/technical-decisions/01-baseline-technology-stack.md`
+- `docs/technical-decisions/02-database-and-storage-architecture.md`
+- `docs/technical-decisions/03-vector-search-and-embedding-infrastructure.md`
+- `docs/technical-decisions/04-background-processing-and-messaging.md`
+- `docs/technical-decisions/05-NLP-and-machine-learning-stack.md`
+- `docs/technical-decisions/06-api-security-and-internal-communication.md`
+- `docs/technical-decisions/07-observability-and-testing-infrastructure.md`
+- `docs/technical-decisions/08-deployment-and-environment-architecture.md`
+- `docs/technical-decisions/Readme.md`
 
 If a referenced document is missing, report it instead of inventing its contents.
 
@@ -95,46 +95,51 @@ If an existing implementation conflicts with an architectural specification, rep
 
 ## 4. Project Structure
 
-Establish a modular Python package inside `memory-engine/`.
+Establish a modular Python package inside `memory-engine/`, as a member of a uv workspace rooted at the repository root.
 
 The following is the proposed logical structure:
 
 ```text
-memory-engine/
+raven-research-agent/              # repository root
 │
-├── src/
-│   └── memory_engine/
-│       ├── __init__.py
-│       │
-│       ├── config/
-│       ├── domain/
-│       ├── ingestion/
-│       ├── extraction/
-│       ├── entities/
-│       ├── resolution/
-│       ├── storage/
-│       ├── retrieval/
-│       ├── consolidation/
-│       ├── deletion/
-│       │
-│       ├── interfaces/
-│       ├── services/
-│       ├── infrastructure/
-│       ├── exceptions/
-│       └── observability/
+├── pyproject.toml                 # uv workspace configuration only; no application code
+├── uv.lock                        # single lockfile for the whole workspace
+├── .python-version                # 3.12
+├── .gitignore                     # includes .env files
 │
-├── tests/
-│   ├── unit/
-│   ├── integration/
-│   └── fixtures/
+├── memory-engine/                 # workspace member
+│   ├── pyproject.toml             # member package metadata and dependencies
+│   ├── .env.example               # placeholder values only
+│   ├── README.md
+│   └── src/
+│       └── memory_engine/
+│           ├── __init__.py
+│           │
+│           ├── config/
+│           ├── domain/
+│           ├── ingestion/
+│           ├── extraction/
+│           ├── entities/
+│           ├── resolution/
+│           ├── storage/
+│           ├── retrieval/
+│           ├── consolidation/
+│           ├── deletion/
+│           │
+│           ├── interfaces/
+│           ├── services/
+│           ├── infrastructure/
+│           ├── exceptions/
+│           └── observability/
 │
-├── pyproject.toml
-├── .env.example
-├── .gitignore
-└── README.md
+└── tests/                         # existing repository-root test directory
+    └── memory_engine/
+        ├── unit/
+        ├── integration/
+        └── fixtures/
 ```
 
-This is the initial proposed structure, not an instruction to create every module immediately.
+This is the initial proposed structure, not an instruction to create every module immediately. Tests are not placed in `memory-engine/tests/`.
 
 Only establish directories and modules necessary for the foundation.
 
@@ -170,32 +175,54 @@ The Memory Engine must not absorb Orchestrator or Research Engine business respo
 
 Initialize or update the Python project using the approved technology baseline.
 
+### Approved decisions
+
+These were approved on 2026-11-11 and are recorded in [`docs/technical-decisions/01-baseline-technology-stack.md`](../../technical-decisions/01-baseline-technology-stack.md) §22.
+
+| Decision | Approved choice |
+|---|---|
+| Python version | Python 3.12 |
+| Type checker | mypy, strict mode |
+| Project layout | uv workspace |
+| Test location | Repository-root `tests/` |
+| Configuration | Pydantic Settings (`pydantic-settings`) |
+
 ### Requirements
 
-- Python as the primary implementation language.
-- `pyproject.toml` as the central project configuration.
+- Python 3.12 as the implementation runtime. Declare `requires-python` as a range beginning at 3.12 (`>=3.12`), and pin the development interpreter to 3.12.
+- A uv workspace: the root `pyproject.toml` owns the workspace configuration and contains no application code; `memory-engine/` is a workspace member with its own `pyproject.toml`.
+- One root `uv.lock` for the whole workspace. Do not create a separate lockfile for `memory-engine/`.
 - `uv` as the selected dependency management tool.
 - Reproducible dependency locking.
 - Clear separation of runtime and development dependencies.
 - A consistent import and package structure.
 
+The uv workspace does not change the modular-monolith architecture and does not imply independent deployment.
+
 ### Dependency categories
 
-**Initial runtime dependencies:**
+**Phase 8.1 runtime dependencies:**
 
-- Pydantic — configuration and data validation.
-- SQLAlchemy — database access.
-- Alembic — database migrations.
-- PostgreSQL driver — database connectivity.
-- OpenTelemetry instrumentation — observability.
+- Pydantic — data validation.
+- pydantic-settings — validated, environment-based configuration.
 
-**Development dependencies:**
+**Phase 8.1 development dependencies:**
 
 - pytest.
 - pytest-cov.
 - Ruff.
-- mypy or Pyright.
-- HTTPX where API or HTTP testing is required.
+- mypy (strict mode).
+
+**Deferred to Phase 8.2 (database persistence):**
+
+- SQLAlchemy — database access.
+- Alembic — database migrations.
+- PostgreSQL driver — database connectivity. The driver and sync vs async access are decided in 8.2.
+
+**Added only when required:**
+
+- HTTPX — when API or HTTP testing is required.
+- OpenTelemetry API/SDK — when instrumentation is implemented.
 
 Additional NLP, embedding, messaging, and storage dependencies should be introduced in the milestones that actually require them.
 
@@ -215,9 +242,11 @@ Do not install every technology selected in Phase 7 during this initial mileston
 
 Create a centralized configuration mechanism.
 
-Use Pydantic-based settings validation.
+Use Pydantic Settings (`pydantic-settings`) for validated, environment-based configuration.
 
 Configuration must support environment-specific values.
+
+Database connection settings may be defined and validated as configuration in 8.1, but no database driver or connection code is added until Phase 8.2.
 
 ### Initial configuration categories
 
@@ -354,7 +383,7 @@ Never log:
 
 ### Observability
 
-Prepare the codebase for OpenTelemetry instrumentation.
+Prepare the codebase for OpenTelemetry instrumentation, for example by carrying correlation identifiers in structured logs. Do not add OpenTelemetry packages in this milestone; they are added when instrumentation is implemented.
 
 Do not build a complete monitoring deployment in this milestone.
 
@@ -365,6 +394,8 @@ Full metrics, traces, dashboards, and alerting are covered by the relevant infra
 ## 10. Testing Foundation
 
 Establish pytest and a consistent testing structure.
+
+Tests live in the repository-root `tests/` directory, organized by engine and test type (Memory Engine tests under `tests/memory_engine/`). Create test directories only when they contain tests.
 
 ### Test categories
 
@@ -413,8 +444,10 @@ Document commands for:
 - Activating the development environment.
 - Running tests.
 - Running linting.
-- Running type checking.
+- Running type checking (mypy, strict mode).
 - Checking package imports.
+
+Commands run through uv from the repository root against the workspace.
 
 Use Docker Compose only where required for local infrastructure dependencies.
 
@@ -463,7 +496,7 @@ Establish the Python package and minimal directory structure.
 
 ### Step 4 — Dependency management
 
-Configure `pyproject.toml` and dependency locking.
+Configure the root workspace `pyproject.toml`, the `memory-engine/pyproject.toml` member, and the single root `uv.lock`.
 
 ### Step 5 — Configuration
 
@@ -522,13 +555,16 @@ Phase 8.1 is complete only when:
 
 ### Project foundation
 
-- [ ] Python package initializes successfully.
+- [ ] Python package initializes successfully on Python 3.12.
+- [ ] uv workspace is configured at the repository root with `memory-engine/` as a member.
 - [ ] Dependency installation works.
-- [ ] Dependency lockfile is generated and reproducible.
+- [ ] A single root `uv.lock` is generated and reproducible.
+- [ ] Only the approved Phase 8.1 dependencies are present.
 - [ ] Package imports work.
 
 ### Configuration
 
+- [ ] Configuration uses Pydantic Settings.
 - [ ] Valid configuration loads.
 - [ ] Missing mandatory configuration fails clearly.
 - [ ] Invalid values are rejected.
@@ -545,10 +581,10 @@ Phase 8.1 is complete only when:
 
 - [ ] Logging initializes correctly.
 - [ ] Error handling is consistent.
-- [ ] pytest executes successfully.
-- [ ] Foundational tests pass.
+- [ ] pytest executes successfully from the repository root.
+- [ ] Foundational tests in `tests/memory_engine/` pass.
 - [ ] Ruff checks pass.
-- [ ] Static type checking passes for the configured scope.
+- [ ] mypy in strict mode passes for the configured scope.
 
 ### Documentation
 

@@ -1,3 +1,912 @@
+# Phase 5.4 — Memory Engine Data Models
+
+> **Document history:** This file contains the original Phase 5.4 Memory Engine (personal memory) data model, restored from commit `94e25b5`, followed by the Phase 5 Document Intelligence Data Models amendment from commit `3fd622b`, appended at the end of this file. The amendment extends the original decisions; it does not replace them.
+
+**Project:** Raven — AI Research Agent  
+**Phase:** 5 — Data Models & Database Design  
+**Component:** Memory Engine  
+**Status:** Architecture Complete  
+**Optimization Priority:** Memory Engine — 70:30 (as established in Phase 2)
+
+---
+
+# 1. Objective
+
+This document defines the logical data models, relationships, ownership boundaries and lifecycle principles of the Raven Memory Engine.
+
+The Memory Engine is responsible for capturing, extracting, evaluating, organizing, storing, retrieving, consolidating and maintaining persistent user memories.
+
+Its data architecture must support:
+
+- Reliable memory ingestion.
+- Candidate extraction and evaluation.
+- Atomic memory representation.
+- Entity identification and relationship management.
+- Memory episodes and contextual grouping.
+- Derived user profiles.
+- Provenance and evidence tracking.
+- Semantic embeddings and indexing.
+- Memory correction and forgetting.
+- Historical information and version management.
+- User isolation and data integrity.
+
+This document defines logical architecture and data-model decisions. It does not establish production database schemas or select specific database technologies.
+
+---
+
+# 2. Memory Engine Data Architecture
+
+The Memory Engine uses independently identifiable entities with clearly defined ownership and relationships.
+
+Its principal data models are:
+
+1. Memory Source
+2. Memory Candidate
+3. Atomic Memory
+4. Entity
+5. Entity Relationship
+6. Memory Relationship
+7. Episode
+8. Episode Membership
+9. Derived Profile
+10. Profile–Memory Association
+11. Provenance Record
+12. Entity Mention
+13. Entity Resolution Record
+14. Embedding Metadata Record
+15. Memory Deletion Operation
+16. Memory Correction Request
+17. Candidate Evaluation Record
+18. Source Processing Event
+19. Profile Refresh History
+20. Memory Category Assignment
+21. Memory Consolidation Result
+22. Episode Timeline Event
+
+These represent conceptual entities and supporting records. Not every entity must become a separate database table or collection.
+
+---
+
+# 3. Memory Source
+
+## Decision 5.4.1 — Source content storage: Option B
+
+Raven will store Memory Source metadata in structured database storage and original content in a dedicated content-storage layer.
+
+### Finalized Rules
+
+1. Every original input is represented by a Memory Source record.
+2. Source metadata is maintained independently of the original content.
+3. The Memory Source maintains a stable reference to its stored content.
+4. Multiple Memory Candidates may reference the same Memory Source.
+5. Original content remains traceable for provenance, correction and permitted reprocessing.
+6. Source content follows the same user-isolation, access-control, retention and deletion requirements as its source record.
+7. Original content must not be retained indefinitely without an applicable retention policy.
+8. Deletion removes both source metadata and associated content.
+
+The specific content-storage technology is deferred to Phase 7.
+
+---
+
+# 4. Memory Candidates
+
+## Decision 5.4.2 — Independent Memory Candidate records: Option A
+
+Every extracted candidate is represented as an independent record.
+
+### Finalized Rules
+
+1. Each candidate has a globally unique identity.
+2. Every candidate references its originating Memory Source.
+3. One source may produce zero, one or multiple candidates.
+4. Each candidate independently maintains its evaluation state.
+5. Candidates support independent matching, review, promotion and rejection.
+6. Updating a candidate does not overwrite original source content.
+7. Failure of one candidate does not invalidate other candidates from the same source.
+8. A candidate remains distinct from a validated Atomic Memory.
+
+---
+
+## Decision 5.4.3 — Candidate promotion: Option A
+
+Candidate promotion follows a controlled process.
+
+### Finalized Rules
+
+1. A candidate becomes eligible for promotion only after appropriate evaluation and resolution.
+2. Promotion creates or contributes to an Atomic Memory.
+3. Promotion does not change the candidate's identity or record type.
+4. Candidate and source lineage must be preserved.
+5. Multiple candidates may contribute to one Atomic Memory.
+6. Duplicate candidates must not automatically create duplicate memories.
+7. Candidates may support, update or correct existing memories through controlled resolution.
+8. Candidate history is retained according to the applicable lifecycle policy.
+9. Evaluation and promotion remain separate operations.
+
+---
+
+# 5. Atomic Memory
+
+## Decision 5.4.4 — Hybrid Atomic Memory representation: Option C
+
+Atomic Memories use a combination of human-readable natural-language content and structured representation.
+
+### Finalized Rules
+
+1. Human-readable content preserves the meaning of the memory.
+2. Structured representation supports querying, matching and reasoning.
+3. The model is not restricted to simple subject-predicate-object triples.
+4. Richer attributes and contextual information are permitted.
+5. Both representations must express consistent information.
+6. Structured fields must not introduce unsupported facts.
+7. Source and candidate lineage must be preserved.
+8. Historical information must remain distinguishable.
+
+---
+
+## Decision 5.4.5 — Independent importance and confidence: Option A
+
+Importance and confidence are separate dimensions.
+
+### Importance
+
+Represents the significance and potential future relevance of a memory.
+
+### Confidence
+
+Represents the strength of evidence supporting the memory.
+
+### Finalized Rules
+
+1. Importance and confidence are maintained independently.
+2. Neither is combined into a single score by default.
+3. Each dimension can be independently evaluated and updated.
+4. A memory may have high importance but low confidence.
+5. Evaluation changes follow record versioning and applicable audit-history policies.
+6. No separate evaluation-history entity is mandatory for every change.
+7. Exact scoring scales and evaluation algorithms are deferred to Phase 6.
+
+---
+
+## Decision 5.4.6 — Hybrid context representation: Option C
+
+Atomic Memories support both natural-language context and structured context.
+
+### Finalized Rules
+
+Context may include:
+
+- Time.
+- Location.
+- Conditions.
+- Scope.
+- Circumstances.
+- Qualifiers.
+- Relevant constraints.
+
+Context must preserve the original meaning and qualifiers.
+
+Missing contextual information must not be fabricated.
+
+Natural-language and structured context must remain consistent.
+
+Context supports matching, retrieval, contradiction resolution and consolidation.
+
+Exact context schemas are deferred to detailed schema design.
+
+---
+
+## Decision 5.4.7 — Mutable current memory with immutable revision history: Option A
+
+Atomic Memories maintain a current record and immutable revision history.
+
+### Finalized Rules
+
+1. The current record represents the latest accepted understanding.
+2. Every accepted change creates a new immutable revision.
+3. Previous revisions must not be overwritten.
+4. Source provenance must remain traceable across revisions.
+5. Relevant temporal information must be preserved.
+6. Bitemporal representation applies where appropriate.
+7. Historical revisions are not considered active by default.
+8. Deletion applies to dependent revisions and derived representations according to deletion policy.
+
+---
+
+# 6. Entity Representation and Resolution
+
+## Decision 5.4.8 — Canonical entity references: Option A
+
+Atomic Memories use canonical Entity references when identifiable.
+
+### Finalized Rules
+
+- Identifiable entities are represented through globally unique Entity IDs.
+- Ordinary attributes remain literal values.
+- Aliases are managed through Entity Management.
+- Unresolved entities may temporarily retain their original extracted wording.
+- Distinct entities must not be silently merged.
+- Source context and provenance must be preserved.
+- Entity references follow user and shared-data isolation boundaries.
+
+---
+
+## Decision 5.4.9 — Multi-label Memory Classification
+
+Atomic Memories support multiple categories.
+
+The initial category taxonomy includes:
+
+1. Personal Preferences
+2. Goals
+3. Decisions
+4. Important Events
+5. Relationships
+6. Knowledge
+7. Projects
+8. Commitments
+
+### Finalized Rules
+
+- One Atomic Memory may have multiple categories.
+- Categories are independently assigned and updated.
+- Categories do not replace the underlying memory content.
+- Classification changes preserve identity and relevant history.
+- The taxonomy may be extended as Raven evolves.
+
+---
+
+## Decision 5.4.10 — Explicit and inferred origin tracking: Option A
+
+Every Atomic Memory records whether its origin is explicit or inferred.
+
+### Explicit Memories
+
+Directly supported by statements or information supplied by the user.
+
+### Inferred Memories
+
+Derived through interpretation of available evidence.
+
+### Finalized Rules
+
+1. Every Atomic Memory records its origin type.
+2. Inferred memories preserve evidence and inference provenance.
+3. Confidence remains independent of importance.
+4. Weak inferences remain candidates and cannot automatically become validated memories.
+5. Validation does not convert an inferred memory into an explicit statement.
+6. Corrections preserve relevant inference history.
+7. Both types follow the same ownership, revision and deletion policies.
+
+---
+
+## Decision 5.4.11 — Hybrid Memory Granularity: Option C
+
+Raven uses a hybrid approach to memory granularity.
+
+### Finalized Rules
+
+1. Independently meaningful facts should generally be separated.
+2. Tightly coupled information remains together when separation would lose meaning.
+3. Each Atomic Memory maintains independent importance, confidence, provenance and lifecycle.
+4. Related facts may share source references.
+5. Related memories can be connected through Memory Relationships and Episodes.
+6. Semantic meaning takes priority over maximizing record count.
+7. The same principles apply to extraction, correction and consolidation.
+
+---
+
+## Decision 5.4.12 — Three-stage Entity Resolution: Option C
+
+Entity resolution follows three conceptual stages.
+
+### Stage 1 — Entity Mention
+
+Preserve the original extracted entity mention and its source context.
+
+### Stage 2 — Resolution
+
+Compare the mention against existing canonical entities using:
+
+- Identity evidence.
+- Aliases.
+- Context.
+- Relevant attributes.
+
+### Stage 3 — Canonical Association
+
+Link the mention to an existing canonical Entity when sufficiently supported, or create a new Entity when justified.
+
+### Finalized Rules
+
+- Uncertain mentions remain unresolved.
+- Similarity alone is insufficient proof of identity.
+- Incorrect merges must be correctable without losing original mentions or provenance.
+- Resolution respects user and shared-data boundaries.
+
+---
+
+## Decision 5.4.13 — Private and shared Entity scopes: Option C
+
+Raven supports two Entity scopes.
+
+### Private User-Scoped Entities
+
+Examples include:
+
+- Personal contacts.
+- Private organizations.
+- Contextual identities.
+- User-specific relationships.
+
+### Shared Canonical Public Entities
+
+Examples include:
+
+- Public companies.
+- Products.
+- Locations.
+- Public organizations.
+
+### Finalized Rules
+
+1. Private relationships remain private even when referencing shared entities.
+2. Shared entities must not contain private user context.
+3. Moving private information into shared data requires explicit classification and validation.
+4. Private deletion must not remove independently owned shared entities.
+
+---
+
+## Decision 5.4.14 — Independent Alias Management: Option A
+
+Canonical Entities maintain independently managed aliases.
+
+### Finalized Rules
+
+- Canonical Entity IDs remain stable.
+- Multiple aliases may resolve to the same Entity.
+- Original source wording is preserved in Entity Mentions.
+- Ambiguous aliases require contextual evaluation.
+- Alias matching alone does not prove identity.
+- Name changes are distinguished from identity changes.
+- Mergers, acquisitions and organizational splits are represented as explicit relationships or identity events, not simple aliases.
+- Alias management respects Entity scope.
+
+---
+
+## Decision 5.4.15 — Independent Entity Relationship records: Option A
+
+Entity Relationships are represented as independent typed directed records.
+
+### Finalized Rules
+
+1. Every relationship identifies a source Entity and target Entity.
+2. Relationships have an explicit type.
+3. Contextual attributes, confidence and provenance may be included.
+4. Relationships are directed by default.
+5. Symmetric relationship semantics must be explicitly defined.
+6. Temporal validity and transaction history are preserved where relevant.
+7. The Memory Engine controls relationship creation and updates.
+8. Similarity alone cannot establish a relationship.
+9. Private and shared Entity boundaries must be respected.
+10. Historical relationship changes must not be silently overwritten.
+
+---
+
+# 7. Episodes
+
+## Decision 5.4.16 — Independent Episode entities: Option A
+
+Episodes are independent entities that organize related Atomic Memories.
+
+### Finalized Rules
+
+1. Each Episode has its own globally unique identity.
+2. Episodes reference constituent Atomic Memories.
+3. Atomic Memories remain authoritative.
+4. Episodes may contain titles, summaries, temporal boundaries, context and participant references where supported.
+5. Episode membership preserves provenance and source traceability.
+6. A memory may participate in multiple Episodes.
+7. Episode summaries are derived representations and must not introduce unsupported facts.
+8. Changes to constituent memories may trigger Episode review or refresh.
+9. Episode updates preserve chronology and historical context.
+10. Deleting an Episode does not automatically delete its constituent Atomic Memories.
+
+---
+
+# 8. Derived Profiles
+
+## Decision 5.4.17 — Hybrid persisted and dynamically refreshed profiles: Option C
+
+Commonly useful Derived Profiles are persisted, while uncommon or stale profiles may be generated or refreshed dynamically.
+
+### Finalized Rules
+
+- Commonly useful profiles may be persisted.
+- Profiles are incrementally updated when relevant memories change.
+- Stale, incomplete or contradicted profiles can be dynamically refreshed.
+- Every profile preserves references to supporting memories.
+- Profile versions and freshness must be trackable.
+- Profiles are derived representations, not authoritative facts.
+- Unsupported conclusions must not be introduced.
+- On-demand profiles need not always be persisted.
+
+---
+
+# 9. Provenance Records
+
+## Decision 5.4.18 — Hybrid provenance storage: Option C
+
+Essential provenance references are maintained on relevant records, while detailed evidence relationships use independent Provenance Records where necessary.
+
+### Finalized Rules
+
+1. Atomic Memories and Candidates retain essential provenance references.
+2. Independent Provenance Records capture detailed evidence and source relationships where required.
+3. One memory may be supported by multiple sources.
+4. Provenance distinguishes explicit, inferred and system-generated information.
+5. Inferred memories preserve their inference lineage.
+6. Corrections preserve historical traceability.
+7. Embedded references and independent records must remain consistent.
+8. Provenance records follow Memory Engine ownership and lifecycle policies.
+
+---
+
+# 10. Embeddings and Indexing
+
+## Decision 5.4.19 — Separate embedding metadata and vector storage: Option C
+
+Embedding metadata is stored separately from vector payloads.
+
+### Finalized Rules
+
+1. Each embedding has an independent metadata record.
+2. Metadata references the relevant Atomic Memory and revision.
+3. Metadata identifies the embedding model and version.
+4. Vector payloads reside in a dedicated vector-indexing layer.
+5. Multiple embeddings may exist for different models or revisions where justified.
+6. Embeddings are derived data.
+7. Updates trigger regeneration or re-indexing as appropriate.
+8. Deletion propagates to metadata and vector payloads.
+9. Indexing status and failures are trackable.
+
+The vector database and embedding model are deferred to Phase 7.
+
+---
+
+## Decision 5.4.20 — Hybrid embedding lifecycle tracking: Option C
+
+The current lifecycle state is stored in Embedding Metadata Records.
+
+Independent job records are created when detailed processing history or recovery information is necessary.
+
+### Finalized Rules
+
+- Embedding metadata maintains current lifecycle state.
+- Lifecycle states cover pending, generating, generated, indexing, indexed, failed, superseded and deletion processing.
+- Detailed job records may capture retry, recovery and processing history.
+- The Memory Engine owns embedding data and its current state.
+- The Orchestrator owns general execution and task coordination.
+- Stale or failed embeddings must not silently be treated as current.
+- Updates and deletions propagate to associated records.
+
+---
+
+## Decision 5.4.21 — Hybrid embedding granularity: Option C
+
+Each eligible Atomic Memory receives one primary embedding, with additional embeddings only when distinct semantic aspects provide meaningful retrieval value.
+
+### Finalized Rules
+
+1. Every eligible Atomic Memory receives a primary embedding.
+2. Additional embeddings may represent distinct semantic aspects.
+3. All embeddings reference the same Atomic Memory and its revision.
+4. Embedding metadata identifies the purpose of each representation.
+5. Multiple fields alone do not justify multiple embeddings.
+6. Retrieval deduplicates results to their authoritative Atomic Memory.
+7. Atomic Memories remain authoritative.
+8. Additional embedding-generation criteria are deferred to Phase 6.
+
+---
+
+# 11. Memory Categories
+
+## Decision 5.4.22 — Hybrid Memory Category representation: Option C
+
+Current category assignments are stored in a structured form associated with Atomic Memories.
+
+Independent assignment records are used when detailed history, confidence, provenance or review tracking is necessary.
+
+### Finalized Rules
+
+- An Atomic Memory may have multiple categories.
+- A standard category taxonomy defines available categories.
+- Current assignments remain efficiently accessible.
+- Independent records may capture detailed classification metadata.
+- Inferred or ambiguous classifications can preserve confidence and evidence.
+- Classification changes preserve relevant history.
+- Category assignments do not replace memory content.
+
+---
+
+# 12. Memory Consolidation
+
+## Decision 5.4.23 — Hybrid consolidation-result representation: Option C
+
+Existing entities are reused for established consolidation outputs.
+
+Independent typed derived records are created only when a meaningful result does not fit an existing model.
+
+### Finalized Rules
+
+- Established outputs use existing entities such as Episodes and Derived Profiles.
+- Independent derived records may represent new meaningful output types.
+- Persisted results preserve contributing Atomic Memory references.
+- Relevant records preserve consolidation method, version, timestamp and provenance.
+- Derived results never replace authoritative memories.
+- Temporary intermediate outputs are not automatically persisted.
+
+---
+
+# 13. Memory Deletion
+
+## Decision 5.4.24 — Hybrid deletion tracking: Option C
+
+Coordinated deletion uses independent Memory Deletion Operation records, while affected records maintain their own deletion lifecycle state.
+
+### Finalized Rules
+
+1. Coordinated deletion requests create independent operation records.
+2. Affected records maintain their individual deletion state.
+3. Simple deletions may use a lightweight path.
+4. Operations track affected dependencies and propagation progress.
+5. Failed propagation can resume safely and idempotently.
+6. Information undergoing deletion becomes inaccessible when required by policy.
+7. Deletion records must not unnecessarily preserve forgotten content.
+8. The Memory Engine owns memory deletion operations.
+9. The Orchestrator may coordinate execution without taking ownership.
+10. Completion requires satisfaction of all applicable deletion obligations.
+
+---
+
+# 14. Candidate Evaluation
+
+## Decision 5.4.25 — Hybrid Candidate Evaluation History: Option C
+
+The latest evaluation state is stored inside the Memory Candidate.
+
+Independent Candidate Evaluation records are created for material evaluation changes.
+
+### Finalized Rules
+
+- Candidate records maintain their latest evaluation state.
+- Material changes create independent evaluation records.
+- Evaluation history preserves relevant evidence, provenance, timestamps and outcomes.
+- Routine processing details remain operational telemetry.
+- Meaningful evaluation history must not be overwritten.
+- Exact evaluation algorithms and thresholds are deferred to Phase 6.
+
+---
+
+# 15. Memory Correction
+
+## Decision 5.4.26 — Hybrid Memory Correction tracking: Option C
+
+Straightforward corrections use the Atomic Memory revision mechanism.
+
+Complex corrections use independent Memory Correction Request records.
+
+### Finalized Rules
+
+1. Simple corrections update the relevant Atomic Memory through a new revision.
+2. Complex corrections create independent correction records.
+3. Correction records preserve affected memory references, proposed changes, supporting evidence and resolution.
+4. Accepted corrections use the normal revision mechanism.
+5. Historical facts remain available where still valid and relevant.
+6. Dependent profiles, relationships, Episodes and Embeddings are reviewed or refreshed.
+7. Rejected or unresolved corrections must not silently modify authoritative memories.
+8. The Memory Engine owns correction workflows.
+9. Criteria for classifying complex corrections are deferred to Phase 6.
+
+---
+
+# 16. Memory Relationships
+
+## Decision 5.4.27 — Independent Memory Relationship records: Option A
+
+Meaningful relationships between Atomic Memories are represented through independent Memory Relationship records.
+
+### Finalized Rules
+
+1. Every relationship has its own globally unique ID.
+2. Every relationship identifies source and target Atomic Memories.
+3. Relationships have explicit types.
+4. Examples include:
+   - `supports`
+   - `contradicts`
+   - `updates`
+   - `supersedes`
+   - `related_to`
+   - `part_of`
+   - `derived_from`
+5. Relationships may contain confidence, provenance and contextual metadata.
+6. Relationships can be updated independently.
+7. Historical changes are preserved where relevant.
+8. User ownership and access boundaries apply.
+9. Similarity alone cannot establish factual relationships.
+10. Deletion triggers referential-integrity handling.
+
+Memory Relationships are distinct from Entity Relationships.
+
+---
+
+# 17. Memory Source Processing History
+
+## Decision 5.4.28 — Hybrid Memory Source processing history: Option C
+
+Memory Source records maintain current processing status.
+
+Independent Source Processing Event records capture meaningful processing transitions, failures, retries and recovery.
+
+### Finalized Rules
+
+- Source records maintain their current processing state.
+- Meaningful transitions are independently traceable.
+- Failures, retries and recovery events are preserved where significant.
+- Routine telemetry does not automatically become permanent business data.
+- Candidates retain references to originating sources.
+- The Memory Engine owns source processing state and domain-specific events.
+- The Orchestrator owns general task coordination.
+- Processing records follow source retention and deletion policies.
+
+---
+
+# 18. Episode Membership
+
+## Decision 5.4.29 — Independent Episode Membership records: Option B
+
+Every Episode–Atomic Memory association is represented by an independent Episode Membership record.
+
+### Finalized Rules
+
+1. Every membership has its own unique ID.
+2. It references one Episode and one Atomic Memory.
+3. Membership can capture sequence or ordering.
+4. It may identify the memory's role within the Episode.
+5. Relevant temporal context, provenance and confidence may be included.
+6. Membership can be managed independently.
+7. Historical membership changes are preserved where relevant.
+8. One Atomic Memory may belong to multiple Episodes.
+9. Episode deletion does not automatically delete Atomic Memories.
+10. Referential integrity and deletion policies apply.
+
+---
+
+# 19. Episode Timeline
+
+## Decision 5.4.30 — Hybrid Episode timeline representation: Option C
+
+Episode records maintain overall temporal boundaries.
+
+Episode Membership records preserve ordering.
+
+Independent timeline events represent meaningful milestones when necessary.
+
+### Finalized Rules
+
+- Episodes maintain known start and end boundaries.
+- Membership records maintain memory ordering.
+- Independent timeline events may represent important milestones.
+- Timeline events reference their Episode and relevant memories.
+- Temporal precision and uncertainty are preserved.
+- Unknown dates must not be fabricated.
+- Historical timeline corrections preserve previous understanding.
+- Valid time and transaction time remain distinguishable.
+
+---
+
+# 20. Derived Profile–Memory Relationships
+
+## Decision 5.4.31 — Independent Profile–Memory Association records: Option B
+
+Relationships between Derived Profiles and supporting Atomic Memories use independent association records.
+
+### Finalized Rules
+
+1. Each association has its own unique ID.
+2. Each association references one Derived Profile and one Atomic Memory.
+3. Associations may capture contribution or relevance.
+4. Supporting evidence and provenance references are preserved where applicable.
+5. Associations can be updated independently.
+6. Historical changes are preserved where relevant.
+7. A memory may support multiple profiles.
+8. A profile may be supported by multiple memories.
+9. Removing an association does not automatically delete either endpoint.
+10. Access and deletion policies follow record ownership.
+
+---
+
+# 21. Derived Profile Refresh History
+
+## Decision 5.4.32 — Hybrid Derived Profile refresh tracking: Option C
+
+Derived Profiles maintain current freshness and refresh status.
+
+Independent Profile Refresh History records capture meaningful changes, failures, recovery and material version updates.
+
+### Finalized Rules
+
+- Profiles maintain current freshness and refresh status.
+- Meaningful refresh events create independent history records.
+- Refresh records preserve triggers, supporting-memory references, outcomes and timestamps.
+- Significant failures and recovery attempts are traceable.
+- Routine details remain operational telemetry.
+- Immutable profile revisions preserve previous content.
+- Refresh history does not duplicate Orchestrator execution records.
+- The Memory Engine owns profiles, revisions and refresh history.
+
+---
+
+# 22. Entity Mentions
+
+## Decision 5.4.33 — Independent Entity Mention records: Option A
+
+Extracted Entity Mentions are represented as independent records.
+
+### Finalized Rules
+
+1. Each independently tracked mention has its own unique ID.
+2. Original extracted wording is preserved.
+3. The mention references its originating Memory Source and relevant context.
+4. Mention type and resolution status are recorded.
+5. A canonical Entity reference is attached when resolution is sufficiently supported.
+6. Unresolved and ambiguous mentions remain independent.
+7. Confidence and provenance are preserved where applicable.
+8. Incorrect resolutions can be corrected without losing the original mention.
+9. Canonical Entity aliases remain a separate concern.
+10. Mention records follow Memory Engine ownership, isolation, retention and deletion policies.
+
+An Entity Mention represents what Raven observed; a canonical Entity represents the identity Raven resolved it to.
+
+---
+
+# 23. Entity Resolution History
+
+## Decision 5.4.34 — Hybrid Entity Resolution tracking: Option C
+
+The current resolution state is stored in the Entity Mention.
+
+Independent Entity Resolution records are created for meaningful decisions, corrections, reassignments and entity merges.
+
+### Finalized Rules
+
+1. Entity Mention records maintain current resolution status.
+2. The current canonical Entity reference is stored when resolution is sufficiently supported.
+3. Independent resolution records preserve material resolution decisions.
+4. Resolution records may capture:
+   - Candidate canonical entities.
+   - Supporting identity evidence.
+   - Resolution outcome.
+   - Relevant rationale.
+   - Timestamp and provenance.
+5. Routine matching attempts remain operational logs.
+6. Historical resolution decisions remain traceable.
+7. Similarity alone is never sufficient proof of identity.
+8. Incorrect resolution decisions must be correctable without losing original mentions.
+9. Resolution must respect private and shared Entity boundaries.
+10. The Memory Engine owns its entity-resolution records.
+
+---
+
+# 24. Memory Engine Ownership Summary
+
+| Data Model | Authoritative Owner |
+|---|---|
+| Memory Source | Memory Engine |
+| Memory Candidate | Memory Engine |
+| Atomic Memory | Memory Engine |
+| Entity | Memory Engine |
+| Entity Relationship | Memory Engine |
+| Memory Relationship | Memory Engine |
+| Episode | Memory Engine |
+| Episode Membership | Memory Engine |
+| Derived Profile | Memory Engine |
+| Profile–Memory Association | Memory Engine |
+| Provenance Record | Memory Engine |
+| Entity Mention | Memory Engine |
+| Entity Resolution Record | Memory Engine |
+| Embedding Metadata | Memory Engine |
+| Memory Deletion Operation | Memory Engine |
+| Memory Correction Request | Memory Engine |
+| Candidate Evaluation Record | Memory Engine |
+| Source Processing Event | Memory Engine |
+| Profile Refresh History | Memory Engine |
+| Memory Category Assignment | Memory Engine |
+| Memory Consolidation Result | Memory Engine |
+| Episode Timeline Event | Memory Engine |
+
+The vector-indexing infrastructure may be shared or separately deployed, but the Memory Engine retains ownership of its embedding metadata and domain-specific indexing state.
+
+---
+
+# 25. Cross-Cutting Memory Integrity Rules
+
+The following rules apply to every Memory Engine model:
+
+1. Every record has a unique identity.
+2. Every record belongs to a clearly defined ownership scope.
+3. User-specific data remains isolated.
+4. Original sources remain traceable.
+5. Derived records retain source references.
+6. Current and historical memory states remain distinguishable.
+7. Importance and confidence remain separate.
+8. Explicit and inferred memories remain distinguishable.
+9. Similarity alone cannot establish identity or factual relationships.
+10. Deletion propagates through all applicable dependencies.
+11. Embeddings and profiles never become authoritative over original memories.
+12. Historical corrections must preserve valid historical information.
+13. Failed background operations must remain traceable.
+14. No derived representation may introduce unsupported facts.
+
+---
+
+# 26. Deferred Implementation Decisions
+
+The following topics are intentionally outside the scope of this document.
+
+## Phase 6 — Algorithms & Processing Design
+
+- Relevance Gate.
+- Memory extraction.
+- Candidate evaluation and promotion.
+- Duplicate detection.
+- Contradiction resolution.
+- Entity resolution.
+- Memory relationship discovery.
+- Episode construction.
+- Profile generation and refresh.
+- Memory consolidation.
+- Embedding generation.
+- Retrieval ranking.
+- Memory decay and forgetting.
+- Deletion propagation and recovery.
+
+## Phase 7 — Technology & Infrastructure Selection
+
+- Database technology.
+- Vector database.
+- Content/object storage.
+- Embedding model.
+- Search/indexing infrastructure.
+- Queue and messaging technology.
+- Deployment and scaling architecture.
+
+## Implementation Phases
+
+- Production database schemas.
+- Field names and types.
+- Index definitions.
+- Migrations.
+- Repository and service implementation.
+- Automated testing.
+- Performance benchmarking.
+
+---
+
+# 27. Completion Status
+
+**Phase 5.4 — Memory Engine Data Models: Architecturally Complete.**
+
+All 34 decisions have been finalized and documented.
+
+The Memory Engine data model establishes the foundation for subsequent algorithm design and implementation.
+
+**Next:** Phase 5.5 — Research Engine Data Models.
+
+---
+
+<!-- Amendment reapplied from commit 3fd622b. Its text is unchanged except for corrected documentation paths. -->
+
 # Phase 5 Amendment — Document Intelligence Data Models
 
 ## 1. Purpose

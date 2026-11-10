@@ -21,11 +21,11 @@ Read the following before implementation:
 - `docs/architecture/`
 - `docs/data-models/`
 - `docs/algorithms/`
-- `docs/technology/`
-- `docs/technical-decisions.md`
-- `docs/implementation-plans/phase-08-memory-engine/02-database-and-persistence.md`
-- `docs/implementation-plans/phase-08-memory-engine/04-extraction-and-evaluation.md`
-- `docs/implementation-plans/phase-08-memory-engine/12-document-rag-pipeline.md`
+- `docs/technical-decisions/`
+- `docs/technical-decisions/Readme.md`
+- `docs/implementation-plans/Phase-08-memory-engine/02-database-and-persistence.md`
+- `docs/implementation-plans/Phase-08-memory-engine/04-extraction-and-evaluation.md`
+- `docs/implementation-plans/Phase-08-memory-engine/12-document-rag-pipeline.md`
 
 Follow the approved data models and technology decisions. Do not introduce new entities, dependencies, or processing stages without reconciling them with the existing specifications.
 

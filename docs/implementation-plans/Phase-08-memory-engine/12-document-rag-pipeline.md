@@ -86,17 +86,17 @@ Claude Code must review:
 2. `docs/architecture/` — Memory Engine architecture.
 3. `docs/data-models/` — approved data models.
 4. `docs/algorithms/` — approved algorithm specifications.
-5. `docs/technology/01-baseline-technology-stack.md`
-6. `docs/technology/02-database-and-storage-architecture.md`
-7. `docs/technology/03-vector-search-and-embedding-infrastructure.md`
-8. `docs/technology/04-background-processing-and-messaging.md`
-9. `docs/technology/05-nlp-and-machine-learning-stack.md`
-10. `docs/technology/07-observability-and-testing-infrastructure.md`
-11. `docs/implementation-plans/phase-08-memory-engine/03-ingestion-pipeline.md`
-12. `docs/implementation-plans/phase-08-memory-engine/07-memory-storage-and-indexing.md`
-13. `docs/implementation-plans/phase-08-memory-engine/08-memory-retrieval.md`
-14. `docs/implementation-plans/phase-08-memory-engine/10-forgetting-and-deletion.md`
-15. `docs/implementation-plans/phase-08-memory-engine/11-memory-engine-integration-and-testing.md`
+5. `docs/technical-decisions/01-baseline-technology-stack.md`
+6. `docs/technical-decisions/02-database-and-storage-architecture.md`
+7. `docs/technical-decisions/03-vector-search-and-embedding-infrastructure.md`
+8. `docs/technical-decisions/04-background-processing-and-messaging.md`
+9. `docs/technical-decisions/05-NLP-and-machine-learning-stack.md`
+10. `docs/technical-decisions/07-observability-and-testing-infrastructure.md`
+11. `docs/implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md`
+12. `docs/implementation-plans/Phase-08-memory-engine/07-memory-storage-and-indexing.md`
+13. `docs/implementation-plans/Phase-08-memory-engine/08-memory-retrieval.md`
+14. `docs/implementation-plans/Phase-08-memory-engine/10-forgetting-and-deletion.md`
+15. `docs/implementation-plans/Phase-08-memory-engine/11-memory-engine-integration-and-testing.md`
 
 The final Phase 8 data-model and algorithm amendments must also be reviewed before implementation.
 

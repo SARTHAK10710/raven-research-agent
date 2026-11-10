@@ -23,12 +23,12 @@ Read the following before implementation:
 - `docs/architecture/`
 - `docs/data-models/`
 - `docs/algorithms/`
-- `docs/technology/`
-- `docs/technical-decisions.md`
-- `docs/implementation-plans/phase-08-memory-engine/03-ingestion-pipeline.md`
-- `docs/implementation-plans/phase-08-memory-engine/05-entity-and-relationship-management.md`
-- `docs/implementation-plans/phase-08-memory-engine/06-memory-resolution.md`
-- `docs/implementation-plans/phase-08-memory-engine/12-document-rag-pipeline.md`
+- `docs/technical-decisions/`
+- `docs/technical-decisions/Readme.md`
+- `docs/implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md`
+- `docs/implementation-plans/Phase-08-memory-engine/05-entity-and-relationship-management.md`
+- `docs/implementation-plans/Phase-08-memory-engine/06-memory-resolution.md`
+- `docs/implementation-plans/Phase-08-memory-engine/12-document-rag-pipeline.md`
 
 Follow the approved extraction, provenance, and candidate models.
 

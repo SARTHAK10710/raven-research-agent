@@ -31,7 +31,9 @@ Shared Infrastructure is a cross-cutting support layer, not an additional busine
 
 **1. Memory Engine**
 
-Responsible for:
+The Memory Engine contains two separate logical knowledge domains with independent ownership, data models, retrieval workflows and lifecycle rules. They may share infrastructure, but document chunks are never treated as personal memories.
+
+*Personal Memory* — responsible for:
 
 - Memory ingestion and extraction.
 - Importance and confidence evaluation.
@@ -41,6 +43,17 @@ Responsible for:
 - Contextual retrieval.
 - Memory consolidation.
 - Forgetting and deletion.
+
+*Document Intelligence* — responsible for:
+
+- Document registration, validation and versioning.
+- Text and structure extraction from uploaded documents.
+- Structure-aware chunking and document embeddings.
+- Hybrid (vector and keyword) document retrieval.
+- Evidence selection, extractive answer assembly and citation provenance.
+- Document lifecycle and deletion of derived artifacts.
+
+Document Intelligence was added to the Memory Engine through the Phase 5–7 amendments; see [data-models](../data-models/Readme.md), [algorithms](../algorithms/Readme.md) and [technical-decisions](../technical-decisions/Readme.md).
 
 **2. Research Engine**
 
@@ -87,12 +100,12 @@ The following documents define Raven's system architecture.
 
 | Document | Description | Status |
 |---|---|---|
-| `phase-01-system-architecture.md` | Overall architecture, system layers, ownership, communication and lifecycle | Complete |
+| `phase-01-overall-architecture.md` | Overall architecture, system layers, ownership, communication and lifecycle | Complete |
 | `phase-02-memory-engine.md` | Memory Engine components, workflows, retrieval, consolidation and forgetting | Complete |
 | `phase-03-research-engine.md` | Research Engine components, discovery, extraction, verification and retrieval | Complete |
 | `phase-04-agent-orchestrator.md` | Orchestration, planning, routing, execution, context and recovery | Complete |
 
-*The filenames above describe the intended document naming convention. Preserve the actual filenames in this repository when creating links.*
+*The filenames above are the actual files in this directory.*
 
 ---
 
@@ -120,7 +133,7 @@ Raven uses a hybrid communication approach:
 - Orchestrator-mediated coordination between engines by default.
 - Explicit contracts, correlation identifiers and traceable execution state.
 
-Exact protocols, APIs and infrastructure technologies are intentionally deferred to later phases.
+The technologies for these patterns were selected in Phase 7: REST/OpenAPI via FastAPI for synchronous communication, and RabbitMQ with Celery for asynchronous processing (see [technical-decisions](../technical-decisions/Readme.md)). Concrete API and message schemas are defined during implementation.
 
 ---
 
@@ -137,16 +150,24 @@ Exact protocols, APIs and infrastructure technologies are intentionally deferred
 
 This means the architectural specifications have been documented. It does not indicate that the corresponding software has been implemented or tested.
 
+Later documentation phases build on this architecture:
+
+| Phase | Description | Status |
+|---|---|---|
+| Phase 5 | Data Models & Database Design ([data-models](../data-models/Readme.md)) | Documented |
+| Phase 6 | Algorithms & Processing Design ([algorithms](../algorithms/Readme.md)) | Documented |
+| Phase 7 | Technology & Infrastructure Selection ([technical-decisions](../technical-decisions/Readme.md)) | Documented |
+| Phase 8 | Memory Engine Implementation ([plans](../implementation-plans/Phase-08-memory-engine/Readme.md)) | Planned; implementation not started |
+
 ---
 
 ## Next Steps
 
-The next stages translate the architecture into:
+Phases 5–7 have translated the architecture into data models, algorithms and technology decisions. The next stages are:
 
-- Data models and database design.
-- Algorithms and processing specifications.
-- Technology and infrastructure selection.
-- Engine implementation and integration.
+- Memory Engine implementation (Phase 8), starting with Phase 8.1 Foundation and Project Setup.
+- Research Engine and Agent Orchestrator implementation.
+- Engine integration.
 - Testing, evaluation and deployment.
 
 Architecture documents are the source of truth for implementation. Implementation decisions must remain consistent with these specifications.

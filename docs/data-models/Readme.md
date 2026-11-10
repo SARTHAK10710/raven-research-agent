@@ -20,7 +20,7 @@ Each major component owns its authoritative business records.
 
 | Component | Data Ownership |
 |---|---|
-| Memory Engine | Memory sources, candidates, atomic memories, entities, relationships, episodes, profiles and memory embeddings |
+| Memory Engine | Personal memory: memory sources, candidates, atomic memories, entities, relationships, episodes, profiles and memory embeddings. Document Intelligence (a separate logical domain): documents, document versions, extracted representations, chunks, chunk locations, document embedding metadata and document processing operations |
 | Research Engine | Research sessions, snapshots, sources, extracted content, findings, evidence and comparisons |
 | Agent Orchestrator | Executions, tasks, dependencies, context snapshots, checkpoints and execution results |
 | Shared Infrastructure | User identity, authorization policies, shared infrastructure configuration and infrastructure audit records |
@@ -54,16 +54,16 @@ Phase 5 is documented across the following files.
 
 | Document | Description | Status |
 |---|---|---|
-| `phase-05-overall-data-architecture.md` | Overall data architecture, data classification and access model | Complete |
-| `phase-05-data-ownership.md` | Ownership boundaries and responsibilities | Complete |
-| `phase-05-core-entities.md` | Core entities, identifiers, relationships and provenance | Complete |
-| `phase-05-memory-engine-models.md` | Memory Engine data models | Complete |
-| `phase-05-research-engine-models.md` | Research Engine data models | Complete |
-| `phase-05-orchestrator-models.md` | Agent Orchestrator data models | Complete |
-| `phase-05-shared-infrastructure-models.md` | Shared Infrastructure data models | Complete |
-| `phase-05-relationships-and-lifecycle.md` | Relationships, indexing, consistency, retention, deletion and migration | Complete |
+| `phase-05-data-models-overview.md` | 5.1–5.3: Overall data architecture, data classification, access model, ownership boundaries, core entities, identifiers, relationships and provenance | Complete |
+| `phase-05-memory-engine-models.md` | 5.4: Memory Engine personal memory data models, followed by the Document Intelligence data model amendment | Complete |
+| `phase-05-research-engine-models.md` | 5.5: Research Engine data models | Complete |
+| `phase-05-orchestrator-models.md` | 5.6: Agent Orchestrator data models | Complete |
+| `phase-05-shared-infrastructure-models.md` | 5.7: Shared Infrastructure data models | Complete |
+| `phase-05-relationships-and-lifecycle.md` | 5.8–5.10: Relationships, indexing, consistency, retention, deletion and migration, followed by the Document Intelligence relationships and lifecycle amendment | Complete |
 
-*These are descriptive filenames. Preserve the actual filenames in the repository when creating links.*
+*The filenames above are the actual files in this directory. Subphases 5.1–5.3 are documented together in `phase-05-data-models-overview.md`.*
+
+*Two files carry amendments for Document Intelligence and RAG. Each keeps its original specification first and appends the amendment at the end; the amendment extends the original decisions and does not replace them.*
 
 ---
 
