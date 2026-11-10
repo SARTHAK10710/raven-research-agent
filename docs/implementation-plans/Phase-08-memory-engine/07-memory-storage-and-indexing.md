@@ -1,516 +1,440 @@
-# Phase 8.7 — Memory Storage & Indexing Implementation Plan
+# 8.7 — Memory Storage and Indexing
 
 ## 1. Objective
 
-Implement the Memory Engine's authoritative memory storage and indexing capabilities.
+Implement reliable storage and indexing for the Memory Engine.
 
-This milestone receives resolved memory operations from Phase 8.6 and ensures that authoritative memories, revisions, metadata, relationships and derived search representations are stored consistently.
+This plan covers two distinct data domains:
 
-The system must support efficient future retrieval without compromising data integrity or provenance.
+1. **Personal memory storage and indexing:** authoritative memories, revisions, relationships, metadata, and their retrieval indexes.
+2. **Document intelligence storage and indexing:** document chunks, provenance, embeddings, and document retrieval indexes.
 
-### Primary objectives
+Both domains may share approved infrastructure, but they must maintain independent ownership, retrieval boundaries, and lifecycle management.
 
-- Persist authoritative memory records.
-- Maintain immutable memory revisions.
-- Store memory metadata and category assignments.
-- Maintain entity and memory relationships.
-- Generate and manage memory embeddings.
-- Implement vector and keyword indexing.
-- Support metadata-based filtering.
-- Maintain consistency between authoritative records and derived indexes.
-- Support ownership, concurrency and idempotency.
-- Prepare storage for Phase 8.8 retrieval.
+The implementation must follow the approved Phase 5 data models, Phase 6 algorithms, and Phase 7 technology decisions.
 
 ## 2. Architecture references
 
-Claude Code must review:
+Read:
 
-1. `PROJECT_ARCHITECTURE.md`
-2. `docs/architecture/` — Memory Engine architecture.
-3. `docs/data-models/` — approved Memory Engine data models.
-4. `docs/algorithms/memory/03-memory-retrieval.md`
-5. `docs/algorithms/memory/02-memory-resolution.md`
-6. `docs/technology/01-baseline-technology-stack.md`
-7. `docs/technology/02-database-and-storage-architecture.md`
-8. `docs/technology/03-vector-search-and-embedding-infrastructure.md`
-9. `docs/technology/07-observability-and-testing-infrastructure.md`
-10. `docs/implementation-plans/phase-08-memory-engine/02-database-and-persistence.md`
-11. `docs/implementation-plans/phase-08-memory-engine/06-memory-resolution.md`
+- `PROJECT_ARCHITECTURE.md`
+- `docs/architecture/`
+- `docs/data-models/`
+- `docs/algorithms/`
+- `docs/technology/`
+- `docs/technical-decisions.md`
+- `docs/implementation-plans/phase-08-memory-engine/02-database-and-persistence.md`
+- `docs/implementation-plans/phase-08-memory-engine/04-extraction-and-evaluation.md`
+- `docs/implementation-plans/phase-08-memory-engine/06-memory-resolution.md`
+- `docs/implementation-plans/phase-08-memory-engine/08-memory-retrieval.md`
+- `docs/implementation-plans/phase-08-memory-engine/12-document-rag-pipeline.md`
 
-The Phase 5 data models and Phase 7 technology decisions are authoritative.
+## 3. Storage architecture
 
-Do not introduce a new database or redefine the approved memory storage architecture without identifying the architectural gap.
+Use the approved baseline:
 
-## 3. Scope
+- PostgreSQL for authoritative relational records.
+- SQLAlchemy for ORM and persistence.
+- Alembic for schema migrations.
+- pgvector for vector storage.
+- PostgreSQL full-text search for keyword retrieval.
+- S3-compatible object storage for large source documents and artifacts.
 
-### Included
+Do not introduce a dedicated vector database without an approved decision supported by workload measurements.
 
-- Authoritative memory persistence.
-- Memory revision persistence.
-- Metadata storage.
-- Category assignment persistence.
-- Relationship persistence.
-- Provenance persistence.
-- Embedding generation integration.
-- Embedding metadata management.
-- Vector indexing.
-- Keyword indexing.
-- Metadata indexing.
-- Index consistency.
-- Index update and rebuild operations.
-- Storage and indexing tests.
+## 4. Personal memory storage
 
-### Excluded
+### 4.1 Authoritative memory records
 
-- User-facing memory retrieval and ranking.
-- Dynamic Top-K selection.
-- Iterative retrieval.
-- Memory consolidation.
-- Profile generation.
-- Forgetting and deletion execution.
-- Document chunk retrieval and document RAG.
+Persist only memories that have passed the approved extraction and resolution lifecycle.
 
-These capabilities belong to later milestones or the final Phase 8 review.
+Support the approved data models for:
 
-## 4. Storage architecture
-
-Follow the approved storage design:
-
-- PostgreSQL is the authoritative structured data store.
-- The `memory` schema owns Memory Engine records.
-- pgvector provides the initial vector storage capability.
-- PostgreSQL full-text search provides the initial keyword retrieval foundation.
-- Object storage preserves large original source content.
-- Embeddings and indexes are derived data, not authoritative memory records.
-
-Do not introduce a dedicated vector database at this stage.
-
-Any future migration to a separate vector database must be justified by measured workload requirements.
-
-## 5. Authoritative memory storage
-
-Implement persistence for the approved memory data models.
-
-The implementation must reconcile its operations with the existing model inventory, including:
-
-- Atomic Memory.
+- Memory sources.
+- Memory candidates.
+- Atomic memories.
 - Memory revisions.
-- Memory Source.
-- Memory Candidate.
 - Category assignments.
-- Entity associations.
+- Entities and aliases.
+- Entity mentions.
+- Entity relationships.
 - Memory relationships.
+- Episodes and episode membership.
+- Derived profiles and their associations.
 - Provenance.
 - Embedding metadata.
 - Processing history.
+- Deletion operations.
 
-Use the exact approved entity names and relationships from the Phase 5 specifications.
+Use the exact approved model definitions and relationships from Phase 5.
 
-### Requirements
+Do not create new authoritative entities or fields merely to simplify implementation.
 
-- Maintain stable identifiers.
-- Enforce user ownership.
-- Validate foreign-key relationships.
-- Preserve source provenance.
-- Maintain revision history.
-- Preserve current versus historical memory states.
-- Support transactional updates.
-- Prevent unintended duplicate records.
-- Enforce approved lifecycle states.
+### 4.2 Revision history
 
-### Important distinction
+Preserve the approved memory revision history.
 
-An accepted candidate is not automatically an authoritative active memory.
+Updates must not silently overwrite historical information.
 
-Only candidates with an approved resolution outcome may be persisted or updated as authoritative memories.
+Support:
 
-The storage layer must enforce this boundary through its application interfaces and validation rules.
+- Revision identity.
+- Revision ordering.
+- Relevant timestamps.
+- Source provenance.
+- Version relationships.
+- Current-state identification.
 
-## 6. Memory revision management
+Historical and current values must remain distinguishable.
 
-Implement the approved revision model.
+### 4.3 Memory ownership
 
-Requirements:
+Every personal memory must be scoped to its owning user.
 
-- Preserve previous revisions.
-- Create new revisions for approved updates.
-- Associate revisions with their source evidence.
-- Track revision creation timestamps.
-- Preserve relevant temporal information.
-- Identify the current authoritative revision.
-- Support revision history retrieval internally.
+Storage and repository operations must enforce ownership.
 
-Do not overwrite historical revision content.
+No retrieval index or cached representation may bypass the ownership rules of the authoritative database.
 
-Do not create unnecessary revisions for repeated idempotent operations.
+## 5. Document intelligence storage
 
-A revision must represent a meaningful approved change.
+Document records and chunks are not personal memory records.
 
-## 7. Metadata and category indexing
+Their persistence and indexing must follow the document models approved through Phase 5 and plan 8.2.
 
-Implement indexes for commonly used metadata fields.
+The document domain must support:
 
-Follow the approved Phase 7 database indexing strategy.
+- Document identity.
+- Document versions.
+- Original document references.
+- Extracted content.
+- Document chunks.
+- Chunk ordering.
+- Page and section metadata.
+- Chunk provenance.
+- Document embedding metadata.
+- Indexing status.
+- Document lifecycle and deletion references.
 
-Potential indexing dimensions include:
+Document chunks must remain traceable to the original document version and location.
+
+Do not insert document chunks into the authoritative atomic-memory collection.
+
+Do not use personal memory categories to classify document chunks.
+
+## 6. Indexing boundaries
+
+Maintain independent logical indexes for personal memory and document intelligence.
+
+### 6.1 Personal memory indexes
+
+Support indexing for:
 
 - User ownership.
-- Memory identifier.
-- Entity identifier.
-- Category.
-- Lifecycle state.
-- Importance.
-- Confidence.
-- Source reference.
-- Creation timestamp.
-- Update timestamp.
-- Temporal validity.
-- Relationship references.
+- Memory identity.
+- Memory categories.
+- Entities.
+- Relationships.
+- Temporal attributes.
+- Confidence and importance metadata.
+- Memory embeddings.
+- Keyword search.
+- Retrieval status.
 
-Requirements:
+### 6.2 Document indexes
 
-- Enforce ownership filtering in all relevant queries.
-- Support efficient metadata filtering.
-- Avoid excessive index creation.
-- Use composite indexes only when justified by query patterns.
-- Preserve database migration compatibility.
+Support indexing for:
 
-Do not create indexes for every field without measuring their usefulness.
+- User ownership.
+- Document identity.
+- Document version.
+- Chunk identity.
+- Chunk sequence.
+- Page and section location.
+- Document metadata.
+- Chunk embeddings.
+- Keyword search.
+- Processing and indexing status.
 
-## 8. Embedding generation and lifecycle
+The document index must retain sufficient metadata to retrieve and cite the correct source passage.
 
-Implement memory embedding generation using the approved sentence-transformers ecosystem.
+### 6.3 Shared infrastructure
 
-Embeddings are derived representations of authoritative memory content.
+Both logical domains may use the same PostgreSQL deployment and pgvector extension.
 
-They must never replace the original memory record.
+Sharing infrastructure does not permit:
 
-### 8.1 Embedding input preparation
+- Mixing retrieval results without explicit coordination.
+- Ignoring domain ownership.
+- Reusing incompatible embedding representations.
+- Bypassing source-specific deletion.
+- Treating a document chunk as a personal memory.
 
-Prepare memory content for embedding using deterministic preprocessing.
+## 7. Embedding generation and persistence
 
-Requirements:
+Embedding generation must follow the approved Phase 7 model-selection and algorithm decisions.
 
-- Normalize supported text.
-- Preserve meaningful context.
-- Avoid removing qualifiers that change meaning.
-- Use consistent preprocessing across indexing and retrieval.
-- Respect ownership and access boundaries.
+Embeddings are derived data.
 
-### 8.2 Embedding generation
+The authoritative source content must remain independently stored.
 
-Implement an embedding service responsible for:
+### 7.1 Personal memory embeddings
 
-- Loading the approved embedding model.
-- Generating embeddings.
-- Validating output dimensions.
-- Checking for invalid or non-finite values.
-- Recording model metadata.
-- Handling model failures.
+Memory embeddings must be associated with their authoritative memory and applicable revision.
 
-Model selection must be based on Raven-specific evaluation rather than assumptions about model quality.
+Track the approved metadata, including:
 
-### 8.3 Embedding metadata
-
-Preserve the approved embedding metadata, including:
-
-- Memory reference.
 - Model identifier.
 - Model version.
-- Embedding dimensions.
-- Preprocessing version.
+- Vector dimensions.
+- Preprocessing configuration.
 - Creation timestamp.
-- Relevant lifecycle state.
-
-Follow the Phase 5 data model.
-
-### 8.4 Embedding priority
-
-Follow the approved hybrid embedding strategy:
-
-- Important memories may receive priority embedding generation.
-- Routine memories may be processed asynchronously.
-- Updated memories require appropriate embedding refresh.
-- Embedding failures must not corrupt authoritative memory records.
-
-### 8.5 Embedding consistency
-
-When a memory revision changes:
-
-- Mark the previous embedding as stale where appropriate.
-- Generate a new embedding for the current revision.
-- Ensure the index does not incorrectly represent an older revision as current.
-- Preserve model-version metadata.
-
-Do not silently overwrite embedding metadata in a way that destroys the ability to identify which revision was embedded.
-
-## 9. Vector indexing
-
-Use PostgreSQL with pgvector.
-
-Implement the initial vector storage and indexing foundation.
-
-Requirements:
-
-- Store embeddings using the approved vector representation.
-- Associate vectors with the correct memory and revision.
-- Enforce ownership through the authoritative memory relationship.
-- Support metadata-compatible search queries.
-- Validate vector dimensions.
-- Handle invalid embedding values.
-- Support index maintenance.
-
-### Index selection
-
-Evaluate the available pgvector index approaches, including:
-
-- HNSW.
-- IVFFlat.
-
-Do not assume one index type is automatically superior for Raven.
-
-Record the selected initial approach and the reasons for it.
-
-Defer detailed index parameters until benchmark data is available.
-
-## 10. Keyword indexing
-
-Implement PostgreSQL full-text search as the initial keyword search mechanism.
-
-Requirements:
-
-- Normalize searchable memory text.
-- Maintain the keyword representation.
-- Support language-aware configuration where appropriate.
-- Associate searchable text with authoritative memory records.
-- Respect ownership and lifecycle filtering.
-- Update indexes when the authoritative memory revision changes.
-
-Do not assume keyword matching alone is sufficient for semantic retrieval.
-
-## 11. Index consistency and maintenance
-
-Indexes are derived data.
-
-The authoritative memory record must remain valid even when a derived index is temporarily unavailable.
-
-Implement reliable index maintenance.
-
-### Required behavior
-
-- Track pending indexing operations.
-- Handle embedding generation failures.
-- Support retryable indexing jobs.
-- Detect stale embeddings.
-- Rebuild derived indexes where necessary.
-- Prevent duplicate index records.
-- Support reconciliation between authoritative records and indexes.
-
-### Update consistency
-
-When a memory changes:
-
-1. Persist the authoritative memory change.
-2. Register the required derived-data update.
-3. Generate the updated embedding.
-4. Update vector and keyword indexes.
-5. Verify index state.
-6. Mark indexing complete.
-
-Use the approved asynchronous processing and idempotency architecture.
-
-Do not assume that a database transaction and a background queue publication are automatically atomic.
-
-Use the approved transactional outbox or equivalent reliable handoff approach where appropriate.
-
-## 12. Concurrency and integrity
-
-Implement the approved concurrency controls.
-
-Requirements:
-
-- Optimistic concurrency for memory updates.
-- Revision conflict detection.
-- Idempotent indexing operations.
-- Stable ownership enforcement.
-- Referential integrity.
-- Transactional persistence for authoritative memory changes.
-- Safe retries.
-- Stale derived-data detection.
-
-An indexing failure must never cause an authoritative memory update to be falsely reported as unsuccessful if the authoritative transaction already committed.
-
-The system must distinguish:
-
-- Memory persistence status.
-- Embedding generation status.
 - Indexing status.
 
-## 13. Failure handling
+Regenerate embeddings when required by the approved memory update lifecycle.
 
-| Scenario | Expected behavior |
-|---|---|
-| Memory persistence failure | Roll back the authoritative transaction |
-| Duplicate persistence request | Resolve idempotently |
-| Revision conflict | Reload and re-evaluate |
-| Embedding model unavailable | Preserve memory and retry indexing |
-| Invalid embedding dimensions | Reject derived representation |
-| Vector index failure | Record failure and reconcile |
-| Keyword indexing failure | Preserve authoritative memory |
-| Partial index update | Mark derived data incomplete |
-| Stale embedding | Schedule regeneration |
-| Queue publication failure | Recover through reliable handoff |
-| Database interruption | Preserve integrity and recover safely |
+### 7.2 Document chunk embeddings
 
-Do not delete authoritative memories because an embedding or index operation failed.
+Document chunk embeddings must reference the correct:
 
-## 14. Testing requirements
+- Document.
+- Document version.
+- Chunk.
+- Embedding model.
+- Model version.
+- Preprocessing configuration.
 
-### Unit tests
+Embedding a new document version must not silently replace the embeddings belonging to an older version.
 
-Test:
+The document processing pipeline in plan 8.12 owns document chunk embedding generation and indexing.
 
-- Memory persistence validation.
-- Revision creation.
-- Metadata handling.
-- Category assignment.
-- Embedding preprocessing.
-- Embedding output validation.
-- Index operation construction.
-- Idempotency behavior.
+### 7.3 Embedding validation
 
-### Component tests
+Before persistence, validate:
 
-Test:
+- Expected vector dimensions.
+- Finite numeric values.
+- Correct source association.
+- Correct model metadata.
+- Correct ownership.
+- Valid processing state.
 
-- Authoritative memory persistence.
+Failed embedding generation must not corrupt authoritative source records.
+
+## 8. Keyword and vector indexing
+
+Use the approved PostgreSQL full-text and pgvector capabilities.
+
+### Vector indexing
+
+Support similarity search over the correct logical domain.
+
+Memory retrieval must search personal memory representations.
+
+Document retrieval must search document chunk representations.
+
+### Keyword indexing
+
+Use PostgreSQL full-text search for relevant textual representations.
+
+Preserve language and text-normalization metadata where required by the approved design.
+
+### Hybrid retrieval compatibility
+
+The indexing architecture must support future hybrid retrieval that combines:
+
+- Vector similarity.
+- Keyword relevance.
+- Metadata filtering.
+- Entity or relationship signals where applicable.
+
+Retrieval and ranking behavior belongs to plan 8.8 for personal memory and plan 8.12 for document intelligence.
+
+Similarity is a retrieval signal, not proof of identity or truth.
+
+## 9. Index consistency
+
+Indexing must remain consistent with authoritative records.
+
+Implement a recoverable indexing workflow using the approved background-processing and operation-management architecture.
+
+Requirements:
+
+- Durable indexing state.
+- Idempotent index operations.
+- Retryable failures.
+- Stale-index detection.
+- Reconciliation.
+- Correct version association.
+- Deletion propagation.
+- Model-version tracking.
+
+If an index update fails, the authoritative source must remain intact and the indexing state must accurately indicate incomplete work.
+
+Do not silently report a record as fully indexed when required indexing operations have failed.
+
+## 10. Derived-data lifecycle
+
+Treat embeddings, search indexes, cached representations, and other derived structures as dependent data.
+
+When an authoritative memory or document changes:
+
+1. Identify affected derived representations.
+2. Mark stale representations appropriately.
+3. Schedule the required update.
+4. Regenerate or remove affected representations.
+5. Verify indexing consistency.
+6. Record completion.
+
+Do not allow stale document chunks or embeddings to be presented as belonging to a newer document version.
+
+Do not allow stale memory embeddings to silently represent a newer memory revision.
+
+## 11. Deletion compatibility
+
+This plan must make all derived data discoverable for the full deletion process in plan 8.10.
+
+### Personal memory deletion dependencies
+
+- Authoritative memory.
+- Revisions.
+- Embeddings.
+- Keyword indexes.
+- Relationship-derived representations.
+- Cached retrieval results.
+- Applicable derived profiles and episodes.
+
+### Document deletion dependencies
+
+- Original document objects.
+- Document versions.
+- Extracted content.
+- Chunks.
+- Chunk embeddings.
+- Keyword indexes.
+- Cached document retrieval results.
+- Pending processing operations.
+- Document-derived personal memory references.
+
+Deletion must respect ownership and dependency boundaries.
+
+Deleting a document must not automatically delete unrelated personal memories.
+
+## 12. Performance considerations
+
+Begin with the approved PostgreSQL and pgvector architecture.
+
+Do not prematurely introduce:
+
+- A dedicated vector database.
+- A separate search platform.
+- Distributed indexing infrastructure.
+- Multiple database deployments.
+
+Evaluate performance using representative Raven workloads.
+
+Any change to indexing strategy or infrastructure must be documented and justified by measurements.
+
+## 13. Testing requirements
+
+### Personal memory storage tests
+
+- Memory persistence.
 - Revision history.
-- Embedding generation.
-- Embedding metadata persistence.
-- Vector indexing.
-- Keyword indexing.
-- Metadata indexing.
-- Index update operations.
-- Index reconciliation.
+- Category associations.
+- Entity relationships.
+- Provenance persistence.
+- Embedding association.
+- User isolation.
+- Index consistency.
 
-### Integration tests
+### Document storage and indexing tests
 
-Test:
+- Document version persistence.
+- Chunk ordering.
+- Page and section provenance.
+- Chunk embedding association.
+- Correct version association.
+- Keyword index consistency.
+- Vector index consistency.
+- Failed indexing recovery.
+- Duplicate indexing operations.
+- Document deletion dependencies.
 
-- PostgreSQL and pgvector integration.
-- SQLAlchemy persistence.
-- Alembic migration compatibility.
-- Background indexing jobs.
-- Transactional outbox or approved reliable handoff.
-- Ownership filtering.
-- Revision-to-embedding consistency.
+### Isolation tests
 
-### Reliability tests
+- Document chunks do not appear in personal memory retrieval.
+- Memory embeddings are not interpreted as document embeddings.
+- Cross-user indexing queries are rejected.
+- Document updates preserve historical version associations.
+- Deletion in one domain does not silently corrupt the other.
 
-Test:
+### Failure tests
 
-- Embedding service interruption.
+- Embedding generation failure.
+- Database write failure.
 - Index update failure.
-- Duplicate indexing jobs.
-- Concurrent memory updates.
-- Stale embedding detection.
-- Index rebuild.
-- Database restart during indexing.
+- Worker interruption.
+- Duplicate indexing request.
+- Stale index.
+- Deleted source.
+- Concurrent updates.
 
-## 15. Observability
+## 14. Acceptance criteria
 
-Record structured events for:
+This plan is complete when:
 
-- Memory persisted.
-- Revision created.
-- Embedding generation started.
-- Embedding generation completed.
-- Embedding generation failed.
-- Vector index updated.
-- Keyword index updated.
-- Index reconciliation started.
-- Index reconciliation completed.
-- Indexing failed.
+1. Authoritative personal memories are persisted correctly.
+2. Memory revision history is preserved.
+3. Personal memory metadata and relationships are indexed.
+4. Personal memory embeddings are stored with correct metadata.
+5. Document chunks are persisted independently.
+6. Document chunk provenance is preserved.
+7. Document embeddings are stored with correct version references.
+8. Memory and document indexes remain logically separate.
+9. Hybrid retrieval infrastructure is available for both domains.
+10. Indexing failures can be recovered.
+11. Deletion dependencies can be identified.
+12. Ownership and isolation tests pass.
+13. Required integration tests pass.
 
-Track:
+## 15. Out of scope
 
-- Authoritative memory persistence latency.
-- Embedding generation latency.
-- Embedding failure rate.
-- Indexing queue depth.
-- Indexing completion latency.
-- Stale embedding count.
-- Index reconciliation failures.
-- Index update retry count.
+This plan does not implement:
 
-Do not log raw memory content or embedding vectors.
+- Personal memory retrieval ranking.
+- Document parsing.
+- OCR.
+- Document chunking.
+- Document answer assembly.
+- Full deletion orchestration.
+- Cross-engine retrieval coordination.
+- Dedicated external vector database deployment.
 
-## 16. Acceptance criteria
+These responsibilities belong to their respective plans.
 
-Phase 8.7 is complete only when:
+## 16. Claude Code execution instructions
 
-- [ ] Authoritative memories can be persisted.
-- [ ] Immutable revision history is maintained.
-- [ ] Ownership and referential integrity are enforced.
-- [ ] Metadata and category assignments are indexed.
-- [ ] Approved relationships are persisted.
-- [ ] Provenance remains traceable.
-- [ ] Memory embeddings can be generated.
-- [ ] Embedding metadata is stored.
-- [ ] pgvector integration works.
-- [ ] Keyword indexing works.
-- [ ] Index updates are idempotent.
-- [ ] Stale embeddings can be identified.
-- [ ] Derived-data failures do not corrupt authoritative memory.
-- [ ] Index reconciliation is available.
-- [ ] Concurrency and failure handling are tested.
-- [ ] Unit and integration tests pass.
-- [ ] No out-of-scope retrieval or deletion functionality has been introduced.
+Before implementation:
 
-## 17. Implementation constraints
+1. Inspect the existing persistence and indexing implementation.
+2. Read the approved Phase 5 data models and Phase 7 technology decisions.
+3. Identify reusable repositories, vector infrastructure, and indexing workers.
+4. Reconcile personal memory and document indexing boundaries.
+5. Identify any schema or migration gaps.
+6. Propose the minimum required changes.
 
-Claude Code must:
+Do not silently introduce new schemas, model fields, or dependencies.
 
-1. Inspect the repository before modifications.
-2. Reuse Phase 8.1–8.6 implementations.
-3. Follow approved Phase 5 data models.
-4. Follow Phase 6 algorithms.
-5. Follow Phase 7 technology decisions.
-6. Use PostgreSQL and pgvector initially.
-7. Keep authoritative records separate from derived indexes.
-8. Preserve immutable revisions.
-9. Preserve provenance and ownership.
-10. Keep embedding generation separate from authoritative memory persistence.
-11. Avoid introducing a dedicated vector database without an approved decision.
-12. Avoid generative LLM functionality.
-13. Avoid implementing document RAG in this milestone.
-14. Place source code inside `memory-engine/`.
-15. Place tests inside `tests/`.
-16. Do not proceed to Phase 8.8 automatically.
+After implementation, report:
 
-If an approved model or persistence capability is insufficient, report the gap and recommend a change before modifying the schema.
+- Files created or modified.
+- Storage and indexing components implemented.
+- Embedding metadata and model handling.
+- Indexing recovery behavior.
+- Dependencies added.
+- Migrations created.
+- Tests executed and results.
+- Acceptance criteria satisfied.
+- Known limitations.
 
-## 18. Completion report
-
-Claude Code must provide:
-
-1. Summary of storage functionality.
-2. Files created or modified.
-3. Database migrations introduced.
-4. Memory and revision persistence details.
-5. Embedding model and version.
-6. Vector indexing implementation.
-7. Keyword indexing implementation.
-8. Index consistency and recovery approach.
-9. Tests executed and exact results.
-10. Known limitations.
-11. Deviations from approved specifications.
-12. Acceptance criteria status.
-
-Clearly distinguish authoritative storage completion from derived-index completion.
-
-## 19. Definition of done
-
-Phase 8.7 is complete when Raven can persist authoritative memories and their revisions while maintaining reliable metadata, vector and keyword indexes that can be used by the retrieval system.
-
-**Authoritative memory data remains the source of truth. Embeddings and indexes remain rebuildable derived data.**
+Do not automatically proceed to plan 8.8.
