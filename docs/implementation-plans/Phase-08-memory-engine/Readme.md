@@ -2,130 +2,313 @@
 
 ## 1. Purpose
 
-This directory contains the implementation plans for Raven's Memory Engine.
+Phase 8 implements Raven's Memory Engine based on the architecture, data models, algorithms, and technology decisions documented in earlier phases.
 
-The purpose of Phase 8 is to translate the approved Memory Engine architecture, data models, algorithms, and technology decisions into a working, testable implementation.
+The Memory Engine is responsible for:
 
-All source code will be written inside the existing:
+- Ingesting and validating user-provided information.
+- Extracting and evaluating potential memories.
+- Managing entities and relationships.
+- Resolving duplicates, updates, and contradictions.
+- Persisting and indexing authoritative memories.
+- Retrieving relevant personal memories.
+- Consolidating and maintaining memory.
+- Managing explicit forgetting and deletion.
+- Processing documents and enabling evidence-grounded document retrieval through a dedicated RAG pipeline.
+
+Phase 8 implements both **personal memory capabilities** and **document intelligence capabilities**. These are related but distinct domains and must not be treated as interchangeable.
+
+## 2. Implementation scope
+
+Phase 8 has twelve implementation plans.
+
+| Plan | Document | Responsibility |
+|---|---|---|
+| 8.1 | `01-foundation-and-project-setup.md` | Establish the Memory Engine project foundation |
+| 8.2 | `02-database-and-persistence.md` | Implement database models and persistence |
+| 8.3 | `03-ingestion-pipeline.md` | Validate and register incoming information |
+| 8.4 | `04-extraction-and-evaluation.md` | Extract and evaluate memory candidates |
+| 8.5 | `05-entity-and-relationship-management.md` | Manage entities, aliases, and relationships |
+| 8.6 | `06-memory-resolution.md` | Resolve duplicates, updates, and contradictions |
+| 8.7 | `07-memory-storage-and-indexing.md` | Persist and index authoritative memories |
+| 8.8 | `08-memory-retrieval.md` | Retrieve relevant personal memories |
+| 8.9 | `09-consolidation-and-maintenance.md` | Consolidate and maintain personal memories |
+| 8.10 | `10-forgetting-and-deletion.md` | Implement reliable deletion and forgetting |
+| 8.11 | `11-memory-engine-integration-and-testing.md` | Integrate and validate the Memory Engine |
+| 8.12 | `12-document-rag-pipeline.md` | Implement document processing and RAG |
+
+## 3. Architecture references
+
+Implementation must follow the existing architectural source of truth.
+
+Before implementing a capability, Claude Code must inspect the relevant documents, including:
+
+- `PROJECT_ARCHITECTURE.md`
+- `docs/architecture/`
+- `docs/data-models/`
+- `docs/algorithms/`
+- `docs/technology/`
+- `docs/technical-decisions.md`
+
+The implementation plans explain how to implement the approved architecture. They do not independently authorize changes to architectural decisions.
+
+If a conflict, missing definition, or ambiguity is discovered, Claude Code must report it rather than silently inventing a new design.
+
+## 4. Personal memory and document intelligence boundaries
+
+Raven supports two distinct information domains within the Memory Engine.
+
+### 4.1 Personal memory
+
+Personal memory represents information about the user and their ongoing context.
+
+Examples include:
+
+- Preferences.
+- Goals.
+- Decisions.
+- Important events.
+- Relationships.
+- Knowledge.
+- Projects.
+- Commitments.
+
+Personal memory follows the established lifecycle:
+
+`Ingestion → Extraction → Evaluation → Resolution → Storage → Retrieval → Consolidation`
+
+Only validated and resolved information becomes authoritative personal memory.
+
+### 4.2 Document intelligence
+
+Document intelligence allows users to upload documents and retrieve relevant information from their contents.
+
+The document pipeline follows:
+
+`Document Registration → Parsing → Structure Extraction → Chunking → Embedding → Indexing → Retrieval → Evidence Selection → Answer Assembly`
+
+Document content must remain distinct from personal memory.
+
+Important boundaries:
+
+- Uploading a document does not automatically create personal memories.
+- Document chunks are not atomic personal memory records.
+- Document embeddings and personal memory embeddings are logically separate.
+- Document retrieval must preserve document, version, chunk, and location provenance.
+- Document-derived facts can enter personal memory only through an explicit, authorized extraction workflow using the normal memory candidate and resolution process.
+- Document retrieval must not silently alter personal memory.
+- The Orchestrator will decide when to retrieve personal memory, documents, or both.
+
+### 4.3 Shared infrastructure
+
+Both capabilities may reuse approved infrastructure, including:
+
+- PostgreSQL.
+- pgvector.
+- Object storage.
+- Background workers.
+- Shared logging and observability.
+- Common security and authorization mechanisms.
+
+Sharing infrastructure does not mean sharing business ownership or mixing authoritative records.
+
+## 5. Implementation principles
+
+### 5.1 Architecture ownership
+
+- Memory Engine owns personal memory processing and document intelligence.
+- Research Engine owns external research workflows and research-specific records.
+- Agent Orchestrator owns task coordination and cross-engine execution.
+- Shared Infrastructure provides reusable technical capabilities.
+- No engine should take ownership of another engine's business logic.
+
+### 5.2 Correctness before optimization
+
+Correctness, privacy, security, data integrity, and traceability take priority over performance.
+
+Optimization must follow measured bottlenecks rather than premature complexity.
+
+### 5.3 No generative LLM dependency
+
+The core Raven processing architecture must not depend on generative LLM APIs or locally hosted generative LLMs.
+
+Use the approved combination of:
+
+- Deterministic rules.
+- Conventional NLP.
+- Statistical methods.
+- Embedding models.
+- Conventional machine learning.
+- Extractive processing.
+- Deterministic answer templates.
+
+Machine learning outputs are signals, not authoritative decisions. Deterministic validation must protect critical state changes.
+
+### 5.4 Provenance and evidence
+
+Every authoritative memory must retain appropriate provenance.
+
+Document-derived answers must preserve evidence references, including the relevant document, version, chunk, and page or section location where available.
+
+The system must distinguish:
+
+- Verified information.
+- Inferred information.
+- Low-confidence information.
+- Conflicting information.
+- Missing or inaccessible evidence.
+
+### 5.5 User isolation and privacy
+
+- Enforce user-level ownership and authorization.
+- Prevent cross-user retrieval and data access.
+- Avoid exposing sensitive document content in logs.
+- Apply deletion and retention policies across primary and derived data.
+- Do not train models automatically on user data.
+
+### 5.6 Idempotency and recovery
+
+Operations that may be retried must be designed for idempotency.
+
+The system must handle:
+
+- Duplicate ingestion requests.
+- Worker retries.
+- Interrupted processing.
+- Partial failures.
+- Concurrent updates.
+- Stale background jobs.
+- Indexing failures.
+- Deletion retries.
+
+A timeout must not be interpreted as proof that an operation failed.
+
+## 6. Implementation sequence
+
+The implementation plans should be executed in dependency order.
+
+1. Foundation and project setup.
+2. Database and persistence.
+3. Ingestion pipeline.
+4. Extraction and evaluation.
+5. Entity and relationship management.
+6. Memory resolution.
+7. Memory storage and indexing.
+8. Memory retrieval.
+9. Consolidation and maintenance.
+10. Forgetting and deletion.
+11. Integration and testing.
+12. Document intelligence and RAG.
+
+Some tasks may require iterative integration, but later plans must not be considered complete merely because their code has been created.
+
+Each plan must pass its own acceptance criteria before the phase is considered complete.
+
+## 7. Source-code placement
+
+Implementation plans belong inside:
+
+`docs/implementation-plans/phase-08-memory-engine/`
+
+Actual source code belongs in the existing:
 
 `memory-engine/`
 
-This directory contains implementation instructions only. It must not contain application source code.
+Tests belong in the appropriate locations under:
 
-## 2. Implementation Objectives
+`tests/`
 
-The Memory Engine must support:
+Do not place implementation source code inside the documentation or implementation-plan directories.
 
-- Information ingestion and validation.
-- Memory relevance evaluation.
-- Atomic fact extraction.
-- Explicit and inferred memory classification.
-- Candidate generation and evaluation.
-- Entity and relationship management.
-- Duplicate and contradiction detection.
-- Memory updates and version management.
-- Authoritative memory persistence.
-- Hybrid memory retrieval.
-- Episodic and semantic consolidation.
-- Derived profile generation.
-- Memory maintenance.
-- Forgetting and deletion propagation.
-- Reliability, observability, and recovery.
+Claude Code must inspect the existing repository before proposing or creating package structures. Reuse existing conventions and avoid unnecessary restructuring.
 
-## 3. Implementation Plan Index
+## 8. Testing and quality requirements
 
-| Step | Document | Responsibility |
-|---|---|---|
-| 8.1 | [Foundation and Project Setup](01-foundation-and-project-setup.md) | Establish the Memory Engine foundation |
-| 8.2 | [Database and Persistence](02-database-and-persistence.md) | Implement database models and persistence |
-| 8.3 | [Ingestion Pipeline](03-ingestion-pipeline.md) | Validate and ingest supported inputs |
-| 8.4 | [Extraction and Evaluation](04-extraction-and-evaluation.md) | Extract and evaluate memory candidates |
-| 8.5 | [Entity and Relationship Management](05-entity-and-relationship-management.md) | Manage entities, aliases and relationships |
-| 8.6 | [Memory Resolution](06-memory-resolution.md) | Resolve duplicates, contradictions and updates |
-| 8.7 | [Memory Storage and Indexing](07-memory-storage-and-indexing.md) | Persist authoritative memories and indexes |
-| 8.8 | [Memory Retrieval](08-memory-retrieval.md) | Implement hybrid memory retrieval |
-| 8.9 | [Consolidation and Maintenance](09-consolidation-and-maintenance.md) | Implement episodes, profiles and maintenance |
-| 8.10 | [Forgetting and Deletion](10-forgetting-and-deletion.md) | Implement controlled forgetting and deletion |
-| 8.11 | [Integration and Testing](11-memory-engine-integration-and-testing.md) | Verify complete Memory Engine workflows |
+The Memory Engine must be validated at multiple levels:
 
-## 4. Architecture References
+- Unit tests.
+- Component tests.
+- Database integration tests.
+- Background-worker tests.
+- End-to-end workflow tests.
+- Authorization and isolation tests.
+- Failure and recovery tests.
+- Data integrity tests.
+- Retrieval quality tests.
+- Document evidence and citation tests.
+- Deletion propagation tests.
+- Performance tests.
 
-Implementation must follow the approved documents.
+Tests must validate behavior and correctness, not merely successful imports or API responses.
 
-### Architecture
+### Important quality checks
 
-`docs/architecture/`
+- Duplicate ingestion must not create duplicate authoritative memories.
+- Contradictory information must not silently overwrite existing facts.
+- Historical and current values must remain distinguishable.
+- Low-confidence inferences must not be presented as confirmed facts.
+- Document chunks must not enter personal memory accidentally.
+- Document answers must be traceable to supporting evidence.
+- Cross-user data access must be prevented.
+- Deletion must propagate to applicable derived data.
+- Failed processing must not be reported as successful.
 
-### Data Models
+## 9. Definition of done
 
-`docs/data-models/`
+Phase 8 is complete only when:
 
-### Algorithms
+1. All twelve implementation plans have been implemented or explicitly dispositioned through an approved scope decision.
+2. Personal memory ingestion and retrieval work end to end.
+3. Memory resolution preserves history and handles conflicts safely.
+4. Consolidation and maintenance operate without corrupting authoritative records.
+5. Forgetting and deletion propagate across applicable data and indexes.
+6. Document ingestion, parsing, chunking, indexing, and retrieval work end to end.
+7. Document answers preserve evidence and citation provenance.
+8. Personal memory and document intelligence remain separate domains.
+9. User isolation and authorization are tested.
+10. Required integration, quality, and failure tests pass.
+11. Documentation reflects the actual implementation.
+12. Known limitations and deferred work are recorded.
 
-`docs/algorithms/memory/`
+No capability should be marked complete without test evidence.
 
-### Technology Decisions
+## 10. Implementation reporting requirements
 
-`docs/technical-decisions.md`
+After completing each implementation plan, Claude Code must report:
 
-### Technology Specifications
+- Files created or modified.
+- Dependencies added or changed.
+- Database migrations created, if applicable.
+- Tests executed.
+- Exact test commands and results.
+- Acceptance criteria satisfied.
+- Known limitations.
+- Architectural deviations or unresolved decisions.
+- Any security, privacy, or data-integrity concerns.
 
-`docs/technology/`
+Claude Code must not automatically proceed to the next implementation plan unless explicitly instructed.
 
-These documents collectively define the approved design and implementation constraints.
+## 11. Out of scope
 
-## 5. Implementation Principles
+Unless separately approved, Phase 8 does not include:
 
-1. Architecture documents are the source of truth.
-2. Implement one milestone at a time.
-3. Respect the established Memory Engine ownership boundary.
-4. Keep authoritative memories separate from candidates and derived data.
-5. Preserve source provenance and temporal context.
-6. Preserve explicit versus inferred classification.
-7. Never treat similarity as proof of identity.
-8. Do not automatically destroy ambiguous or conflicting memories.
-9. Enforce user-level data isolation.
-10. Make processing operations idempotent where required.
-11. Implement deletion as a coordinated lifecycle operation.
-12. Use deterministic validation for authoritative state transitions.
-13. Keep generative LLM APIs and locally hosted generative LLMs out of core processing.
-14. Do not introduce unnecessary infrastructure or dependencies.
-15. Do not claim a milestone is complete without implementation and test evidence.
+- Building the user interface.
+- Implementing the Research Engine.
+- Implementing the Agent Orchestrator.
+- Cross-engine workflow orchestration.
+- Deploying the complete Raven platform.
+- Introducing a dedicated external vector database without workload evidence.
+- Adding generative LLM dependencies.
+- Automatically converting every uploaded document into personal memories.
 
-## 6. Implementation Workflow
+These capabilities belong to their respective phases or require a separate architectural decision.
 
-Every milestone follows this workflow:
+## 12. Final implementation objective
 
-1. Read the corresponding implementation plan.
-2. Read its architecture, data model, and algorithm references.
-3. Inspect the existing repository before modifying files.
-4. Identify dependencies and existing implementation.
-5. Implement only the approved scope.
-6. Add relevant automated tests.
-7. Run the tests and inspect the results.
-8. Review data integrity, security, and ownership boundaries.
-9. Document actual implementation status.
-10. Move to the next milestone only after acceptance criteria are satisfied.
+The objective of Phase 8 is to deliver a reliable Memory Engine that can maintain useful personal context and provide evidence-grounded access to user documents.
 
-## 7. Definition of Done
+The system must know the difference between what it remembers about a user and what a document says.
 
-A milestone is complete only when:
+It must preserve the source, context, confidence, history, and ownership of information throughout its lifecycle.
 
-- Required functionality is implemented.
-- Expected source files exist.
-- Architecture and data model requirements are respected.
-- Relevant automated tests pass.
-- Failure cases are handled.
-- Security and ownership requirements are verified.
-- No known critical integrity issues remain.
-- Implementation evidence is documented.
-
-Documentation completion alone does not constitute implementation completion.
-
-## 8. Phase Completion
-
-Phase 8 is complete when the Memory Engine's required capabilities have been implemented, integrated, tested, and verified against the approved specifications.
-
-**Current status:** Implementation planning.
-
-**Next milestone:** Phase 8.1 — Foundation and Project Setup.
+**Correctness, trustworthiness, privacy, and traceability are the primary measures of success.**
