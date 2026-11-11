@@ -1,6 +1,6 @@
 # Project Status
 
-**Last verified update:** 2026-11-11, on branch `feat/phase-8-2-persistence-foundation` (from `docs/record-docker-and-pr4-merge`, which is `main` @ `ab50c48` plus the PR #6 status commits), with Phase 8.2 step 1 in the working tree, uncommitted. Phase 8.1 commit `5a0d6e5` is merged into `main` through [PR #3](https://github.com/SARTHAK10710/raven-research-agent/pull/3).
+**Last verified update:** 2026-11-11, on branch `feat/phase-8-2-document-persistence`, with Phase 8.2 step 2 in the working tree, uncommitted. It is stacked on step 1 (`d2346b6`, [PR #7](https://github.com/SARTHAK10710/raven-research-agent/pull/7)), which is stacked on [PR #6](https://github.com/SARTHAK10710/raven-research-agent/pull/6) (status docs); neither is merged yet. Phase 8.1 commit `5a0d6e5` is merged into `main` through [PR #3](https://github.com/SARTHAK10710/raven-research-agent/pull/3).
 
 ## Current position
 
@@ -8,9 +8,9 @@
 |---|---|
 | Current phase | Phase 8 — Memory Engine Implementation |
 | Current subphase | 8.2 — Database and Persistence (**approved 2026-11-11**) |
-| Subphase status | 8.2 `IN_PROGRESS`: **step 1 implemented and tested** (core Personal Memory persistence) on branch `feat/phase-8-2-persistence-foundation`, uncommitted. 8.1 remains `VERIFIED` and merged (`5a0d6e5`) |
-| Current active task | Owner review of 8.2 step 1; then 8.2 step 2 (Document Intelligence `doc_` tables and object references) |
-| Application code | 8.1 foundation plus 8.2 step 1: `pm_memory_source`, `pm_memory_candidate`, `pm_atomic_memory`, `pm_atomic_memory_revision`, `pm_provenance` (migration `0001`), owner-scoped repositories and a unit of work. **No ingestion, extraction, resolution, retrieval ranking, deletion workflow or document processing** |
+| Subphase status | 8.2 `IN_PROGRESS`: step 1 (core Personal Memory persistence) committed in PR #7; **step 2 (Document Intelligence persistence) implemented and tested**, uncommitted. 8.1 remains `VERIFIED` and merged (`5a0d6e5`) |
+| Current active task | Owner review of 8.2 step 2; then step 3 (entities, relationships, episodes, profiles, categories, memory embedding metadata, deletion records) |
+| Application code | 8.1 foundation plus 8.2 steps 1–2: Personal Memory core tables (migration `0001`), Document Intelligence tables and the document-evidence path (migration `0002`), owner-scoped repositories and units of work for both domains. **No ingestion, extraction, parsing, chunking, embedding generation, retrieval ranking or deletion workflow** — these are persistence only |
 
 ## Documentation completion
 
@@ -31,7 +31,7 @@ Documentation recovery: four specifications that had been overwritten by amendme
 
 | Phase | Status |
 |---|---|
-| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `IN_PROGRESS` (step 1 tested, uncommitted); 8.3–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
+| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `IN_PROGRESS` (step 1 in PR #7, step 2 tested and uncommitted); 8.3–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
 | Research Engine | Not started (later phase) |
 | Agent Orchestrator | Not started (later phase) |
 | Shared Infrastructure | Not started |
@@ -41,6 +41,6 @@ Installed: Phase 8.1 dependencies plus the Phase 8.2 database dependencies (SQLA
 
 ## Pending work
 
-1. Owner review of 8.2 step 1 (branch `feat/phase-8-2-persistence-foundation`), then commit and pull request.
-2. 8.2 step 2: Document Intelligence tables (`doc_*`), object references, `pm_document_evidence_ref`.
+1. Merge PR #6, then PR #7 (8.2 step 1).
+2. Owner review of 8.2 step 2 (branch `feat/phase-8-2-document-persistence`), then commit and pull request.
 3. Remaining 8.2 steps (entities, relationships, episodes, profiles, embedding metadata, deletion records) per plan 8.2, then 8.2 acceptance review.

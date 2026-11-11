@@ -25,10 +25,29 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from memory_engine.config.settings import DatabaseSettings
+from memory_engine.documents.domain import (
+    ChunkLocation,
+    Document,
+    DocumentChunk,
+    DocumentEmbedding,
+    DocumentVersion,
+    ExtractedRepresentation,
+    ProcessingOperation,
+)
+from memory_engine.documents.domain.vocabulary import (
+    DocumentLifecycleStatus,
+    DocumentMediaType,
+    EmbeddingStatus,
+    ExtractionStatus,
+    OperationStatus,
+    OperationType,
+    VersionProcessingStatus,
+)
 from memory_engine.domain.identifiers import OwnerScope, new_id
 from memory_engine.domain.vocabulary import (
     CandidateOrigin,
     CandidateStatus,
+    DocumentEvidenceStatus,
     MemoryLifecycleStatus,
     MemoryOrigin,
     ProvenanceOriginKind,
@@ -38,12 +57,14 @@ from memory_engine.domain.vocabulary import (
     SourceType,
 )
 from memory_engine.infrastructure.persistence import (
+    SqlAlchemyDocumentUnitOfWorkFactory,
     SqlAlchemyPersonalUnitOfWorkFactory,
     create_database_engine,
 )
 from memory_engine.personal.domain import (
     AtomicMemory,
     AtomicMemoryRevision,
+    DocumentEvidenceRef,
     MemoryCandidate,
     MemorySource,
     ProvenanceRecord,
@@ -226,6 +247,7 @@ class Builders:
         *,
         source_id: uuid.UUID | None = None,
         candidate_id: uuid.UUID | None = None,
+        document_evidence_id: uuid.UUID | None = None,
         revision_number: int | None = 1,
     ) -> ProvenanceRecord:
         return ProvenanceRecord(
@@ -237,10 +259,148 @@ class Builders:
             recorded_at=T0,
             source_id=source_id,
             candidate_id=candidate_id,
+            document_evidence_id=document_evidence_id,
             revision_number=revision_number,
+        )
+
+    # --- Document Intelligence -------------------------------------------------
+
+    def document(
+        self, scope: OwnerScope, filename: str = "synthetic-report.pdf"
+    ) -> tuple[Document, DocumentVersion]:
+        document_id, version_id = new_id(), new_id()
+        document = Document(
+            id=document_id,
+            owner_id=scope.owner_id,
+            original_filename=filename,
+            media_type=DocumentMediaType.PDF,
+            lifecycle_status=DocumentLifecycleStatus.AVAILABLE,
+            current_version_id=version_id,
+        )
+        return document, self.version(scope, document_id, version_id=version_id, number=1)
+
+    def version(
+        self,
+        scope: OwnerScope,
+        document_id: uuid.UUID,
+        *,
+        number: int,
+        version_id: uuid.UUID | None = None,
+    ) -> DocumentVersion:
+        version_id = version_id or new_id()
+        return DocumentVersion(
+            id=version_id,
+            owner_id=scope.owner_id,
+            document_id=document_id,
+            version_number=number,
+            object_key=DocumentVersion.object_key_for(scope.owner_id, document_id, version_id),
+            content_sha256=f"{number:064x}",
+            size_bytes=1024 * number,
+            media_type=DocumentMediaType.PDF,
+            uploaded_at=T0 + timedelta(days=number),
+            processing_status=VersionProcessingStatus.STORED,
+        )
+
+    def representation(
+        self,
+        scope: OwnerScope,
+        version_id: uuid.UUID,
+        status: ExtractionStatus = ExtractionStatus.EXTRACTED,
+    ) -> ExtractedRepresentation:
+        return ExtractedRepresentation(
+            id=new_id(),
+            owner_id=scope.owner_id,
+            version_id=version_id,
+            extraction_method="synthetic_pdf_parser",
+            extraction_version="1.0",
+            status=status,
+            extracted_at=T0,
+            structure={"headings": ["Introduction", "Results"]},
+            error_code="ENCRYPTED_PDF" if status is ExtractionStatus.EXTRACTION_FAILED else None,
+        )
+
+    def chunks(
+        self, scope: OwnerScope, version_id: uuid.UUID, representation_id: uuid.UUID, *texts: str
+    ) -> list[DocumentChunk]:
+        return [
+            DocumentChunk(
+                id=new_id(),
+                owner_id=scope.owner_id,
+                version_id=version_id,
+                representation_id=representation_id,
+                sequence=index,
+                content=text,
+                content_sha256=f"{index + 1:064x}",
+                chunking_strategy="structure_aware",
+                chunking_version="1",
+                locations=[
+                    ChunkLocation(id=new_id(), page_number=index + 1, section_heading="Results"),
+                    ChunkLocation(
+                        id=new_id(), start_offset=index * 100, end_offset=index * 100 + 99
+                    ),
+                ],
+            )
+            for index, text in enumerate(texts)
+        ]
+
+    def embedding(self, scope: OwnerScope, chunk: DocumentChunk) -> DocumentEmbedding:
+        return DocumentEmbedding(
+            id=new_id(),
+            owner_id=scope.owner_id,
+            chunk_id=chunk.id,
+            version_id=chunk.version_id,
+            model_id="synthetic-embedding-model",
+            model_revision="r1",
+            dimensions=384,
+            preprocessing_version="p1",
+            status=EmbeddingStatus.PENDING,
+        )
+
+    def operation(
+        self,
+        scope: OwnerScope,
+        document_id: uuid.UUID,
+        key: str,
+        operation_type: OperationType = OperationType.CHUNKING,
+        version_id: uuid.UUID | None = None,
+    ) -> ProcessingOperation:
+        return ProcessingOperation(
+            id=new_id(),
+            owner_id=scope.owner_id,
+            document_id=document_id,
+            version_id=version_id,
+            operation_type=operation_type,
+            status=OperationStatus.QUEUED,
+            idempotency_key=key,
+        )
+
+    def evidence(
+        self,
+        scope: OwnerScope,
+        candidate_id: uuid.UUID,
+        chunk: DocumentChunk,
+        document_id: uuid.UUID,
+    ) -> DocumentEvidenceRef:
+        return DocumentEvidenceRef(
+            id=new_id(),
+            owner_id=scope.owner_id,
+            candidate_id=candidate_id,
+            document_ref=document_id,
+            version_ref=chunk.version_id,
+            chunk_ref=chunk.id,
+            extraction_method="authorized_document_extraction",
+            status=DocumentEvidenceStatus.ACTIVE,
+            recorded_at=T0,
+            page_number=1,
+            section_heading="Results",
         )
 
 
 @pytest.fixture
 def build() -> Builders:
     return Builders()
+
+
+@pytest.fixture
+def doc_uow_factory(session_factory: sessionmaker[Session]) -> SqlAlchemyDocumentUnitOfWorkFactory:
+    return SqlAlchemyDocumentUnitOfWorkFactory(session_factory)

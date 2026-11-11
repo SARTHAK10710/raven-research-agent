@@ -7,11 +7,15 @@ from memory_engine.infrastructure.persistence.database import (
     translate_database_errors,
 )
 from memory_engine.infrastructure.persistence.unit_of_work import (
+    SqlAlchemyDocumentUnitOfWork,
+    SqlAlchemyDocumentUnitOfWorkFactory,
     SqlAlchemyPersonalUnitOfWork,
     SqlAlchemyPersonalUnitOfWorkFactory,
 )
 
 __all__ = [
+    "SqlAlchemyDocumentUnitOfWork",
+    "SqlAlchemyDocumentUnitOfWorkFactory",
     "SqlAlchemyPersonalUnitOfWork",
     "SqlAlchemyPersonalUnitOfWorkFactory",
     "build_database_url",

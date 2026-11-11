@@ -18,10 +18,11 @@ from sqlalchemy import Connection, create_engine, pool, text
 from memory_engine.config import load_settings
 from memory_engine.infrastructure.persistence.base import Base
 from memory_engine.infrastructure.persistence.database import build_database_url
+from memory_engine.infrastructure.persistence.documents import models as _document_models
 from memory_engine.infrastructure.persistence.personal import models as _personal_models
 
-# Imported for its side effect: registers the pm_ tables on Base.metadata (autogenerate).
-del _personal_models
+# Imported for their side effect: register the pm_ and doc_ tables on Base.metadata.
+del _document_models, _personal_models
 
 SCHEMA_PATTERN = re.compile(r"^[a-z_][a-z0-9_]*$")
 

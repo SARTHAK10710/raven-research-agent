@@ -10,7 +10,10 @@ from alembic.migration import MigrationContext
 from sqlalchemy import Connection, Engine, inspect, text
 
 from memory_engine.infrastructure.persistence.base import Base
+from memory_engine.infrastructure.persistence.documents import models as _document_models
 from memory_engine.infrastructure.persistence.personal import models
+
+del _document_models  # imported to register the doc_ tables on Base.metadata
 
 pytestmark = pytest.mark.integration
 
@@ -21,6 +24,14 @@ PM_TABLES = {
     "pm_atomic_memory",
     "pm_atomic_memory_revision",
     "pm_provenance",
+    "pm_document_evidence_ref",
+    "doc_document",
+    "doc_document_version",
+    "doc_extracted_representation",
+    "doc_chunk",
+    "doc_chunk_location",
+    "doc_embedding",
+    "doc_processing_operation",
 }
 
 
@@ -83,6 +94,31 @@ def test_deployed_constraint_names_equal_the_model_names(engine: Engine) -> None
     assert deployed == expected
 
 
+def test_downgrade_to_step_one_keeps_personal_memory_intact(
+    engine: Engine,
+    make_alembic_config: Callable[[Connection, str], Config],
+    drop_schema: Callable[[Connection, str], None],
+) -> None:
+    try:
+        with engine.begin() as connection:
+            drop_schema(connection, CHECK_SCHEMA)
+            command.upgrade(make_alembic_config(connection, CHECK_SCHEMA), "head")
+            command.downgrade(
+                make_alembic_config(connection, CHECK_SCHEMA), "0001_personal_memory_core"
+            )
+        remaining = _tables(engine, CHECK_SCHEMA)
+        assert not any(name.startswith("doc_") for name in remaining)
+        assert "pm_document_evidence_ref" not in remaining
+        assert "pm_provenance" in remaining
+        provenance_columns = {
+            column["name"] for column in inspect(engine).get_columns("pm_provenance", CHECK_SCHEMA)
+        }
+        assert "document_evidence_id" not in provenance_columns
+    finally:
+        with engine.begin() as connection:
+            drop_schema(connection, CHECK_SCHEMA)
+
+
 def _only_memory_schema(name: str | None, type_: str, parent_names: object) -> bool:
     if type_ == "schema":
         return name == "memory"
@@ -100,4 +136,15 @@ def test_append_only_trigger_function_installed(engine: Engine) -> None:
                 )
             )
         )
-    assert triggers == {"pm_atomic_memory_revision_append_only", "pm_provenance_append_only"}
+    assert triggers == {
+        "pm_atomic_memory_revision_append_only",
+        "pm_provenance_append_only",
+        "doc_document_guard",
+        "doc_document_version_guard",
+        "doc_extracted_representation_guard",
+        "doc_chunk_guard",
+        "doc_chunk_location_guard",
+        "doc_embedding_guard",
+        "doc_processing_operation_guard",
+        "pm_document_evidence_ref_guard",
+    }

@@ -1353,6 +1353,32 @@ The document intelligence data model is ready for implementation when:
 
 **Final principle:** Documents represent source material. Personal memories represent validated information about the user. Raven must preserve this distinction throughout the data lifecycle.
 
+## 14. Persisted vocabularies and schema (Phase 8.2 step 2)
+
+**Approved 2026-11-11.** Sections 7 above and 5.10 §6.1–6.3 describe these states as conceptual. The persisted values are:
+
+| Vocabulary | Values | Source |
+|---|---|---|
+| Document lifecycle (availability) | `registered`, `available`, `deletion_requested`, `deleting`, `deleted` | 5.10 §6.1 |
+| Version processing status | `registered`, `validated`, `stored`, `parsing`, `extracted`, `chunked`, `embedded`, `indexed`, `validation_failed`, `extraction_failed`, `processing_failed`, `retry_pending`, `deletion_requested`, `deleting`, `deleted` | §7 above + 5.10 §6.2 |
+| Extraction status | `extracted`, `partially_extracted`, `extraction_failed` | new |
+| Embedding status | `pending`, `generating`, `generated`, `indexing`, `indexed`, `failed`, `superseded`, `deletion_pending` | Decision 5.4.20 |
+| Operation status | `created`, `queued`, `running`, `completed`, `failed`, `retry_pending`, `cancellation_requested`, `cancelled` | 5.10 §6.3 |
+| Operation type | `validation`, `storage`, `extraction`, `structure_extraction`, `normalization`, `chunking`, `embedding`, `indexing`, `deletion` | memory/05 §3 stages |
+| Media type | `application/pdf`, DOCX (`application/vnd.openxmlformats-officedocument.wordprocessingml.document`), `text/plain` | security rules (PDF, DOCX, TXT only) |
+| Personal-memory evidence status | `active`, `source_deleted` | 7.1 §23.3 |
+
+Deliberately not persisted: a version `superseded` state (derived from the document's current-version reference, never stored twice); `interrupted` (recorded as `retry_pending`); `indexing_incomplete` (the version stays `embedded`).
+
+**Schema decisions made during implementation** (7.1 §23.3 holds the placement decision):
+- **Records → tables:** §3.1 `doc_document`, §3.2 `doc_document_version`, §3.3 `doc_extracted_representation`, §3.4 `doc_chunk`, §3.5 `doc_chunk_location`, §3.6 `doc_embedding`, §3.7 `doc_processing_operation`. Document-derived evidence (§5) is `pm_document_evidence_ref`, owned by Personal Memory and attached to a Memory Candidate; `pm_provenance` cites it through `document_evidence_id`.
+- **No version mixing:** a chunk references its representation through `(representation_id, version_id)`, so a chunk can never combine two versions (memory/05 §8.7).
+- **Locations:** one-to-many per chunk with an explicit `ordinal`; unknown fields stay NULL, and at least one field must be known.
+- **Immutability:** representations, chunks and locations are append-only. Versions, embeddings, operations and documents may change only their status columns (database trigger `me_guard_columns`).
+- **Evidence and deletion:** an evidence row keeps two sets of identifiers. Linked columns (`document_id`, `version_id`, `chunk_id`) have `RESTRICT` foreign keys, so active evidence blocks deletion of the passage it cites. Opaque copies (`document_ref`, `version_ref`, `chunk_ref`) have no foreign key and are never cleared. Marking evidence `source_deleted` clears the linked columns (enforced by a check constraint), which lets the document be deleted while provenance stays traceable. Memories are never deleted by this step; the deletion policy (8.10) decides.
+- **Keyword search:** `doc_chunk.tsv` is a stored `tsvector` using the language-neutral `simple` text-search configuration, with a GIN index. The language requirement (gap G6) is still open; changing the configuration later is one migration that rebuilds the column.
+- **Embedding vectors:** none yet. Metadata only, unique per chunk, model, revision and preprocessing version; vector storage arrives in 8.7 (7.1 §23.5).
+
 ---
 
 <!-- Phase 8.2 amendment, approved by the project owner on 2026-11-11 (Decision 4 of the Phase 8.2 architecture decision review). Appended; earlier text unchanged. -->

@@ -21,6 +21,7 @@ from memory_engine.domain.errors import DomainValidationError
 from memory_engine.domain.vocabulary import (
     CandidateOrigin,
     CandidateStatus,
+    DocumentEvidenceStatus,
     MemoryLifecycleStatus,
     MemoryOrigin,
     ProvenanceOriginKind,
@@ -252,11 +253,49 @@ class AtomicMemoryRevision:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class ProvenanceRecord:
-    """Evidence linking a memory to a source or candidate (Decision 5.4.18).
+class DocumentEvidenceRef:
+    """A document passage that supports a document-derived Memory Candidate.
 
-    Document evidence references arrive with Document Intelligence persistence
-    (Phase 8.2 step 2); until then a record must name a source or a candidate.
+    Document facts reach Personal Memory only through
+    ``Document Evidence -> Memory Candidate -> Evaluation -> Resolution``
+    (5.4 Document Intelligence amendment section 5), so every reference belongs
+    to a candidate. The identifiers are opaque here: this domain never imports
+    Document Intelligence. After the document is deleted the status becomes
+    ``source_deleted`` and the identifiers remain only as provenance.
+    """
+
+    id: uuid.UUID
+    owner_id: uuid.UUID
+    candidate_id: uuid.UUID
+    document_ref: uuid.UUID
+    version_ref: uuid.UUID
+    extraction_method: str
+    status: DocumentEvidenceStatus
+    recorded_at: datetime
+    chunk_ref: uuid.UUID | None = None
+    page_number: int | None = None
+    section_heading: str | None = None
+    start_offset: int | None = None
+    end_offset: int | None = None
+
+    def __post_init__(self) -> None:
+        _require_text("extraction_method", self.extraction_method)
+        _require_aware("recorded_at", self.recorded_at)
+        if self.page_number is not None and self.page_number < 1:
+            raise DomainValidationError("page_number starts at 1")
+        if self.start_offset is not None and self.start_offset < 0:
+            raise DomainValidationError("start_offset must not be negative")
+        if self.end_offset is not None and (
+            self.start_offset is None or self.end_offset < self.start_offset
+        ):
+            raise DomainValidationError("end_offset requires a start_offset and must follow it")
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ProvenanceRecord:
+    """Evidence linking a memory to a source, candidate or document passage (5.4.18).
+
+    A record must name at least one piece of evidence.
     """
 
     id: uuid.UUID
@@ -267,11 +306,18 @@ class ProvenanceRecord:
     recorded_at: datetime
     source_id: uuid.UUID | None = None
     candidate_id: uuid.UUID | None = None
+    document_evidence_id: uuid.UUID | None = None
     revision_number: int | None = None
 
     def __post_init__(self) -> None:
-        if self.source_id is None and self.candidate_id is None:
-            raise DomainValidationError("provenance must reference a source or a candidate")
+        if (
+            self.source_id is None
+            and self.candidate_id is None
+            and (self.document_evidence_id is None)
+        ):
+            raise DomainValidationError(
+                "provenance must reference a source, a candidate or document evidence"
+            )
         if self.revision_number is not None and self.revision_number < 1:
             raise DomainValidationError("revision_number starts at 1")
         _require_aware("recorded_at", self.recorded_at)

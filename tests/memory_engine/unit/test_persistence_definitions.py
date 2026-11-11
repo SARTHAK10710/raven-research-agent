@@ -18,9 +18,18 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import sessionmaker
 
 from memory_engine.config.settings import DatabaseSettings
+from memory_engine.documents.application.ports import (
+    DocumentContentRepository,
+    DocumentRepository,
+    DocumentUnitOfWork,
+    DocumentUnitOfWorkFactory,
+    ProcessingOperationRepository,
+)
+from memory_engine.documents.domain import vocabulary as doc_vocabulary
 from memory_engine.domain import vocabulary
 from memory_engine.exceptions import PersistenceError
 from memory_engine.infrastructure.persistence import (
+    SqlAlchemyDocumentUnitOfWorkFactory,
     SqlAlchemyPersonalUnitOfWorkFactory,
     build_database_url,
     create_database_engine,
@@ -30,6 +39,7 @@ from memory_engine.infrastructure.persistence.base import Base
 from memory_engine.infrastructure.persistence.personal import models
 from memory_engine.personal.application.ports import (
     AtomicMemoryRepository,
+    DocumentEvidenceRepository,
     MemoryCandidateRepository,
     MemorySourceRepository,
     PersonalUnitOfWork,
@@ -37,22 +47,52 @@ from memory_engine.personal.application.ports import (
     ProvenanceRepository,
 )
 
-MIGRATION = (
-    Path(__file__).resolve().parents[3]
-    / "memory-engine"
-    / "migrations"
-    / "versions"
-    / "20261111_0001_personal_memory_core.py"
-)
+VERSIONS = Path(__file__).resolve().parents[3] / "memory-engine" / "migrations" / "versions"
+MIGRATION = VERSIONS / "20261111_0001_personal_memory_core.py"
+MIGRATION_0002 = VERSIONS / "20261111_0002_document_intelligence.py"
 PASSWORD = "synthetic-db-password-91c2"  # noqa: S105 - test-only value
 
 
-def _load_migration() -> ModuleType:
-    spec = importlib.util.spec_from_file_location("migration_0001", MIGRATION)
+def _load_migration(path: Path = MIGRATION) -> ModuleType:
+    spec = importlib.util.spec_from_file_location(f"migration_{path.stem}", path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+@pytest.mark.parametrize(
+    ("frozen_name", "enum"),
+    [
+        ("DOCUMENT_MEDIA_TYPES", doc_vocabulary.DocumentMediaType),
+        ("DOCUMENT_LIFECYCLE_STATUSES", doc_vocabulary.DocumentLifecycleStatus),
+        ("VERSION_PROCESSING_STATUSES", doc_vocabulary.VersionProcessingStatus),
+        ("EXTRACTION_STATUSES", doc_vocabulary.ExtractionStatus),
+        ("EMBEDDING_STATUSES", doc_vocabulary.EmbeddingStatus),
+        ("OPERATION_TYPES", doc_vocabulary.OperationType),
+        ("OPERATION_STATUSES", doc_vocabulary.OperationStatus),
+        ("DOCUMENT_EVIDENCE_STATUSES", vocabulary.DocumentEvidenceStatus),
+    ],
+)
+def test_migration_0002_vocabularies_match_domain_enums(
+    frozen_name: str, enum: type[StrEnum]
+) -> None:
+    frozen = getattr(_load_migration(MIGRATION_0002), frozen_name)
+    assert tuple(frozen) == tuple(member.value for member in enum)
+
+
+def test_migration_0002_shares_the_evidence_rules_with_the_models() -> None:
+    migration = _load_migration(MIGRATION_0002)
+    assert migration.EVIDENCE_LINKS_MATCH_STATUS == models.EVIDENCE_LINKS_MATCH_STATUS
+    assert migration.PROVENANCE_REFERENCES_EVIDENCE == models.PROVENANCE_REFERENCES_EVIDENCE
+    assert migration.down_revision == _load_migration().revision
+
+
+def test_every_guarded_column_list_names_real_columns() -> None:
+    for table, mutable in _load_migration(MIGRATION_0002).GUARDED_TABLES.items():
+        columns = set(Base.metadata.tables[f"memory.{table}"].c.keys())
+        assert set(mutable) <= columns, table
+        assert "id" not in mutable and "owner_id" not in mutable, table
 
 
 @pytest.mark.parametrize(
@@ -86,7 +126,7 @@ VOCABULARIES = [
 
 
 def test_vocabulary_module_defines_the_expected_enums() -> None:
-    assert len(VOCABULARIES) == 12
+    assert len(VOCABULARIES) == 13
 
 
 def test_sqlalchemy_adapters_satisfy_the_application_ports() -> None:
@@ -99,6 +139,14 @@ def test_sqlalchemy_adapters_satisfy_the_application_ports() -> None:
     memories: AtomicMemoryRepository = unit.memories
     provenance: ProvenanceRepository = unit.provenance
     assert all(port is not None for port in (sources, candidates, memories, provenance))
+    evidence: DocumentEvidenceRepository = unit.evidence
+    assert evidence is not None
+    doc_factory: DocumentUnitOfWorkFactory = SqlAlchemyDocumentUnitOfWorkFactory(session_factory)
+    doc_unit: DocumentUnitOfWork = doc_factory().__enter__()
+    documents: DocumentRepository = doc_unit.documents
+    contents: DocumentContentRepository = doc_unit.contents
+    operations: ProcessingOperationRepository = doc_unit.operations
+    assert all(port is not None for port in (documents, contents, operations))
     concrete = SqlAlchemyPersonalUnitOfWorkFactory(session_factory)()
     concrete.__enter__()
     with pytest.raises(RuntimeError, match="already active"):
@@ -111,7 +159,7 @@ def test_vocabulary_values_are_lowercase_snake_case(enum: type[StrEnum]) -> None
     assert all(re.fullmatch(r"[a-z][a-z0-9_]*", member.value) for member in enum)
 
 
-def test_every_pm_table_is_owner_scoped_with_prefix() -> None:
+def test_every_table_is_owner_scoped_with_a_domain_prefix() -> None:
     tables = {t.name: t for t in Base.metadata.tables.values() if t.schema == "memory"}
     assert set(tables) == {
         "pm_memory_source",
@@ -119,17 +167,44 @@ def test_every_pm_table_is_owner_scoped_with_prefix() -> None:
         "pm_atomic_memory",
         "pm_atomic_memory_revision",
         "pm_provenance",
+        "pm_document_evidence_ref",
+        "doc_document",
+        "doc_document_version",
+        "doc_extracted_representation",
+        "doc_chunk",
+        "doc_chunk_location",
+        "doc_embedding",
+        "doc_processing_operation",
     }
     for table in tables.values():
         assert table.c.owner_id.nullable is False
 
 
-def test_foreign_keys_never_cascade_and_always_include_owner() -> None:
+# Root tables have no owner-scoped parent; every other table must reach its parent
+# through at least one foreign key that includes owner_id.
+ROOT_TABLES = {"pm_memory_source", "pm_atomic_memory", "doc_document"}
+
+
+def test_foreign_keys_never_cascade_and_every_child_has_an_owner_key() -> None:
     for table in Base.metadata.tables.values():
         for fk in table.foreign_key_constraints:
             assert fk.ondelete == "RESTRICT", fk.name
-            if fk.referred_table.name != "pm_atomic_memory_revision":
-                assert "owner_id" in fk.column_keys, fk.name
+        if table.name not in ROOT_TABLES:
+            assert any("owner_id" in fk.column_keys for fk in table.foreign_key_constraints), (
+                table.name
+            )
+
+
+def test_only_the_evidence_path_crosses_domains() -> None:
+    # Personal Memory may reference documents only through pm_document_evidence_ref;
+    # Document Intelligence never references Personal Memory.
+    for table in Base.metadata.tables.values():
+        for fk in table.foreign_key_constraints:
+            referred = fk.referred_table.name
+            if table.name.startswith("doc_"):
+                assert referred.startswith("doc_"), fk.name
+            elif referred.startswith("doc_"):
+                assert table.name == "pm_document_evidence_ref", fk.name
 
 
 def test_model_check_constraints_list_every_enum_value() -> None:

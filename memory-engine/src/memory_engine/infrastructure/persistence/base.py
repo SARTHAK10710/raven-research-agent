@@ -9,7 +9,9 @@ Table prefixes: ``pm_`` Personal Memory, ``doc_`` Document Intelligence,
 ``me_`` shared engine plumbing (Phase 7.1 section 23.3).
 """
 
-from sqlalchemy import MetaData
+from enum import StrEnum
+
+from sqlalchemy import CheckConstraint, MetaData
 from sqlalchemy.orm import DeclarativeBase
 
 MEMORY_SCHEMA = "memory"
@@ -27,3 +29,9 @@ NAMING_CONVENTION: dict[str, str] = {
 
 class Base(DeclarativeBase):
     metadata = MetaData(schema=MEMORY_SCHEMA, naming_convention=NAMING_CONVENTION)
+
+
+def in_vocabulary(column: str, vocabulary: type[StrEnum], *, name: str) -> CheckConstraint:
+    """Check constraint restricting ``column`` to the values of a domain enum."""
+    values = ", ".join(f"'{member.value}'" for member in vocabulary)
+    return CheckConstraint(f"{column} IN ({values})", name=name)

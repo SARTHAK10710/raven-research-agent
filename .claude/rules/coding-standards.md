@@ -27,7 +27,13 @@ Phase 8.1 created the foundation code (`memory-engine/src/memory_engine/`: `conf
   - Repositories return domain records, never ORM rows, and wrap database calls in `translate_database_errors("<fixed operation name>")`. Another owner's record behaves like a missing one (`None` or `RecordNotFoundError`).
   - Child tables reference parents through composite `(id, owner_id)` foreign keys. Append-only tables get the `pm_reject_update` trigger.
   - Migrations freeze vocabularies as literals (a unit test checks them against the enums) and name constraints with `op.f(...)`; otherwise Alembic applies the naming convention twice.
-  - Integration tests are marked `integration`, use the `connection`/`uow_factory` fixtures (rolled back per test) and synthetic data only.
+  - Integration tests are marked `integration`, use the `connection`/`uow_factory`/`doc_uow_factory` fixtures (rolled back per test) and synthetic data only.
+- Established in 8.2 step 2:
+  - Status-only updates use the `me_guard_columns(<mutable columns>)` trigger; with no arguments a table is append-only. List new mutable columns in the migration's `GUARDED_TABLES`; a unit test checks that they exist.
+  - In check constraints, compare possibly-NULL columns with `IS NOT DISTINCT FROM`, never `=`: PostgreSQL treats a NULL check result as passing.
+  - Status changes go through a conditional `UPDATE … WHERE status = <expected>` (`_conditional_update`), which distinguishes "not found" from a concurrency conflict.
+  - Writers of derived document content call `require_writable_version` first, so nothing is recreated once deletion is requested.
+  - Only `pm_document_evidence_ref` may reference `doc_` tables; `documents/` and its infrastructure never import Personal Memory code (tested).
 
 ## Naming
 

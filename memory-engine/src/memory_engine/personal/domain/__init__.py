@@ -3,6 +3,7 @@
 from memory_engine.personal.domain.records import (
     AtomicMemory,
     AtomicMemoryRevision,
+    DocumentEvidenceRef,
     MemoryCandidate,
     MemorySource,
     ProvenanceRecord,
@@ -11,6 +12,7 @@ from memory_engine.personal.domain.records import (
 __all__ = [
     "AtomicMemory",
     "AtomicMemoryRevision",
+    "DocumentEvidenceRef",
     "MemoryCandidate",
     "MemorySource",
     "ProvenanceRecord",

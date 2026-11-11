@@ -56,6 +56,16 @@ class RecordNotFoundError(ApplicationError):
     code: ClassVar[str] = "RECORD_NOT_FOUND"
 
 
+class DeletionInProgressError(ApplicationError):
+    """The target is being deleted; derived content must not be (re)created.
+
+    Raised so a stale worker cannot recreate content from a document whose
+    deletion has been requested (memory/05 sections 18-19).
+    """
+
+    code: ClassVar[str] = "DELETION_IN_PROGRESS"
+
+
 class ConcurrencyConflictError(ApplicationError):
     """An optimistic-concurrency check failed: the record changed since it was read.
 

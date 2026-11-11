@@ -113,6 +113,17 @@ class ProvenanceOriginKind(StrEnum):
     SYSTEM_GENERATED = "system_generated"
 
 
+class DocumentEvidenceStatus(StrEnum):
+    """State of a Personal Memory reference to document evidence (7.1 section 23.3).
+
+    ``source_deleted``: the document was deleted; the reference keeps only the
+    opaque identifiers so provenance stays traceable without blocking deletion.
+    """
+
+    ACTIVE = "active"
+    SOURCE_DELETED = "source_deleted"
+
+
 class MemoryRelationshipType(StrEnum):
     """Atomic Memory to Atomic Memory relationships (amendment section 4)."""
 

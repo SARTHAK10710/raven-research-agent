@@ -17,6 +17,7 @@ from memory_engine.domain.identifiers import OwnerScope
 from memory_engine.personal.domain import (
     AtomicMemory,
     AtomicMemoryRevision,
+    DocumentEvidenceRef,
     MemoryCandidate,
     MemorySource,
     ProvenanceRecord,
@@ -85,6 +86,33 @@ class ProvenanceRepository(Protocol):
     ) -> Sequence[ProvenanceRecord]: ...
 
 
+class DocumentEvidenceRepository(Protocol):
+    def add(self, scope: OwnerScope, evidence: DocumentEvidenceRef) -> None:
+        """Attach document evidence to a candidate.
+
+        Raises RecordNotFoundError if the candidate, document, version or chunk is
+        not in scope, or if the version or chunk does not belong to the document.
+        """
+        ...
+
+    def list_for_candidate(
+        self, scope: OwnerScope, candidate_id: uuid.UUID
+    ) -> Sequence[DocumentEvidenceRef]: ...
+
+    def dependent_memory_ids(
+        self, scope: OwnerScope, document_id: uuid.UUID
+    ) -> Sequence[uuid.UUID]:
+        """Memories whose provenance cites this document (deletion discovery, 5.10 5.2)."""
+        ...
+
+    def mark_source_deleted(self, scope: OwnerScope, document_id: uuid.UUID) -> int:
+        """Detach all references to a document being deleted; return how many changed.
+
+        Memories are never deleted here; the deletion workflow (8.10) decides.
+        """
+        ...
+
+
 class PersonalUnitOfWork(Protocol):
     """One short transaction over Personal Memory records.
 
@@ -104,6 +132,9 @@ class PersonalUnitOfWork(Protocol):
 
     @property
     def provenance(self) -> ProvenanceRepository: ...
+
+    @property
+    def evidence(self) -> DocumentEvidenceRepository: ...
 
 
 class PersonalUnitOfWorkFactory(Protocol):

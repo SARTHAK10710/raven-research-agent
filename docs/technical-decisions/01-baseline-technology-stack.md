@@ -667,6 +667,7 @@ Packages are created only when they have content. This replaces the feature-firs
 - Every owned row carries `owner_id`, including chunks and embeddings, so isolation is enforced in SQL before ranking.
 - No implicit `ON DELETE CASCADE` on user data in either domain. Deletion runs as explicit, verified workflow steps, and foreign keys use `RESTRICT`.
 - Personal-memory provenance references document evidence through `pm_document_evidence_ref` (document, version, nullable chunk, location) with `RESTRICT` foreign keys. The deletion workflow marks such references `source_deleted` before removing document data. Document deletion never deletes independent personal memories.
+- **Implementation note (2026-11-11, 8.2 step 2):** "keep the identifiers" and "`RESTRICT` foreign keys" cannot apply to the same columns, or the document could never be deleted. `pm_document_evidence_ref` therefore stores linked columns with foreign keys, cleared on `source_deleted`, plus opaque `*_ref` copies with no foreign key that are kept permanently. Details and the other step-2 schema decisions: [5.4 Document Intelligence amendment §14](../data-models/phase-05-memory-engine-models.md).
 
 ### 23.4 Decision 10 — Owner identity
 

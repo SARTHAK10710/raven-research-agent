@@ -105,6 +105,42 @@ def test_personal_application_never_imports_infrastructure() -> None:
     assert violations == []
 
 
+def test_documents_domain_depends_only_on_the_shared_kernel() -> None:
+    allowed = (*DOMAIN_ALLOWED_INTERNAL, "memory_engine.documents.domain")
+    violations = [
+        f"{path.relative_to(PACKAGE_ROOT)}: {module}"
+        for path in _python_files("documents/domain")
+        for module in _imports(path)
+        if _matches(module, FORBIDDEN_PREFIXES)
+        or (_matches(module, ("memory_engine",)) and not _matches(module, allowed))
+    ]
+    assert violations == []
+
+
+def test_documents_application_never_imports_infrastructure() -> None:
+    violations = [
+        f"{path.relative_to(PACKAGE_ROOT)}: {module}"
+        for path in _python_files("documents/application")
+        for module in _imports(path)
+        if _matches(module, FORBIDDEN_PREFIXES) or _matches(module, ("memory_engine.interfaces",))
+    ]
+    assert violations == []
+
+
+@pytest.mark.parametrize("package", ["documents", "infrastructure/persistence/documents"])
+def test_document_intelligence_never_imports_personal_memory(package: str) -> None:
+    # 7.1 section 23.1: the dependency between the two domains points one way.
+    violations = [
+        f"{path.relative_to(PACKAGE_ROOT)}: {module}"
+        for path in _python_files(package)
+        for module in _imports(path)
+        if _matches(
+            module, ("memory_engine.personal", "memory_engine.infrastructure.persistence.personal")
+        )
+    ]
+    assert violations == []
+
+
 def test_infrastructure_never_imports_interfaces() -> None:
     violations = [
         f"{path.relative_to(PACKAGE_ROOT)}: {module}"

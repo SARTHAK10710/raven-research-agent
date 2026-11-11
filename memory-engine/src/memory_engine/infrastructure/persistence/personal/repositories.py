@@ -15,11 +15,13 @@ from typing import Any
 from sqlalchemy import exists, select, update
 from sqlalchemy.orm import Session
 
+from memory_engine.documents.domain.vocabulary import DocumentLifecycleStatus
 from memory_engine.domain.errors import DomainValidationError, OwnershipError
 from memory_engine.domain.identifiers import OwnerScope
 from memory_engine.domain.vocabulary import (
     CandidateOrigin,
     CandidateStatus,
+    DocumentEvidenceStatus,
     MemoryLifecycleStatus,
     MemoryOrigin,
     ProvenanceOriginKind,
@@ -28,11 +30,21 @@ from memory_engine.domain.vocabulary import (
     SourceProcessingStatus,
     SourceType,
 )
-from memory_engine.exceptions import ConcurrencyConflictError, RecordNotFoundError
+from memory_engine.exceptions import (
+    ConcurrencyConflictError,
+    DeletionInProgressError,
+    RecordNotFoundError,
+)
 from memory_engine.infrastructure.persistence.database import translate_database_errors
+from memory_engine.infrastructure.persistence.documents.models import (
+    DocumentChunkRow,
+    DocumentRow,
+    DocumentVersionRow,
+)
 from memory_engine.infrastructure.persistence.personal.models import (
     AtomicMemoryRevisionRow,
     AtomicMemoryRow,
+    DocumentEvidenceRefRow,
     MemoryCandidateRow,
     MemorySourceRow,
     ProvenanceRow,
@@ -40,6 +52,7 @@ from memory_engine.infrastructure.persistence.personal.models import (
 from memory_engine.personal.domain import (
     AtomicMemory,
     AtomicMemoryRevision,
+    DocumentEvidenceRef,
     MemoryCandidate,
     MemorySource,
     ProvenanceRecord,
@@ -396,6 +409,162 @@ class SqlAlchemyAtomicMemoryRepository:
         return self.get(scope, memory_id) is not None
 
 
+# --- Document evidence -------------------------------------------------------------
+#
+# The one sanctioned path from Personal Memory into Document Intelligence. This
+# module may read doc_ tables to validate references; the documents side never
+# imports Personal Memory code.
+
+
+def _evidence_from_row(row: DocumentEvidenceRefRow) -> DocumentEvidenceRef:
+    return DocumentEvidenceRef(
+        id=row.id,
+        owner_id=row.owner_id,
+        candidate_id=row.candidate_id,
+        document_ref=row.document_ref,
+        version_ref=row.version_ref,
+        chunk_ref=row.chunk_ref,
+        extraction_method=row.extraction_method,
+        status=DocumentEvidenceStatus(row.status),
+        recorded_at=row.recorded_at,
+        page_number=row.page_number,
+        section_heading=row.section_heading,
+        start_offset=row.start_offset,
+        end_offset=row.end_offset,
+    )
+
+
+class SqlAlchemyDocumentEvidenceRepository:
+    def __init__(self, session: Session, candidates: SqlAlchemyMemoryCandidateRepository) -> None:
+        self._session = session
+        self._candidates = candidates
+
+    def add(self, scope: OwnerScope, evidence: DocumentEvidenceRef) -> None:
+        _require_in_scope(scope, evidence.owner_id)
+        if evidence.status is not DocumentEvidenceStatus.ACTIVE:
+            raise DomainValidationError("new document evidence must be active")
+        if not self._candidates.exists(scope, evidence.candidate_id):
+            raise RecordNotFoundError("memory candidate not found")
+        with translate_database_errors("add document evidence"):
+            # The version must belong to the document and the chunk to the version,
+            # all within the owner's scope; anything else looks like "not found".
+            lifecycle = self._session.scalar(
+                select(DocumentRow.lifecycle_status)
+                .join(DocumentVersionRow, DocumentVersionRow.document_id == DocumentRow.id)
+                .where(
+                    DocumentRow.id == evidence.document_ref,
+                    DocumentRow.owner_id == scope.owner_id,
+                    DocumentVersionRow.id == evidence.version_ref,
+                    DocumentVersionRow.owner_id == scope.owner_id,
+                )
+            )
+            if lifecycle is None or lifecycle == DocumentLifecycleStatus.DELETED.value:
+                raise RecordNotFoundError("document version not found")
+            if not DocumentLifecycleStatus(lifecycle).retrievable and lifecycle != (
+                DocumentLifecycleStatus.REGISTERED.value
+            ):
+                raise DeletionInProgressError("document is being deleted")
+            if evidence.chunk_ref is not None and not self._session.scalar(
+                select(
+                    exists().where(
+                        DocumentChunkRow.id == evidence.chunk_ref,
+                        DocumentChunkRow.version_id == evidence.version_ref,
+                        DocumentChunkRow.owner_id == scope.owner_id,
+                    )
+                )
+            ):
+                raise RecordNotFoundError("document chunk not found")
+            self._session.add(
+                DocumentEvidenceRefRow(
+                    id=evidence.id,
+                    owner_id=evidence.owner_id,
+                    candidate_id=evidence.candidate_id,
+                    document_ref=evidence.document_ref,
+                    version_ref=evidence.version_ref,
+                    chunk_ref=evidence.chunk_ref,
+                    document_id=evidence.document_ref,
+                    version_id=evidence.version_ref,
+                    chunk_id=evidence.chunk_ref,
+                    extraction_method=evidence.extraction_method,
+                    page_number=evidence.page_number,
+                    section_heading=evidence.section_heading,
+                    start_offset=evidence.start_offset,
+                    end_offset=evidence.end_offset,
+                    status=evidence.status.value,
+                    recorded_at=evidence.recorded_at,
+                )
+            )
+            self._session.flush()
+
+    def list_for_candidate(
+        self, scope: OwnerScope, candidate_id: uuid.UUID
+    ) -> Sequence[DocumentEvidenceRef]:
+        with translate_database_errors("list document evidence"):
+            rows = self._session.scalars(
+                select(DocumentEvidenceRefRow)
+                .where(
+                    DocumentEvidenceRefRow.owner_id == scope.owner_id,
+                    DocumentEvidenceRefRow.candidate_id == candidate_id,
+                )
+                .order_by(DocumentEvidenceRefRow.recorded_at, DocumentEvidenceRefRow.id)
+                .execution_options(populate_existing=True)
+            ).all()
+        return [_evidence_from_row(row) for row in rows]
+
+    def exists(self, scope: OwnerScope, evidence_id: uuid.UUID) -> bool:
+        with translate_database_errors("check document evidence"):
+            return bool(
+                self._session.scalar(
+                    select(
+                        exists().where(
+                            DocumentEvidenceRefRow.id == evidence_id,
+                            DocumentEvidenceRefRow.owner_id == scope.owner_id,
+                        )
+                    )
+                )
+            )
+
+    def dependent_memory_ids(
+        self, scope: OwnerScope, document_id: uuid.UUID
+    ) -> Sequence[uuid.UUID]:
+        with translate_database_errors("find memories citing a document"):
+            return list(
+                self._session.scalars(
+                    select(ProvenanceRow.memory_id)
+                    .join(
+                        DocumentEvidenceRefRow,
+                        (DocumentEvidenceRefRow.id == ProvenanceRow.document_evidence_id)
+                        & (DocumentEvidenceRefRow.owner_id == ProvenanceRow.owner_id),
+                    )
+                    .where(
+                        ProvenanceRow.owner_id == scope.owner_id,
+                        DocumentEvidenceRefRow.document_ref == document_id,
+                    )
+                    .distinct()
+                    .order_by(ProvenanceRow.memory_id)
+                ).all()
+            )
+
+    def mark_source_deleted(self, scope: OwnerScope, document_id: uuid.UUID) -> int:
+        with translate_database_errors("detach document evidence"):
+            result = self._session.execute(
+                update(DocumentEvidenceRefRow)
+                .where(
+                    DocumentEvidenceRefRow.owner_id == scope.owner_id,
+                    DocumentEvidenceRefRow.document_ref == document_id,
+                    DocumentEvidenceRefRow.status == DocumentEvidenceStatus.ACTIVE.value,
+                )
+                .values(
+                    status=DocumentEvidenceStatus.SOURCE_DELETED.value,
+                    document_id=None,
+                    version_id=None,
+                    chunk_id=None,
+                )
+                .execution_options(synchronize_session=False)
+            )
+        return int(getattr(result, "rowcount", 0))
+
+
 # --- Provenance --------------------------------------------------------------------
 
 
@@ -409,6 +578,7 @@ def _provenance_from_row(row: ProvenanceRow) -> ProvenanceRecord:
         recorded_at=row.recorded_at,
         source_id=row.source_id,
         candidate_id=row.candidate_id,
+        document_evidence_id=row.document_evidence_id,
         revision_number=row.revision_number,
     )
 
@@ -420,11 +590,13 @@ class SqlAlchemyProvenanceRepository:
         sources: SqlAlchemyMemorySourceRepository,
         candidates: SqlAlchemyMemoryCandidateRepository,
         memories: SqlAlchemyAtomicMemoryRepository,
+        evidence: SqlAlchemyDocumentEvidenceRepository,
     ) -> None:
         self._session = session
         self._sources = sources
         self._candidates = candidates
         self._memories = memories
+        self._evidence = evidence
 
     def add(self, scope: OwnerScope, record: ProvenanceRecord) -> None:
         _require_in_scope(scope, record.owner_id)
@@ -436,6 +608,10 @@ class SqlAlchemyProvenanceRepository:
             scope, record.candidate_id
         ):
             raise RecordNotFoundError("memory candidate not found")
+        if record.document_evidence_id is not None and not self._evidence.exists(
+            scope, record.document_evidence_id
+        ):
+            raise RecordNotFoundError("document evidence not found")
         with translate_database_errors("add provenance record"):
             self._session.add(
                 ProvenanceRow(
@@ -445,6 +621,7 @@ class SqlAlchemyProvenanceRepository:
                     revision_number=record.revision_number,
                     source_id=record.source_id,
                     candidate_id=record.candidate_id,
+                    document_evidence_id=record.document_evidence_id,
                     role=record.role.value,
                     origin_kind=record.origin_kind.value,
                     recorded_at=record.recorded_at,

@@ -204,7 +204,7 @@ def test_provenance_must_reference_evidence() -> None:
         "origin_kind": ProvenanceOriginKind.SYSTEM_GENERATED,
         "recorded_at": T0,
     }
-    with pytest.raises(DomainValidationError, match="source or a candidate"):
+    with pytest.raises(DomainValidationError, match="a source, a candidate or document evidence"):
         ProvenanceRecord(**base)
     ProvenanceRecord(**base, candidate_id=new_id())
     with pytest.raises(DomainValidationError):
