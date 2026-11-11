@@ -4,13 +4,13 @@ Actual implementation progress, recorded only from verified repository state.
 
 Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` · `TESTING` · `VERIFIED` · `BLOCKED`. `VERIFIED` requires executed test evidence against the subphase's acceptance criteria; generated code is never verified by itself.
 
-**Baseline:** `main` @ `2c35fb3`. Phase 8.1 work is on branch `feat/phase-8-1-foundation`, uncommitted.
+**Baseline:** `main` @ `6efd72d` (merge of PR #3, which contains Phase 8.1 commit `5a0d6e5`).
 
 ## Summary
 
 | Subphase | Status | Commit |
 |---|---|---|
-| 8.1 Foundation and project setup | `VERIFIED` | — (uncommitted) |
+| 8.1 Foundation and project setup | `VERIFIED` | `5a0d6e5` (merged in `6efd72d`, PR #3) |
 | 8.2 Database and persistence | `NOT_STARTED` | — |
 | 8.3 Ingestion pipeline | `NOT_STARTED` | — |
 | 8.4 Extraction and evaluation | `NOT_STARTED` | — |
@@ -33,7 +33,8 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 | Dependencies introduced | Runtime: `pydantic` 2.14.3, `pydantic-settings` 2.16.2. Dev: `pytest` 9.2.0, `pytest-cov` 7.1.0, `ruff` 0.17.4, `mypy` 2.4.1. 22 locked packages in total including transitive. Build backend: `hatchling` (build time only) |
 | Tests executed | `uv run pytest --cov`; `uv run ruff check .`; `uv run ruff format --check .`; `uv run mypy`; `uv sync --locked` |
 | Tests passed / failed | pytest **71 passed, 0 failed** (98% line+branch coverage); Ruff lint and format clean; mypy strict **no issues in 16 files**; locked sync succeeded |
-| Commit | — (uncommitted on `feat/phase-8-1-foundation`) |
+| Commit | `5a0d6e5`, merged into `main` in `6efd72d` (PR #3) |
+| Re-verified | 2026-11-11 on a fresh clone of `main` @ `6efd72d`: `uv sync --locked` ok; `uv run pytest --cov` 71 passed, 98% coverage; Ruff check and format clean; mypy strict no issues in 16 files (short-path `UV_PROJECT_ENVIRONMENT`) |
 
 **What exists:** validated configuration (`RAVEN_MEMORY__` prefix, required environment and database settings, secrets as `SecretStr`, no implicit `.env`, sanitized `ConfigurationError`); error hierarchy (base, configuration, application/authorization, infrastructure/persistence, plus domain/validation/ownership in `domain/errors.py`); JSON logging on the `raven.memory_engine` logger with correlation context, redaction and exception type/code only; a source-scanning test enforcing the domain boundary.
 
@@ -46,6 +47,8 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 - On Windows, a repository at a very long path cannot load mypy's compiled DLLs from `.venv` ("filename or extension is too long"), even with long paths enabled. Verification ran mypy from an identical locked environment at a shorter path (`UV_PROJECT_ENVIRONMENT`). A normal clone location avoids this.
 - uv was installed for this machine with `pip install --user uv` (0.13.7); its `Scripts` directory is not on PATH.
 - `tests/.gitkeep` and `memory-engine/.gitkeep` remain although the directories now have content.
+- On Windows, a default clone fails checkout because several `docs/implementation-plans/Phase-08-memory-engine/` and `docs/technical-decisions/03-…` paths exceed 260 characters at deep locations. Workaround: `git config core.longpaths true` (or clone to a short path).
+- Log redaction matches key substrings, so any `extra` field containing `session` (for example a future `research_session_id`) or `token` is redacted. Revisit when such identifiers are logged.
 
 ## 8.2–8.12
 
@@ -61,3 +64,4 @@ These are documentation changes, tracked here so they are not mistaken for imple
 | Project-context system (`CLAUDE.md`, `.claude/rules/`, `docs/project-context/`) | Merged into `main` (PR #1) | `83e174e`, merged in `f6abef0` |
 | Record approved 8.1 setup decisions in 7.1 §22, 7.7, technical-decisions Readme, Phase 8 Readme and plan 8.1 | Merged into `main` (PR #1) | `83e174e`, merged in `f6abef0` |
 | Record PR #1 merge in status files | Merged into `main` (PR #2) | `de7ed06`, merged in `2c35fb3` |
+| Sync status files with the PR #3 merge; record repository audit findings | Uncommitted on `docs/sync-status-after-pr3` | — |

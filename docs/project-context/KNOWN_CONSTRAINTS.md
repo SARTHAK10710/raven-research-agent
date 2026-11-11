@@ -35,7 +35,8 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
 - On Windows, a repository at a very long path cannot load mypy's compiled DLLs from `.venv` ("filename or extension is too long"), even with long paths enabled. Use a normal clone location, or point `UV_PROJECT_ENVIRONMENT` at a shorter path.
 - OCR is not supported; scanned PDFs cannot be assumed processable.
 - Advanced PDF layout and table extraction are not covered by the baseline.
-- No CI pipeline exists.
+- No CI pipeline exists, so the 8.1 quality gates run only by hand.
+- On Windows, a default `git clone` fails checkout on over-long doc paths under `docs/implementation-plans/Phase-08-memory-engine/`. Use `git config --global core.longpaths true` or a short clone path.
 
 ## Open documentation issues
 
@@ -48,3 +49,4 @@ Reported, not resolved.
 5. **Storage placement:** the 7.2 amendment places document records in the `memory` schema "subject to reconciliation with Phase 5". Not yet reconciled.
 6. **Phase 8.1 plan:** the proposed module tree (plan 8.1 §4) has no Document Intelligence area; where Personal Memory and Document Intelligence code lives inside the package is undecided. (The earlier conflicts over test location, standalone vs workspace layout, and 8.1 dependency timing were resolved by the 2026-11-11 approved decisions, and plan 8.1 was updated to match.)
 7. **No `docs/technical-decisions.md`:** some instructions refer to it. Decisions are recorded in the relevant file under `docs/technical-decisions/`.
+8. **Ratio label wording:** `PROJECT_ARCHITECTURE.md`, `README.md`, phase-02/03 and this directory label the 70:30 / 55:45 / 45:55 ratios "Optimization : Performance". The phase-02 purpose text ("favors memory quality, provenance … over raw throughput") reads them as *correctness/quality : optimization/performance*. The meaning is consistent; the label is ambiguous. Relabeling is undecided.

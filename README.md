@@ -2,7 +2,7 @@
 
 An independent AI Research Agent architecture centered on persistent memory, evidence-based research, and adaptive orchestration.
 
-> **Status:** documentation complete through Phase 7 (architecture, data models, algorithms, and technology decisions). Raven is preparing to enter Phase 8, Memory Engine implementation. **No application code has been implemented yet**, and no component has been installed, tested, or deployed.
+> **Status:** documentation complete through Phase 7 (architecture, data models, algorithms, and technology decisions). Phase 8 (Memory Engine implementation) has started: **only the Phase 8.1 foundation is implemented** (configuration, error hierarchy, structured logging, 71 unit tests; merged in PR #3). No memory, document, research, or orchestration functionality exists, and nothing has been deployed. Current state: [docs/project-context/PROJECT_STATUS.md](docs/project-context/PROJECT_STATUS.md).
 
 ## Architecture Summary
 
@@ -45,7 +45,7 @@ Documentation completion and implementation completion are tracked separately.
 | Phase 5 — Data Models & Database Design | **Documented** | — |
 | Phase 6 — Algorithms & Processing Design | **Documented** | — |
 | Phase 7 — Technology & Infrastructure Selection | **Documented** | — |
-| Phase 8 — Memory Engine Implementation | **Plans documented** | **Not started** |
+| Phase 8 — Memory Engine Implementation | **Plans documented** | **In progress:** 8.1 foundation verified and merged; 8.2–8.12 not started |
 
 ## Documentation
 
