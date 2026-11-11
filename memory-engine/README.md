@@ -22,6 +22,8 @@ The two domains can share infrastructure (PostgreSQL, pgvector, object storage, 
 >
 > Phase 8.3 step 4 adds the reliable handoff. Each registration writes a `me_outbox` row in the same transaction; `memory_engine.infrastructure.messaging.OutboxRelay` publishes it to RabbitMQ through Celery (`raven.memory` exchange; queues `memory.personal.extraction` and `memory.document.processing`) and only then moves the record to `queued`. Forget instructions get no handoff. Failed publishes back off and, after the configured attempts, wait as `failed` for an explicit retry. No consumer exists yet (8.4, 8.12).
 >
+> Phase 8.3 step 5 adds ingestion observability: one structured event per ingestion request and relay attempt, and metrics through the `Metrics` port in `memory_engine.observability` (a no-op by default until monitoring is deployed). The [8.3 acceptance review](../docs/project-context/PHASE-8-3-ACCEPTANCE-REVIEW.md) maps every plan §13 criterion to its tests.
+>
 > Not yet: extraction, parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking, and the deletion workflow.
 
 ## Boundaries

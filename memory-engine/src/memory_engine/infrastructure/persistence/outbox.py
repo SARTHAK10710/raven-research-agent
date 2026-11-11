@@ -14,6 +14,7 @@ outbox rows explicitly.
 
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
@@ -86,6 +87,13 @@ class OutboxRow(Base):
             postgresql_where=text("status = 'pending'"),
         ),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class OutboxBacklog:
+    pending: int
+    failed: int
+    oldest_pending_age_seconds: float  # 0 when nothing is pending
 
 
 def _message(row: OutboxRow) -> OutboxMessage:
@@ -173,6 +181,30 @@ class SqlAlchemyOutboxRepository:
         return int(result.rowcount)  # type: ignore[attr-defined]
 
     # --- relay (system process; claims across owners, then writes per owner) ---
+
+    def backlog(self) -> OutboxBacklog:
+        """Aggregate counts across owners, for metrics only (no identifiers leave here).
+
+        The age uses the database clock on both sides, like ``created_at``.
+        """
+        with translate_database_errors("measure outbox backlog"):
+            counts = dict(
+                self._session.execute(
+                    select(OutboxRow.status, func.count())
+                    .where(OutboxRow.status != OutboxStatus.PUBLISHED.value)
+                    .group_by(OutboxRow.status)
+                ).all()
+            )
+            age = self._session.scalar(
+                select(func.extract("epoch", func.now() - func.min(OutboxRow.created_at))).where(
+                    OutboxRow.status == OutboxStatus.PENDING.value
+                )
+            )
+        return OutboxBacklog(
+            pending=int(counts.get(OutboxStatus.PENDING.value, 0)),
+            failed=int(counts.get(OutboxStatus.FAILED.value, 0)),
+            oldest_pending_age_seconds=0.0 if age is None else max(float(age), 0.0),
+        )
 
     def claim_next(self, now: datetime) -> OutboxMessage | None:
         """Lock the oldest due pending message for this transaction, skipping locked ones."""

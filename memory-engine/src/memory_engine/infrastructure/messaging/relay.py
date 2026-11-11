@@ -53,6 +53,15 @@ from memory_engine.infrastructure.persistence.personal.lifecycle_repositories im
 )
 from memory_engine.infrastructure.persistence.personal.models import MemorySourceRow
 from memory_engine.observability import get_logger
+from memory_engine.observability.metrics import (
+    HANDOFF_ATTEMPTS,
+    HANDOFF_LATENCY,
+    NO_METRICS,
+    OUTBOX_FAILED,
+    OUTBOX_OLDEST_PENDING_AGE,
+    OUTBOX_PENDING,
+    Metrics,
+)
 from memory_engine.personal.domain import SourceProcessingEvent
 
 SUBJECT_NOT_PENDING = "SUBJECT_NOT_PENDING"
@@ -166,6 +175,7 @@ def _utc_now() -> datetime:
 class _Handled:
     message: OutboxMessage
     outcome: RelayOutcome
+    at: datetime
     error_code: str | None = None
 
 
@@ -178,12 +188,14 @@ class OutboxRelay:
         *,
         clock: Callable[[], datetime] = _utc_now,
         jitter: Callable[[float], float] = jittered,
+        metrics: Metrics = NO_METRICS,
     ) -> None:
         self._session_factory = session_factory
         self._publisher = publisher
         self._settings = settings
         self._clock = clock
         self._jitter = jitter
+        self._metrics = metrics
 
     def relay_due(self, limit: int | None = None) -> RelayReport:
         """Handle up to ``limit`` due messages (default: the batch size).
@@ -198,12 +210,37 @@ class OutboxRelay:
             if handled is None:
                 break
             report.add(handled.outcome)
-            _log(handled)
+            self._record(handled)
             if handled.outcome in (RelayOutcome.RETRY_SCHEDULED, RelayOutcome.FAILED):
                 # The broker refused one message; the rest would wait out the same
                 # timeout. Stop this batch and let the backoff and poll interval act.
                 break
+        self._record_backlog()
         return report
+
+    def _record(self, handled: _Handled) -> None:
+        message = handled.message
+        kind = message.kind.value
+        self._metrics.increment(HANDOFF_ATTEMPTS, {"kind": kind, "outcome": handled.outcome.value})
+        if handled.outcome is RelayOutcome.PUBLISHED:
+            latency = (handled.at - message.envelope.created_at).total_seconds()
+            self._metrics.observe(HANDOFF_LATENCY, max(latency, 0.0), {"kind": kind})
+        _log(handled)
+
+    def _record_backlog(self) -> None:
+        """Outbox backlog gauges (7.7 section 7.5): counts and age only, never owners."""
+        session = self._session_factory()
+        try:
+            backlog = SqlAlchemyOutboxRepository(session).backlog()
+            session.commit()
+        except BaseException:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+        self._metrics.set_gauge(OUTBOX_PENDING, backlog.pending)
+        self._metrics.set_gauge(OUTBOX_FAILED, backlog.failed)
+        self._metrics.set_gauge(OUTBOX_OLDEST_PENDING_AGE, backlog.oldest_pending_age_seconds)
 
     def run_forever(self, stop: threading.Event) -> None:
         """Relay until ``stop`` is set, pausing when nothing is due or the database fails."""
@@ -213,7 +250,7 @@ class OutboxRelay:
             except PersistenceError as err:
                 _logger.warning(
                     "outbox relay could not reach the database",
-                    extra={"event": "outbox.relay_error", "error_code": err.code},
+                    extra={"event_type": "outbox.relay_error", "error_code": err.code},
                 )
                 report = RelayReport()
             if report.published < self._settings.batch_size:
@@ -242,7 +279,7 @@ class OutboxRelay:
         subject = _SUBJECTS[message.kind]
         if not subject.is_pending(session, scope, message.subject_id):
             outbox.record_failure(message, SUBJECT_NOT_PENDING, next_attempt_at=now, give_up=True)
-            return _Handled(message, RelayOutcome.ABANDONED, SUBJECT_NOT_PENDING)
+            return _Handled(message, RelayOutcome.ABANDONED, now, SUBJECT_NOT_PENDING)
         try:
             self._publisher.publish(message)
         except MessagePublishError as err:
@@ -256,25 +293,29 @@ class OutboxRelay:
                 give_up=give_up,
             )
             outcome = RelayOutcome.FAILED if give_up else RelayOutcome.RETRY_SCHEDULED
-            return _Handled(message, outcome, err.code)
+            return _Handled(message, outcome, now, err.code)
         outbox.mark_published(message, now)
         subject.mark_queued(session, scope, message.subject_id, now)
-        return _Handled(message, RelayOutcome.PUBLISHED)
+        return _Handled(message, RelayOutcome.PUBLISHED, now)
 
 
 def _log(handled: _Handled) -> None:
     # Identifiers and codes only (7.7 section 18); never the envelope payload.
+    message = handled.message
     level = logging.INFO if handled.outcome is RelayOutcome.PUBLISHED else logging.WARNING
     _logger.log(
         level,
-        "outbox message %s",
+        "handoff %s",
         handled.outcome.value,
         extra={
-            "event": f"outbox.{handled.outcome.value}",
-            "message_id": str(handled.message.id),
-            "handoff_kind": handled.message.kind.value,
-            "subject_id": str(handled.message.subject_id),
-            "attempts": handled.message.attempts + (0 if handled.error_code is None else 1),
+            "event_type": f"handoff.{handled.outcome.value}",
+            # Correlation identifiers (7.7 section 5), carried on the record itself.
+            "message_id": str(message.id),
+            "task_id": str(message.subject_id),
+            "correlation_id": str(message.envelope.correlation_id),
+            "handoff_kind": message.kind.value,
+            "user_scope": str(message.owner_id),
+            "attempts": message.attempts + (0 if handled.error_code is None else 1),
             "error_code": handled.error_code,
         },
     )

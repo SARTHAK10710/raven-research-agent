@@ -46,6 +46,8 @@ from memory_engine.exceptions import (
     ObjectStorageError,
     PersistenceError,
 )
+from memory_engine.observability.ingestion import IngestionObservation, observe_ingestion
+from memory_engine.observability.metrics import NO_METRICS, Metrics
 from memory_engine.personal.application.ports import PersonalUnitOfWorkFactory
 from memory_engine.personal.domain import MemorySource
 
@@ -265,13 +267,25 @@ class PersonalIngestionService:
         limits: IngestionLimits,
         *,
         clock: Callable[[], datetime] = _utc_now,
+        metrics: Metrics = NO_METRICS,
     ) -> None:
         self._uow_factory = uow_factory
         self._storage = storage
         self._limits = limits
         self._clock = clock
+        self._metrics = metrics
 
     def ingest(self, scope: OwnerScope, request: IngestionRequest) -> IngestionResult:
+        """Ingest one request; every outcome emits an event and metrics (plan 8.3 section 11)."""
+        with observe_ingestion(
+            self._metrics, input_type=request.source_type.value, owner_id=scope.owner_id
+        ) as observation:
+            result = self._ingest(scope, request)
+            observation.outcome = "accepted" if result.created else "replayed"
+            _describe(observation, result)
+            return result
+
+    def _ingest(self, scope: OwnerScope, request: IngestionRequest) -> IngestionResult:
         if not scope.owns(request.owner_id):
             raise OwnershipError("ingestion request belongs to a different owner scope")
         prepared = prepare(request, self._limits)
@@ -368,6 +382,19 @@ def extraction_handoff(scope: OwnerScope, source: MemorySource) -> OutboxMessage
         payload_reference=source.content_ref,
         priority=source.priority.value,
         created_at=source.received_at,
+    )
+
+
+def _describe(observation: IngestionObservation, result: IngestionResult) -> None:
+    observation.fields.update(
+        {
+            "source_id": str(result.source_id),
+            "processing_status": result.status.value,
+            "instruction_type": result.instruction_type.value,
+            "priority": result.priority.value,
+            # Forget instructions never get an extraction handoff (plan 8.3 section 5.4).
+            "handoff": str(result.instruction_type is not InstructionType.FORGET).lower(),
+        }
     )
 
 

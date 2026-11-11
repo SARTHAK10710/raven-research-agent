@@ -56,6 +56,10 @@ Phase 8.1 created the foundation code (`memory-engine/src/memory_engine/`: `conf
   - Envelopes carry identifiers and object keys only, never content; the contract is `memory_engine.domain.handoff` (schema version "1"). Consumers validate with `HandoffEnvelope.from_dict` and deduplicate on the message id: delivery is at least once.
   - A record moves to `queued` only in the relay's transaction after the broker confirmed. Forget instructions never get a handoff to extraction.
   - Only `memory_engine.infrastructure.messaging` imports celery, kombu or amqp (tested). Celery never retries a publish; the outbox does.
+- Established in 8.3 step 5 (observability):
+  - Record metrics only through the `Metrics` port (`memory_engine.observability.metrics`), injected with a no-op default; tests use `InMemoryMetrics`. Labels are limited to `input`, `outcome`, `reason` and `kind`, with word or code values: identifiers belong in logs, never in labels.
+  - Log events set `event_type` (`<area>.<outcome>`) and carry ids, codes and durations, plus `user_scope` (the opaque owner id); never content, filenames or caller-supplied keys.
+  - Telemetry must never change an operation's outcome (`observe_ingestion` reports a telemetry failure and keeps the original result or error).
 
 ## Naming
 
