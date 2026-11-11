@@ -702,7 +702,7 @@ Approved on 2026-11-11.
 ### 23.8 Not decided here
 
 - The embedding model itself, with its dimension, metric and index type (Decision 3). It must be selected, with approval, before Phase 8.7 creates vector storage.
-- The language-scope requirement (gap G6), and Decisions 6–8 and 12–15, per the decision review. (Decision 8 was later settled in §24.1.)
+- The language-scope requirement (gap G6), and Decisions 6–8 and 12–15, per the decision review. (Decisions 8 and 13 were later settled in §24.1 and §24.2.)
 
 ---
 
@@ -730,3 +730,18 @@ This decision covers development and tests only. It does not choose the producti
   - writes follow the operation-state and reconciliation workflow of 7.2 §11;
   - the object-storage failure tests deferred from 8.2 (unavailable store, partial upload) run against the SeaweedFS container;
   - integration tests skip with a message when the container is not running, as they already do for PostgreSQL.
+
+### 24.2 Decision 13 — Document parsing ownership ⚑ (reinterprets an approved algorithm)
+
+**Status:** Approved by the project owner on 2026-11-11, before Phase 8.3. Analysis: [decision review](../project-context/PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) §4, Decision 13 (gap G5). The algorithm text is amended in [6.2 "Amendment — Document parsing ownership"](../algorithms/memory/01-memory-ingestion-extraction.md).
+
+- **The document pipeline (Document Intelligence, plan 8.12) owns parsing** of PDF, DOCX and TXT uploads: text extraction, parsing status and normalized content. That gives one hardened parser and one extracted representation per document version.
+- **Ingestion (plan 8.3)** owns acceptance:
+  - it verifies the actual format, size limits and checksum, and runs the approved pre-parse security checks;
+  - it stores the original in object storage and registers the document and version;
+  - it hands off processing to the document pipeline (plan 8.3 §6, which already assigns parsing to 8.12).
+- **Memory ingestion** parses messages and conversations only. A document upload creates no Memory Source and no memories.
+- **Document text reaches Personal Memory** only through the authorized document-to-memory path. Its authorization model is Decision 6, which is still open, so that path stays disabled until Decision 6 is approved. The one-way `personal → documents.api` dependency (§23.1) is unchanged.
+- **Rejected:**
+  - parsing in both places: duplicate code, twice the attack surface for malformed files, and extractions that can disagree;
+  - memory ingestion owning parsing: it would put document processing inside Personal Memory, against the domain separation in §23.1.
