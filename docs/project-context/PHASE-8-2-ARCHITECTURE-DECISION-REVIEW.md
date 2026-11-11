@@ -194,6 +194,7 @@ All criteria are met.
 | If delayed | Blocks 8.3 (content storage). 8.2 needs only object-key columns |
 | Recommendation | Define a storage port in 8.2. Use **B for unit tests and A for integration tests**, with the container image chosen and licence-checked at 8.3 |
 | Approval | **Yes** (new local infrastructure) |
+| **Outcome (2026-11-11)** | **Approved:** a storage port; an in-memory fake for unit tests; **SeaweedFS** (Apache-2.0) in Docker Compose for integration tests and local development; **boto3** as the client. All are implemented in 8.3, and no port was added in 8.2. MinIO (community images stopped in 2025, repository archived in 2026) and LocalStack (account and auth token required since 2026) were ruled out. Recorded in [7.1 §24.1](../technical-decisions/01-baseline-technology-stack.md) |
 
 ### Decision 9 — When to introduce Celery/RabbitMQ and the transactional outbox
 

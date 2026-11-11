@@ -65,7 +65,7 @@
 - A failing migration leaves the schema at the previous revision.
 
 **A3 — Deferrals that need the owner's acceptance.**
-- **a. Object-storage failure tests** (plan §13: object storage unavailable, partial object upload). No object storage exists until 8.3 (Decision 8 is still open), so they move to 8.3.
+- **a. Object-storage failure tests** (plan §13: object storage unavailable, partial object upload). No object storage exists until 8.3 (Decision 8 was still open at review time; settled later the same day as SeaweedFS for tests, 7.1 §24.1), so they move to 8.3.
 - **b. Least-privilege database roles** (7.2 §3, §17; 7.1 §23.3 "written only by the Memory Engine role"). The migrations create no roles or grants, and tests use one database user. Plan 8.2 does not mention roles. **Proposed:** defer to the first deployment environment (7.8) and record it as a known constraint, rather than create roles in 8.2.
 
 **A4 — Repeat on `main`.** Merge PR #10, then PR #11, and re-run the section 1 checks on `main`.

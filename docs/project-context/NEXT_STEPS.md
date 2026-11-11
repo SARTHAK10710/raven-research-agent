@@ -4,7 +4,7 @@
 
 - **Phase:** 8 — Memory Engine Implementation
 - **Subphase:** 8.2 — Database and Persistence: **`VERIFIED` 2026-11-11** and merged (`main` @ `423b6fd`; [acceptance review](PHASE-8-2-ACCEPTANCE-REVIEW.md)). 8.1 `VERIFIED` and merged.
-- **Next approved action:** none. Phase 8.3 (Ingestion Pipeline, [plan](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md)) needs the owner's explicit approval, and Decision 8 (local object storage ⚑) must be decided for it. Do not start 8.3 without approval.
+- **Next approved action:** none. Decision 8 (local object storage ⚑) is settled ([7.1 §24.1](../technical-decisions/01-baseline-technology-stack.md)). Phase 8.3 (Ingestion Pipeline, [plan](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md)) needs the owner's explicit approval. Do not start 8.3 without approval.
 - **Decision review:** [PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) analyses all 15 open decisions, with a deep review of the Phase 8.2 blockers.
 
 ## Prerequisites before Phase 8.2
@@ -52,7 +52,7 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 | 5 | Placement of Document Intelligence records (shared `memory` schema vs separate schema) | 8.2 | **APPROVED** 2026-11-11: `memory` schema, `pm_`/`doc_`/`me_` prefixes (7.1 §23.3) |
 | 6 | ⚑ Document-to-memory authorization model (consent record, scope, expiry) | 8.4 document path, 8.12 | Per-request authorization record tied to user, document version and scope |
 | 7 | ⚑ Sequence: run 8.12 before 8.11; 8.4's document-derived path after 8.12 | Plan order | Approve the reorder |
-| 8 | ⚑ Local S3-compatible object storage for development and tests (new infrastructure) | 8.3 | Docker Compose S3-compatible service, development only |
+| 8 | ⚑ Local S3-compatible object storage for development and tests (new infrastructure) | 8.3 | **APPROVED** 2026-11-11: storage port, in-memory fake for unit tests, SeaweedFS in Docker Compose for integration tests and development, boto3 client; implemented in 8.3 (7.1 §24.1) |
 | 9 | When to introduce Celery/RabbitMQ and the transactional outbox | 8.3 | **APPROVED** 2026-11-11: no outbox in 8.2; outbox table, publisher and Celery together in 8.3 (7.1 §23.6). Differs from the review's recommendation |
 | 10 | Owner identity before an identity provider is chosen | 8.2 | **APPROVED** 2026-11-11: caller-supplied `OwnerScope`, opaque `owner_id` (7.1 §23.4) |
 | 11 | ⚑ Shared public entities (5.4.13): population and privacy | 8.5 | **APPROVED** 2026-11-11: private only; `scope` column present, `shared` rejected by a check until a curation process is approved (7.1 §23.7) |
@@ -72,7 +72,11 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 *Overwrite this section at the end of every session that changes the repository.*
 
 - **Date:** 2026-11-11
-- **Objective:** finish Phase 8.2: step 5, the acceptance review and its fixes, the merges, and verification on `main` (A4).
+- **Latest (uncommitted, branch `docs/decision-8-object-storage`):** the owner settled **Decision 8** (local object storage ⚑): a storage port; an in-memory fake for unit tests; SeaweedFS (Apache-2.0) in Docker Compose for integration tests and local development; boto3 as the client.
+  - Recorded in [7.1 §24.1](../technical-decisions/01-baseline-technology-stack.md), the decision review's Decision 8 outcome, `TECHNOLOGY_DECISIONS.md` and the open-decisions table.
+  - MinIO (community images stopped in 2025, repository archived in 2026) and LocalStack (auth token required since 2026) were ruled out after checking their current status.
+  - Nothing is implemented; 8.3 does that once approved.
+- **Objective (earlier this session):** finish Phase 8.2: step 5, the acceptance review and its fixes, the merges, and verification on `main` (A4).
 - **Work completed:**
   - Step 5 (`42b35c3`): processing events, candidate evaluations, correction requests, deletion operations and ledger; migration `0005`.
   - Acceptance review ([PHASE-8-2-ACCEPTANCE-REVIEW.md](PHASE-8-2-ACCEPTANCE-REVIEW.md)) and fixes (`1b58b77`):
@@ -89,6 +93,6 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 - **Decisions made:** step-5 vocabularies and designs (5.4 amendment §14); the A3 deferrals (object-storage failure tests to 8.3, database roles to deployment).
 - **Implementation status:** 8.1 and 8.2 `VERIFIED` and merged; 8.3–8.12 `NOT_STARTED`.
 - **Tests and results (A4, `main` @ `423b6fd`):** `uv sync --locked` ok; `ruff check`, `ruff format --check` clean; `mypy` strict clean (63 files); `uv run pytest --cov` → **412 passed** (300 unit, 112 integration against PostgreSQL 17 + pgvector), 96% coverage, plus 3 further green runs; database stopped → 112 skipped.
-- **Unresolved:** language requirement G6; Decision 8 (object storage, needed by 8.3); embedding model (before 8.7); Decisions 6, 7 and 12–15; ratio-label wording (issue 9); uv not on PATH on this machine; Docker Desktop on this machine can take several minutes to start.
-- **Next action:** commit this status update (with approval); then the owner decides Decision 8 and whether to approve Phase 8.3.
-- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.3 ([03-ingestion-pipeline.md](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md)), the [decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) §4 (Decision 8), 7.1 §23.6 (outbox in 8.3), and `memory-engine/README.md`.
+- **Unresolved:** language requirement G6; Decision 13 (document parsing ownership, needed by 8.3); embedding model (before 8.7); Decisions 6, 7 and 12–15; ratio-label wording (issue 9); uv not on PATH on this machine; Docker Desktop on this machine can take several minutes to start.
+- **Next action:** commit the Decision 8 record (with approval); then the owner decides whether to approve Phase 8.3 (Decision 13, parsing ownership, is also listed as needed by 8.3).
+- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.3 ([03-ingestion-pipeline.md](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md)), 7.1 §24.1 (Decision 8), the [decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) §4 (Decision 13), 7.1 §23.6 (outbox in 8.3), 7.2 §10–11 (object storage and consistency), and `memory-engine/README.md`.

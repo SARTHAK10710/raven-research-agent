@@ -2,7 +2,7 @@
 
 A summary of Phase 7 ([docs/technical-decisions](../technical-decisions/Readme.md)). The source documents are authoritative.
 
-**Installed in the repository:** the Phase 8.1 dependencies (merged) and, on the Phase 8.2 branch, the database dependencies, declared in `pyproject.toml` files and locked in the root `uv.lock`. The embedding model is still pending ([decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md), Decision 3). "Approved" below means selected in the specifications, not installed. Each dependency is added only in the subphase that needs it.
+**Installed in the repository:** the Phase 8.1 and Phase 8.2 dependencies (merged), declared in `pyproject.toml` files and locked in the root `uv.lock`. The embedding model is still pending ([decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md), Decision 3). "Approved" below means selected in the specifications, not installed. Each dependency is added only in the subphase that needs it.
 
 ## Approved Phase 8.1 project setup decisions
 
@@ -30,13 +30,22 @@ Approved by the project owner on 2026-11-11. Recorded in [7.1 §23](../technical
 | 3 (timing only) | Vector storage timing | 8.2 creates embedding metadata only; vector tables and indexes in 8.7 after the model is selected (7.1 §23.5) | **APPROVED** |
 | 9 | Outbox and Celery timing | No outbox in 8.2; outbox table, publisher, RabbitMQ and Celery together in 8.3 (7.1 §23.6) | **APPROVED** |
 
+## Approved Phase 8.3 prerequisite decisions
+
+Approved by the project owner on 2026-11-11. Recorded in [7.1 §24](../technical-decisions/01-baseline-technology-stack.md). Not implemented; Phase 8.3 itself is not yet approved.
+
+| # | Decision | Choice | Status |
+|---|---|---|---|
+| 8 ⚑ | Local object storage (development and tests) | Storage port; in-memory fake for unit tests; **SeaweedFS** (Apache-2.0) in Docker Compose for integration tests and local development; **boto3** client. Production provider still deferred | **APPROVED** |
+
 ## Dependency timing
 
 | When | Dependencies | Installed? |
 |---|---|---|
 | Phase 8.1 — runtime | `pydantic`, `pydantic-settings` | Yes — 2.14.3, 2.16.2 (locked) |
 | Phase 8.1 — development | `pytest`, `pytest-cov`, `ruff`, `mypy` | Yes — 9.2.0, 7.1.0, 0.17.4, 2.4.1 (locked) |
-| Phase 8.2 | `SQLAlchemy` 2.x, `alembic`, `psycopg[binary]` (psycopg 3, approved 2026-11-11) | Yes — 2.1.8, 1.20.1, 3.3.8 (locked; uncommitted on `feat/phase-8-2-persistence-foundation`). Transitive: `mako`, `markupsafe`, `tzdata`. Test database: `pgvector/pgvector:pg17` via `docker-compose.yml` (dev/test only) |
+| Phase 8.2 | `SQLAlchemy` 2.x, `alembic`, `psycopg[binary]` (psycopg 3, approved 2026-11-11) | Yes — 2.1.8, 1.20.1, 3.3.8 (locked, merged). Transitive: `mako`, `markupsafe`, `tzdata`. Test database: `pgvector/pgvector:pg17` via `docker-compose.yml` (dev/test only) |
+| Phase 8.3 (approved 2026-11-11, Decision 8) | `boto3` (object-storage client); SeaweedFS container for integration tests and local development | No — added in 8.3 with a pinned, licence-checked image tag |
 | When required | `HTTPX` (API/HTTP testing); OpenTelemetry API/SDK (instrumentation) | No |
 | Later milestones | NLP, embedding, messaging and storage libraries, in the subphase that needs them | No |
 
