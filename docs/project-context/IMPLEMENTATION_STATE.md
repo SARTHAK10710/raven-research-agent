@@ -46,6 +46,8 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 - On Windows, a repository at a very long path cannot load mypy's compiled DLLs from `.venv` ("filename or extension is too long"), even with long paths enabled. Investigated on 2026-11-11: it fails at a 180-character repository root (mypyc extension paths reach 256–263 characters), and passes from a fresh clone at a 109-character root with an ordinary in-tree `.venv` (mypy strict clean, 71 tests passed). Environmental, not a project defect.
 - uv was installed for this machine with `pip install --user uv` (0.13.7); its `Scripts` directory is not on PATH.
 - `tests/.gitkeep` and `memory-engine/.gitkeep` remain although the directories now have content.
+- On Windows, a default `git clone` fails checkout because several `docs/implementation-plans/Phase-08-memory-engine/` and `docs/technical-decisions/03-…` paths exceed 260 characters at deep locations. Workaround: `git config core.longpaths true` (or clone to a short path).
+- Log redaction matches key substrings, so any `extra` field containing `session` (for example a future `research_session_id`) or `token` is redacted. Revisit when such identifiers are logged.
 
 ## 8.2–8.12
 
@@ -61,4 +63,5 @@ These are documentation changes, tracked here so they are not mistaken for imple
 | Project-context system (`CLAUDE.md`, `.claude/rules/`, `docs/project-context/`) | Merged into `main` (PR #1) | `83e174e`, merged in `f6abef0` |
 | Record approved 8.1 setup decisions in 7.1 §22, 7.7, technical-decisions Readme, Phase 8 Readme and plan 8.1 | Merged into `main` (PR #1) | `83e174e`, merged in `f6abef0` |
 | Record PR #1 merge in status files | Merged into `main` (PR #2) | `de7ed06`, merged in `2c35fb3` |
-| Phase 8.1 checkpoint correction, [Phase 8.2 architecture decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md), and the approved Decisions 1, 2, 4, 5, 10 recorded in 7.1 §23, the 5.4 Phase 8.2 amendment and plans 8.1/8.2 | Written; **uncommitted** in the working tree | `feat/phase-8-1-foundation` (already merged; landing needs a new commit and pull request) |
+| Phase 8.1 checkpoint correction, [Phase 8.2 architecture decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md), and the approved Decisions 1, 2, 4, 5, 10 recorded in 7.1 §23, the 5.4 Phase 8.2 amendment and plans 8.1/8.2 | Open PR #4 | `docs/phase-8-2-decisions` (`22cc9f1`, plus a merge of `main` and the Decision 9 update) |
+| Sync status files with the PR #3 merge; record audit findings (long-path clone, log redaction, ratio-label wording) | Merged into `main` (PR #5) | `c9544af` |

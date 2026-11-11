@@ -49,6 +49,7 @@ Approved on 2026-11-11. Follow these; they take precedence over earlier open wor
 | `OwnerScope` and opaque `owner_id` on every owned row | `01-baseline-technology-stack.md` §23.4 |
 | Relationship vocabularies, revision change types, Atomic Memory lifecycle states | `phase-05-memory-engine-models.md`, Phase 8.2 Amendment |
 | Embedding **metadata** only in this plan; no vector columns, tables or indexes. Vector storage is created in plan 8.7 after the embedding model is selected | `01-baseline-technology-stack.md` §23.5 |
+| No outbox table in this plan; operation and idempotency tables only. The outbox, its publisher and Celery arrive in plan 8.3 | `01-baseline-technology-stack.md` §23.6 |
 
 **Not yet decided:** the embedding model itself (needed before plan 8.7).
 

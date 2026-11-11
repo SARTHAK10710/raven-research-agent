@@ -207,6 +207,7 @@ All criteria are met.
 | If delayed | 8.3 would need a schema change for the outbox |
 | Recommendation | **Outbox and operation tables in 8.2** (schema only, no broker); Celery and RabbitMQ in 8.3 |
 | Approval | No. Low-risk sequencing within approved technology |
+| **Outcome (2026-11-11)** | The owner chose **both in 8.3**: no outbox table in 8.2 (operation tables stay in 8.2). Recorded in [7.1 §23.6](../technical-decisions/01-baseline-technology-stack.md). The recommendation above is kept as the original analysis |
 
 ### Decision 10 — Owner identity before an identity provider is chosen ⚑
 
@@ -704,7 +705,7 @@ After the user approves Decisions 1, 2, 4, 5 and 10 and the vector-column deferr
 
 1. Add `SQLAlchemy` 2.x, `alembic` and `psycopg[binary]` to `memory-engine`; lock.
 2. Add the shared kernel types: identifiers, `OwnerScope`, temporal value objects, and the approved vocabulary enums.
-3. Add `infrastructure/persistence/`: engine and session factory, unit of work, and the `me_outbox` and `me_operation` tables.
+3. Add `infrastructure/persistence/`: engine and session factory, unit of work, and the `me_operation` table. *(Updated 2026-11-11: `me_outbox` moved to 8.3 per Decision 9, 7.1 §23.6.)*
 4. Add `memory-engine/migrations/`: an Alembic environment targeting the `memory` schema.
 5. Create the first migration: `pm_memory_source`, `pm_memory_candidate`, `pm_atomic_memory` + `pm_atomic_memory_revision`, `pm_provenance`, with `owner_id`, version columns and check constraints.
 6. Write repositories with ownership enforcement, plus unit tests (fakes) and integration tests (PostgreSQL via Docker Compose; upgrade/downgrade/upgrade migration test).

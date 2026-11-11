@@ -260,6 +260,7 @@ Approved on 2026-11-11. Recorded in [`01-baseline-technology-stack.md`](../../te
 | Document record placement | `memory` schema; `pm_`, `doc_` and `me_` table prefixes; no implicit cascades; guarded cross-domain evidence references |
 | Owner identity | Caller-supplied `OwnerScope` with an opaque `owner_id`; no Memory Engine user table |
 | Vector storage timing | Phase 8.2 creates embedding metadata only; vector tables and indexes are created in Phase 8.7 after the embedding model is selected (§23.5) |
+| Outbox and Celery timing | No outbox in Phase 8.2; the outbox table, publisher, RabbitMQ and Celery arrive together in Phase 8.3 (§23.6) |
 
 Still open: the embedding model itself, to be selected before Phase 8.7 ([decision review](../../project-context/PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md), Decision 3).
 

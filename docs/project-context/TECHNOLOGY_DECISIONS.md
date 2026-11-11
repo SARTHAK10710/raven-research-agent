@@ -28,6 +28,7 @@ Approved by the project owner on 2026-11-11. Recorded in [7.1 §23](../technical
 | 5 | Document record placement | `memory` schema; `pm_`/`doc_`/`me_` prefixes; no implicit cascades; guarded evidence references | **APPROVED** |
 | 10 | Owner identity | Caller-supplied `OwnerScope`; opaque `owner_id`; no Memory Engine user table | **APPROVED** |
 | 3 (timing only) | Vector storage timing | 8.2 creates embedding metadata only; vector tables and indexes in 8.7 after the model is selected (7.1 §23.5) | **APPROVED** |
+| 9 | Outbox and Celery timing | No outbox in 8.2; outbox table, publisher, RabbitMQ and Celery together in 8.3 (7.1 §23.6) | **APPROVED** |
 
 ## Dependency timing
 
