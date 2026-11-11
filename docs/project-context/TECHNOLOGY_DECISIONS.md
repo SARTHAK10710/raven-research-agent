@@ -37,6 +37,7 @@ Approved by the project owner on 2026-11-11. Recorded in [7.1 §24](../technical
 | # | Decision | Choice | Status |
 |---|---|---|---|
 | 8 ⚑ | Local object storage (development and tests) | Storage port; in-memory fake for unit tests; **SeaweedFS** (Apache-2.0) in Docker Compose for integration tests and local development; **boto3** client. Production provider still deferred | **APPROVED** |
+| 13 ⚑ | Document parsing ownership | The document pipeline (8.12) parses PDF/DOCX/TXT; ingestion (8.3) validates, stores, registers and hands off; memory ingestion parses messages and conversations only (6.2 amendment) | **APPROVED** |
 
 ## Dependency timing
 

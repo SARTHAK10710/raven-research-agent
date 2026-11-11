@@ -9,7 +9,7 @@
 | Current phase | Phase 8 — Memory Engine Implementation |
 | Current subphase | 8.2 — Database and Persistence (**approved 2026-11-11**) |
 | Subphase status | 8.2 **`VERIFIED`** (2026-11-11) and merged: all five steps plus the acceptance-review fixes, with every plan 8.2 §14 criterion met on `main` @ `423b6fd` (two owner-accepted deferrals; [PHASE-8-2-ACCEPTANCE-REVIEW.md](PHASE-8-2-ACCEPTANCE-REVIEW.md)). 8.1 remains `VERIFIED` and merged |
-| Current active task | None. Decision 8 (local object storage) was settled on 2026-11-11 ([7.1 §24.1](../technical-decisions/01-baseline-technology-stack.md)). Phase 8.3 (Ingestion Pipeline) needs the owner's approval to start |
+| Current active task | None. Decisions 8 (local object storage) and 13 (document parsing ownership) were settled on 2026-11-11 ([7.1 §24](../technical-decisions/01-baseline-technology-stack.md)). Phase 8.3 (Ingestion Pipeline) needs the owner's approval to start |
 | Application code | 8.1 foundation plus 8.2: Personal Memory core (`0001`), Document Intelligence and the evidence path (`0002`), entities and relationships (`0003`), episodes, profiles, categories and memory embedding metadata (`0004`), processing, evaluation, correction and deletion records (`0005`), episode version (`0006`); owner-scoped repositories and units of work. **Persistence only**: no ingestion, extraction, resolution, consolidation, parsing, chunking, embedding generation, retrieval ranking or deletion workflow |
 
 ## Documentation completion
@@ -41,5 +41,5 @@ Installed: Phase 8.1 dependencies plus the Phase 8.2 database dependencies (SQLA
 
 ## Pending work
 
-1. Owner approval to start Phase 8.3 (Ingestion Pipeline). Decision 8 is settled: a storage port, an in-memory fake, SeaweedFS in Docker Compose and boto3, all implemented in 8.3. Decision 13 (parsing ownership) is also listed as needed by 8.3.
+1. Owner approval to start Phase 8.3 (Ingestion Pipeline). Decision 8 is settled: a storage port, an in-memory fake, SeaweedFS in Docker Compose and boto3, all implemented in 8.3. Decision 13 is settled: the document pipeline (8.12) owns parsing, and ingestion only validates, stores, registers and hands off.
 2. Phase 8.3 inherits the 8.2 deferral of the object-storage failure tests.

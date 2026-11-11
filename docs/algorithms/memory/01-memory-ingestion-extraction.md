@@ -2379,3 +2379,29 @@ It must not assume that every candidate is new information or that every candida
 **Phase:** 6.2 — Memory Ingestion & Extraction  
 **Document:** `01-memory-ingestion-extraction.md`  
 **Status:** ALL SIX ALGORITHM SPECIFICATIONS COMPLETE
+
+---
+
+<!-- Amendment approved by the project owner on 2026-11-11 (Decision 13 of the Phase 8.2 architecture decision review). Appended; earlier text unchanged. -->
+
+# Amendment — Document parsing ownership (Decision 13)
+
+**Approved 2026-11-11.** Recorded in [7.1 §24.2](../../technical-decisions/01-baseline-technology-stack.md).
+
+Algorithm 6.2.1 §3.2 ("Documents") lists seven steps for document inputs. They are split between two owners, so each uploaded document has one parser and one extracted representation per version:
+
+| 6.2.1 §3.2 step | Owner |
+|---|---|
+| 1. Validate file type (actual format, not the extension or claimed MIME type) | Ingestion (plan 8.3 §6.1) |
+| 2. Validate file integrity (size limits, checksum, approved pre-parse security checks) | Ingestion (plan 8.3 §6.1) |
+| 4. Preserve the original document | Ingestion (plan 8.3 §6.2), in object storage (7.1 §24.1) |
+| 5. Capture available metadata | Ingestion: upload metadata; the document pipeline: metadata found in the content |
+| 3. Extract readable text | **Document pipeline** (Document Intelligence, plan 8.12) |
+| 6. Record parsing status | **Document pipeline**: `doc_extracted_representation` and version processing status |
+| 7. Prepare normalized content | **Document pipeline** |
+
+Consequences:
+- Memory ingestion parses text messages and conversations only. It never parses PDF, DOCX or TXT files, and a document upload creates Document Intelligence records, not a Memory Source.
+- Personal Memory reaches document text only through the authorized document-to-memory extraction path. Its authorization model is Decision 6, which is not yet decided, so that path stays disabled until it is approved. Uploading a document never creates memories (Phase 8 Readme §4.2).
+- The `document` Memory Source type is used only by that authorized path.
+- 6.2.1's text and conversation handling, the `parsing_failed` source status for content that cannot be normalized, and 6.2.1 §3.9 (inspect files before parsing) are unchanged. The pre-parse inspection is done by ingestion, the parsing by the document pipeline.

@@ -261,6 +261,7 @@ All criteria are met.
 | If delayed | Must be settled before 8.3 |
 | Recommendation | Document pipeline owns parsing. Memory ingestion reaches document text only through the authorized document-to-memory path (Decision 6) |
 | Approval | **Yes**. It reinterprets an approved Phase 6 algorithm |
+| **Outcome (2026-11-11)** | **Approved as recommended:** the document pipeline (8.12) owns parsing; ingestion (8.3) validates, stores, registers and hands off; the document-to-memory path stays disabled until Decision 6 is approved. Recorded in [7.1 §24.2](../technical-decisions/01-baseline-technology-stack.md) and an amendment to [6.2](../algorithms/memory/01-memory-ingestion-extraction.md). Gap G5 closed |
 
 ### Decision 14 — spaCy pipeline; scoring thresholds and weights; evaluation datasets
 
@@ -613,7 +614,7 @@ These follow the bitemporal model (5.3.4, 6.3.7 §9.3). "Progression" is `supers
 | G2 | Memory relationship lists disagree (5.4.27 / 6.3.8 / 6.4.5 / plan 8.5 "corrects") | as cited | Decision 4, part B (approval) |
 | G3 | `ABOUT_ENTITY` modelled as a memory relationship, but it targets an entity | 6.3.8 vs 5.4.27 rule 2 | Memory–Entity association (approval) |
 | G4 | Passive and state-like supersession types | 6.3.7 vs 6.3.8 | Decision 4, part C (approval) |
-| G5 | Document parsing appears in memory ingestion and in the document pipeline | 6.2.1 §3.2 vs memory/05 | Decision 13 (approval) |
+| G5 | Document parsing appears in memory ingestion and in the document pipeline | 6.2.1 §3.2 vs memory/05 | Decision 13 (approval). **Closed 2026-11-11**: document pipeline owns parsing (7.1 §24.2) |
 | G6 | No language requirement, while model selection depends on it | 7.3 §5.1 "where required"; 7.5 | **User to state** whether non-English content is in scope |
 | G7 | Derived-profile ownership differs between Phase 2 and Phase 6/8 | phase-02 vs 6.5.6, plan 8.9 | Decision 12 |
 

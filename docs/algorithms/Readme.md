@@ -211,7 +211,7 @@ Phase 6 is documented in twelve numbered subphases plus the Document Processing 
 | Subphase | Document | Scope |
 |---|---|---|
 | 6.1 | `shared/01-shared-algorithm-framework.md` | Shared algorithm framework, scoring system and processing contract |
-| 6.2 | `memory/01-memory-ingestion-extraction.md` | Memory ingestion, relevance gate and extraction |
+| 6.2 | `memory/01-memory-ingestion-extraction.md` | Memory ingestion, relevance gate and extraction (with an appended amendment on document parsing ownership, Decision 13) |
 | 6.3 | `memory/02-memory-resolution.md` | Deduplication, entity resolution and contradiction handling |
 | 6.4 | `memory/03-memory-retrieval.md` | Hybrid retrieval, ranking and context selection |
 | 6.5 | `memory/04-memory-consolidation-maintenance.md` | Consolidation, maintenance, profiles and forgetting |
