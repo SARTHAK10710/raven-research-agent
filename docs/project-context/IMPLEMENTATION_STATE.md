@@ -4,14 +4,14 @@ Actual implementation progress, recorded only from verified repository state.
 
 Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` · `TESTING` · `VERIFIED` · `BLOCKED`. `VERIFIED` requires executed test evidence against the subphase's acceptance criteria; generated code is never verified by itself.
 
-**Baseline:** `main` @ `8c74d4f` (PR #6 merged). 8.2 step 1 (`d2346b6`) and step 2 (`e7fc443`) are on `feat/phase-8-2-document-persistence`, pending merge into `main`. PR #7 merged step 1 only into PR #6's already-merged branch, so it did not reach `main`.
+**Baseline:** `main` @ `0743e02` (PR #8 merged 8.2 steps 1–2). 8.2 step 3 is uncommitted on `feat/phase-8-2-entities-relationships`.
 
 ## Summary
 
 | Subphase | Status | Commit |
 |---|---|---|
 | 8.1 Foundation and project setup | `VERIFIED` | `5a0d6e5`, merged in `6efd72d` (PR #3) |
-| 8.2 Database and persistence | `IN_PROGRESS` (steps 1–2 tested) | Step 1 `d2346b6`, step 2 `e7fc443`; pending merge into `main` |
+| 8.2 Database and persistence | `IN_PROGRESS` (steps 1–3 tested; 4–5 to do) | Steps 1–2 `d2346b6`, `e7fc443` (merged, PR #8); step 3 uncommitted |
 | 8.3 Ingestion pipeline | `NOT_STARTED` | — |
 | 8.4 Extraction and evaluation | `NOT_STARTED` | — |
 | 8.5 Entity and relationship management | `NOT_STARTED` | — |
@@ -53,7 +53,11 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 
 | Field | Value |
 |---|---|
-| Status | `IN_PROGRESS` — approved 2026-11-11. Step 1 committed (`d2346b6`, PR #7); step 2 (Document Intelligence persistence) implemented and tested, uncommitted; step 3+ not started |
+| Status | `IN_PROGRESS` — approved 2026-11-11. Steps 1–2 merged (PR #8). Step 3 (entities and relationships) implemented and tested, uncommitted. Steps 4–5 not started |
+| Files created (step 3) | `migrations/versions/20261111_0003_entities_and_relationships.py`; `personal/domain/entities.py`; `infrastructure/persistence/personal/{entity_models,entity_repositories}.py`. Tests: `unit/test_entity_records.py`, `integration/test_entity_repositories.py` |
+| Files modified (step 3) | `domain/vocabulary.py` (7 vocabularies); `personal/domain/__init__.py`; `personal/application/ports.py` (entity, mention, relationship ports); `infrastructure/persistence/{database,unit_of_work}.py` (shared `conditional_update`; new repositories); `persistence/documents/repositories.py` (uses the shared helper); `migrations/env.py`; tests `unit/test_persistence_definitions.py`, `integration/test_migrations.py`. No new dependencies |
+| Migration (step 3) | `0003_entities_and_relationships`: `pm_entity` (private only), `pm_entity_alias`, `pm_entity_mention`, `pm_entity_resolution` (append-only, `seq` ordering), `pm_entity_relationship`, `pm_memory_relationship` (partial unique indexes for current rows), `pm_memory_entity`; `me_guard_columns` triggers on all seven |
+| Tests (step 3) | **288 passed, 0 failed** (217 unit, 71 integration), 97% coverage; Ruff clean; mypy strict clean (52 files) |
 | Files created (step 1) | Root: `docker-compose.yml`. `memory-engine/`: `alembic.ini`, `migrations/{env.py,script.py.mako,versions/20261111_0001_personal_memory_core.py}`, `src/memory_engine/domain/{identifiers,vocabulary}.py`, `personal/{__init__,domain/__init__,domain/records,application/__init__,application/ports}.py`, `infrastructure/{__init__,persistence/__init__,persistence/base,persistence/database,persistence/unit_of_work,persistence/personal/__init__,persistence/personal/models,persistence/personal/repositories}.py`. Tests: `unit/test_{personal_records,persistence_definitions}.py`, `integration/{conftest,test_migrations,test_personal_repositories}.py` |
 | Files created (step 2) | `memory-engine/migrations/versions/20261111_0002_document_intelligence.py`; `src/memory_engine/documents/{__init__,domain/__init__,domain/records,domain/vocabulary,application/__init__,application/ports}.py`; `infrastructure/persistence/documents/{__init__,models,repositories}.py`. Tests: `unit/test_document_records.py`, `integration/test_document_repositories.py` |
 | Files modified (step 2) | `domain/vocabulary.py` (`DocumentEvidenceStatus`); `personal/domain/{__init__,records}.py` (`DocumentEvidenceRef`, provenance evidence link); `personal/application/ports.py` (`DocumentEvidenceRepository`); `exceptions/{__init__,base}.py` (`DeletionInProgressError`); `infrastructure/persistence/{__init__,base,unit_of_work}.py`; `persistence/personal/{models,repositories}.py`; `migrations/env.py`; tests `unit/test_{persistence_definitions,personal_records,domain_boundary,exceptions}.py`, `integration/{conftest,test_migrations}.py`. No new dependencies |
@@ -64,7 +68,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 | Migrations | `0001_personal_memory_core`: 5 `pm_` tables, composite `(id, owner_id)` foreign keys with `RESTRICT`, vocabulary/score/temporal check constraints, append-only triggers on `pm_atomic_memory_revision` and `pm_provenance`. Tested upgrade → downgrade → upgrade |
 | Tests executed | `uv sync --locked`; `uv run pytest --cov` (with `docker compose up -d --wait postgres-test`); `uv run pytest -m integration` with the database stopped; `uv run ruff check .`; `uv run ruff format --check .`; `uv run mypy` |
 | Tests passed / failed | **162 passed, 0 failed** (136 unit, 26 integration), 98% line+branch coverage; database stopped → 26 skipped with message; Ruff clean; mypy strict clean (36 files) |
-| Commit | Step 1: `d2346b6` (reviewed in PR #7, which merged into a stale branch). Step 2: `e7fc443`. Both proposed for `main` in one pull request |
+| Commit | Step 1 `d2346b6` and step 2 `e7fc443`: merged into `main` through PR #8 (`0743e02`). Step 3: uncommitted |
 
 **Plan 8.2 §14 acceptance criteria, after step 2** (met for the records built so far):
 - 2: personal memory persistence (step 1).
@@ -80,6 +84,11 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 
 Not yet: 1 and 12 for the full model (entities, relationships, episodes, profiles and the rest, step 3+). Object-storage failure tests (plan 8.2 §13) wait for object storage in 8.3.
 
+**Step 3 decisions and findings (recorded):**
+- Decision 11 ⚑ approved: entities are private only (7.1 §23.7). Entity, mention and resolution vocabularies approved (5.4 Phase 8.2 amendment §12).
+- Bugs caught by the step 3 tests: a check that compared two possibly-NULL columns with `IS DISTINCT FROM` (false for NULL/NULL), and resolution history order that was unstable within one transaction. Both are fixed with tests.
+- Criterion 1 (database foundation matches Phase 5) now covers the core, document, entity and relationship models; episodes, profiles, categories, consolidation and memory embedding metadata (step 4) and the deletion, correction, evaluation and processing records (step 5) remain.
+
 **Step 2 deviations and decisions (recorded):**
 - Document vocabularies and the `simple` full-text configuration were approved by the owner (5.4 Document Intelligence amendment §14).
 - Evidence rows keep opaque `*_ref` identifiers next to the foreign-key columns, so `RESTRICT` and permanent provenance can both hold (7.1 §23.3 note).
@@ -92,7 +101,8 @@ Not yet: 1 and 12 for the full model (entities, relationships, episodes, profile
 - Revisions, not a separate version column, carry optimistic concurrency for Atomic Memory (`revision_number` checked in a conditional `UPDATE`).
 
 **Known limitations:**
-- Entities, relationships, episodes, profiles, categories, memory embedding metadata and deletion records are not yet persisted (8.2 step 3+).
+- Episodes, profiles, categories, consolidation results, memory embedding metadata (step 4) and deletion, correction, evaluation and processing-history records (step 5) are not yet persisted.
+- Entity persistence stores and protects decisions; it does not make them. Entity resolution itself (6.3.4) is Phase 8.5.
 - Integration tests need Docker Desktop running; without it they skip, so a green run without the database does not cover persistence.
 - The commit-failure path of the unit of work is not exercised by a test.
 - Full-text search uses the language-neutral `simple` configuration until the language requirement (G6) is decided.

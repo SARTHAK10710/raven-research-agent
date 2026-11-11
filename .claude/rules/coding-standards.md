@@ -30,8 +30,9 @@ Phase 8.1 created the foundation code (`memory-engine/src/memory_engine/`: `conf
   - Integration tests are marked `integration`, use the `connection`/`uow_factory`/`doc_uow_factory` fixtures (rolled back per test) and synthetic data only.
 - Established in 8.2 step 2:
   - Status-only updates use the `me_guard_columns(<mutable columns>)` trigger; with no arguments a table is append-only. List new mutable columns in the migration's `GUARDED_TABLES`; a unit test checks that they exist.
-  - In check constraints, compare possibly-NULL columns with `IS NOT DISTINCT FROM`, never `=`: PostgreSQL treats a NULL check result as passing.
-  - Status changes go through a conditional `UPDATE … WHERE status = <expected>` (`_conditional_update`), which distinguishes "not found" from a concurrency conflict.
+  - In check constraints, compare possibly-NULL columns with `IS NOT DISTINCT FROM`, never `=`: PostgreSQL treats a NULL check result as passing. The reverse also bites: `a IS DISTINCT FROM b` is *false* when both are NULL, so guard "must differ" rules with `a IS NULL OR …` (step 3). Test both the NULL/NULL and the NULL/value cases.
+  - Status changes go through a conditional `UPDATE … WHERE status = <expected>` (`conditional_update` in `database.py`), which distinguishes "not found" from a concurrency conflict.
+  - History that must keep insertion order within one transaction needs its own sequence (`seq`, an identity column): `now()` is the same for every row in a transaction (step 3).
   - Writers of derived document content call `require_writable_version` first, so nothing is recreated once deletion is requested.
   - Only `pm_document_evidence_ref` may reference `doc_` tables; `documents/` and its infrastructure never import Personal Memory code (tested).
 

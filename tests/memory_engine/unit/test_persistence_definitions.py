@@ -36,20 +36,24 @@ from memory_engine.infrastructure.persistence import (
     translate_database_errors,
 )
 from memory_engine.infrastructure.persistence.base import Base
-from memory_engine.infrastructure.persistence.personal import models
+from memory_engine.infrastructure.persistence.personal import entity_models, models
 from memory_engine.personal.application.ports import (
     AtomicMemoryRepository,
     DocumentEvidenceRepository,
+    EntityMentionRepository,
+    EntityRepository,
     MemoryCandidateRepository,
     MemorySourceRepository,
     PersonalUnitOfWork,
     PersonalUnitOfWorkFactory,
     ProvenanceRepository,
+    RelationshipRepository,
 )
 
 VERSIONS = Path(__file__).resolve().parents[3] / "memory-engine" / "migrations" / "versions"
 MIGRATION = VERSIONS / "20261111_0001_personal_memory_core.py"
 MIGRATION_0002 = VERSIONS / "20261111_0002_document_intelligence.py"
+MIGRATION_0003 = VERSIONS / "20261111_0003_entities_and_relationships.py"
 PASSWORD = "synthetic-db-password-91c2"  # noqa: S105 - test-only value
 
 
@@ -88,11 +92,51 @@ def test_migration_0002_shares_the_evidence_rules_with_the_models() -> None:
     assert migration.down_revision == _load_migration().revision
 
 
-def test_every_guarded_column_list_names_real_columns() -> None:
-    for table, mutable in _load_migration(MIGRATION_0002).GUARDED_TABLES.items():
+@pytest.mark.parametrize("path", [MIGRATION_0002, MIGRATION_0003], ids=lambda p: p.stem[:13])
+def test_every_guarded_column_list_names_real_columns(path: Path) -> None:
+    for table, mutable in _load_migration(path).GUARDED_TABLES.items():
         columns = set(Base.metadata.tables[f"memory.{table}"].c.keys())
         assert set(mutable) <= columns, table
         assert "id" not in mutable and "owner_id" not in mutable, table
+
+
+@pytest.mark.parametrize(
+    ("frozen_name", "enum"),
+    [
+        ("ENTITY_SCOPES", vocabulary.EntityScope),
+        ("ENTITY_TYPES", vocabulary.EntityType),
+        ("ENTITY_STATUSES", vocabulary.EntityStatus),
+        ("MENTION_RESOLUTION_STATUSES", vocabulary.MentionResolutionStatus),
+        ("ENTITY_RESOLUTION_OUTCOMES", vocabulary.EntityResolutionOutcome),
+        ("ENTITY_RELATIONSHIP_TYPES", vocabulary.EntityRelationshipType),
+        ("MEMORY_RELATIONSHIP_TYPES", vocabulary.MemoryRelationshipType),
+        ("SUPERSESSION_REASONS", vocabulary.SupersessionReason),
+        ("MEMORY_ENTITY_ROLES", vocabulary.MemoryEntityRole),
+        ("PROVENANCE_ORIGIN_KINDS", vocabulary.ProvenanceOriginKind),
+    ],
+)
+def test_migration_0003_vocabularies_match_domain_enums(
+    frozen_name: str, enum: type[StrEnum]
+) -> None:
+    frozen = getattr(_load_migration(MIGRATION_0003), frozen_name)
+    assert tuple(frozen) == tuple(member.value for member in enum)
+
+
+@pytest.mark.parametrize(
+    "rule",
+    [
+        "MENTION_OUTCOMES",
+        "ASSIGNING_OUTCOMES",
+        "CHANGING_OUTCOMES",
+        "SYMMETRIC_ENTITY_TYPES",
+        "SYMMETRIC_MEMORY_TYPES",
+        "PREVIOUS_DIFFERS",
+    ],
+)
+def test_migration_0003_rules_match_the_models(rule: str) -> None:
+    migration = _load_migration(MIGRATION_0003)
+    assert getattr(migration, rule) == getattr(entity_models, rule)
+    assert migration.down_revision == _load_migration(MIGRATION_0002).revision
 
 
 @pytest.mark.parametrize(
@@ -126,7 +170,7 @@ VOCABULARIES = [
 
 
 def test_vocabulary_module_defines_the_expected_enums() -> None:
-    assert len(VOCABULARIES) == 13
+    assert len(VOCABULARIES) == 20
 
 
 def test_sqlalchemy_adapters_satisfy_the_application_ports() -> None:
@@ -140,7 +184,10 @@ def test_sqlalchemy_adapters_satisfy_the_application_ports() -> None:
     provenance: ProvenanceRepository = unit.provenance
     assert all(port is not None for port in (sources, candidates, memories, provenance))
     evidence: DocumentEvidenceRepository = unit.evidence
-    assert evidence is not None
+    entities: EntityRepository = unit.entities
+    mentions: EntityMentionRepository = unit.mentions
+    relationships: RelationshipRepository = unit.relationships
+    assert all(port is not None for port in (evidence, entities, mentions, relationships))
     doc_factory: DocumentUnitOfWorkFactory = SqlAlchemyDocumentUnitOfWorkFactory(session_factory)
     doc_unit: DocumentUnitOfWork = doc_factory().__enter__()
     documents: DocumentRepository = doc_unit.documents
@@ -168,6 +215,13 @@ def test_every_table_is_owner_scoped_with_a_domain_prefix() -> None:
         "pm_atomic_memory_revision",
         "pm_provenance",
         "pm_document_evidence_ref",
+        "pm_entity",
+        "pm_entity_alias",
+        "pm_entity_mention",
+        "pm_entity_resolution",
+        "pm_entity_relationship",
+        "pm_memory_relationship",
+        "pm_memory_entity",
         "doc_document",
         "doc_document_version",
         "doc_extracted_representation",
@@ -182,7 +236,7 @@ def test_every_table_is_owner_scoped_with_a_domain_prefix() -> None:
 
 # Root tables have no owner-scoped parent; every other table must reach its parent
 # through at least one foreign key that includes owner_id.
-ROOT_TABLES = {"pm_memory_source", "pm_atomic_memory", "doc_document"}
+ROOT_TABLES = {"pm_memory_source", "pm_atomic_memory", "pm_entity", "doc_document"}
 
 
 def test_foreign_keys_never_cascade_and_every_child_has_an_owner_key() -> None:

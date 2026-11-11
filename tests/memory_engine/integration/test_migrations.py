@@ -11,9 +11,10 @@ from sqlalchemy import Connection, Engine, inspect, text
 
 from memory_engine.infrastructure.persistence.base import Base
 from memory_engine.infrastructure.persistence.documents import models as _document_models
+from memory_engine.infrastructure.persistence.personal import entity_models as _entity_models
 from memory_engine.infrastructure.persistence.personal import models
 
-del _document_models  # imported to register the doc_ tables on Base.metadata
+del _document_models, _entity_models  # imported to register their tables on Base.metadata
 
 pytestmark = pytest.mark.integration
 
@@ -25,6 +26,13 @@ PM_TABLES = {
     "pm_atomic_memory_revision",
     "pm_provenance",
     "pm_document_evidence_ref",
+    "pm_entity",
+    "pm_entity_alias",
+    "pm_entity_mention",
+    "pm_entity_resolution",
+    "pm_entity_relationship",
+    "pm_memory_relationship",
+    "pm_memory_entity",
     "doc_document",
     "doc_document_version",
     "doc_extracted_representation",
@@ -107,7 +115,10 @@ def test_downgrade_to_step_one_keeps_personal_memory_intact(
                 make_alembic_config(connection, CHECK_SCHEMA), "0001_personal_memory_core"
             )
         remaining = _tables(engine, CHECK_SCHEMA)
-        assert not any(name.startswith("doc_") for name in remaining)
+        assert not any(
+            name.startswith(("doc_", "pm_entity", "pm_memory_rel")) for name in remaining
+        )
+        assert "pm_memory_entity" not in remaining
         assert "pm_document_evidence_ref" not in remaining
         assert "pm_provenance" in remaining
         provenance_columns = {
@@ -147,4 +158,11 @@ def test_append_only_trigger_function_installed(engine: Engine) -> None:
         "doc_embedding_guard",
         "doc_processing_operation_guard",
         "pm_document_evidence_ref_guard",
+        "pm_entity_guard",
+        "pm_entity_alias_guard",
+        "pm_entity_mention_guard",
+        "pm_entity_resolution_guard",
+        "pm_entity_relationship_guard",
+        "pm_memory_relationship_guard",
+        "pm_memory_entity_guard",
     }

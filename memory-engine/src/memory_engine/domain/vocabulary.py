@@ -124,6 +124,107 @@ class DocumentEvidenceStatus(StrEnum):
     SOURCE_DELETED = "source_deleted"
 
 
+class EntityScope(StrEnum):
+    """Entity scope (Decision 5.4.13).
+
+    Only ``private`` is permitted today (Decision 11, approved 2026-11-11):
+    shared entities are the only data visible across users, so they stay
+    disabled, by a database check, until a curation process is approved.
+    """
+
+    PRIVATE = "private"
+    SHARED = "shared"
+
+
+class EntityType(StrEnum):
+    """Entity and mention types (6.3.4 section 6.1, plus ``unknown``).
+
+    ``other``: identifiable but none of the listed types. ``unknown``: the type
+    could not be determined; uncertainty is kept rather than forced (plan 8.5).
+    """
+
+    PERSON = "person"
+    ORGANIZATION = "organization"
+    PROJECT = "project"
+    PRODUCT = "product"
+    PLACE = "place"
+    INSTITUTION = "institution"
+    TECHNOLOGY = "technology"
+    EVENT = "event"
+    OTHER = "other"
+    UNKNOWN = "unknown"
+
+
+class EntityStatus(StrEnum):
+    """Lifecycle of a canonical entity. A merged entity points at its survivor."""
+
+    ACTIVE = "active"
+    MERGED = "merged"
+    DELETION_PENDING = "deletion_pending"
+    DELETED = "deleted"
+
+
+class MentionResolutionStatus(StrEnum):
+    """Current resolution state of an Entity Mention (Decisions 5.4.33-5.4.34)."""
+
+    UNRESOLVED = "unresolved"
+    RESOLVED = "resolved"
+    AMBIGUOUS = "ambiguous"
+    NEEDS_REVIEW = "needs_review"
+
+
+class EntityResolutionOutcome(StrEnum):
+    """Outcome of one recorded entity-resolution decision (Decision 5.4.34; 6.3.4)."""
+
+    MATCHED_EXISTING = "matched_existing"
+    CREATED_NEW = "created_new"
+    LEFT_UNRESOLVED = "left_unresolved"
+    SENT_TO_REVIEW = "sent_to_review"
+    CORRECTED = "corrected"
+    REASSIGNED = "reassigned"
+    MERGED = "merged"
+
+    @property
+    def assigns_entity(self) -> bool:
+        """Outcomes that leave a mention (or a merge) pointing at an entity."""
+        return self in (
+            EntityResolutionOutcome.MATCHED_EXISTING,
+            EntityResolutionOutcome.CREATED_NEW,
+            EntityResolutionOutcome.CORRECTED,
+            EntityResolutionOutcome.REASSIGNED,
+            EntityResolutionOutcome.MERGED,
+        )
+
+
+class EntityRelationshipType(StrEnum):
+    """Entity to Entity relationships (Phase 8.2 amendment section 3)."""
+
+    WORKS_AT = "works_at"
+    MEMBER_OF = "member_of"
+    REPORTS_TO = "reports_to"
+    KNOWS = "knows"
+    PART_OF = "part_of"
+    LOCATED_IN = "located_in"
+    USES = "uses"
+    ACQUIRED_BY = "acquired_by"
+    MERGED_INTO = "merged_into"
+    RENAMED_TO = "renamed_to"
+    RELATED_TO = "related_to"
+
+    @property
+    def symmetric(self) -> bool:
+        return self in (EntityRelationshipType.KNOWS, EntityRelationshipType.RELATED_TO)
+
+
+class MemoryEntityRole(StrEnum):
+    """Role of an entity in an Atomic Memory (Phase 8.2 amendment section 5)."""
+
+    SUBJECT = "subject"
+    OBJECT = "object"
+    MENTIONED = "mentioned"
+    CONTEXT = "context"
+
+
 class MemoryRelationshipType(StrEnum):
     """Atomic Memory to Atomic Memory relationships (amendment section 4)."""
 

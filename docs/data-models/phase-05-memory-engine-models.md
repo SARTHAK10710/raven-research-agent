@@ -1505,3 +1505,29 @@ The resolution outcomes of Phase 6.3 remain unchanged: `create_new`, `merge`, `u
 | `processing_failed` | pipeline failed; retryable |
 
 `invalid_input`, `unsupported_input`, `access_denied` and `ownership_validation_failed` are request outcomes, not source states: no Memory Source is stored for them. Transitions and their events (Source Processing Event, Decision 5.4.28) are defined with the ingestion pipeline (plan 8.3).
+
+## 12. Entity vocabularies and persistence rules (Phase 8.2 step 3)
+
+**Approved 2026-11-11.** Decisions 5.4.13, 5.4.33 and 5.4.34 require these states but did not enumerate them.
+
+| Vocabulary | Values | Source |
+|---|---|---|
+| Entity scope | `private`, `shared` — **only `private` permitted** (Decision 11; 7.1 §23.7) | 5.4.13 |
+| Entity and mention type | `person`, `organization`, `project`, `product`, `place`, `institution`, `technology`, `event`, `other`, `unknown` | 6.3.4 §6.1, plus `unknown` so uncertainty is kept rather than forced (plan 8.5) |
+| Entity status | `active`, `merged`, `deletion_pending`, `deleted` | new |
+| Mention resolution status | `unresolved`, `resolved`, `ambiguous`, `needs_review` | 5.4.33–5.4.34 |
+| Resolution outcome (history) | `matched_existing`, `created_new`, `left_unresolved`, `sent_to_review`, `corrected`, `reassigned`, `merged` | 6.3.4 §6.2 outcomes; 5.4.34 corrections, reassignments, merges |
+
+`other` means identifiable but not one of the listed types; `unknown` means the type could not be determined.
+
+**Persistence rules:**
+- **Mentions** keep their original wording permanently; only the resolution (status, entity, confidence) may change. A mention is `resolved` exactly when it names an entity.
+- **Resolution records** are append-only history:
+  - mention outcomes name the mention;
+  - `merged` names no mention, and records the merged entity (`previous_entity_id`) and the survivor (`entity_id`);
+  - `corrected` and `reassigned` record the entity they replace, and the database refuses them unless the mention still points at that entity.
+  - History is ordered by `(recorded_at, seq)`, where `seq` is an insertion counter, because `created_at` is identical within one transaction.
+- **Merges** never delete. The merged entity keeps its row with `status = 'merged'` and `merged_into_id`, and existing mentions keep pointing at it, so a merge can be corrected. Merged entities take no new references and drop out of candidate lookup; `canonical()` follows merges to the survivor.
+- **Aliases** are unique per entity after normalization (trimmed, case-folded, whitespace collapsed). The same alias may belong to several entities: alias lookup returns candidates only and never establishes identity (5.4.14).
+- **Relationships** (section 3 for entities, section 4 for memories) are stored once in canonical order when symmetric. At most one *current* row exists per endpoint pair and type (a partial unique index on `superseded_at IS NULL`), and closing sets `valid_to`/`superseded_at` only. Persisting `supersedes` does not itself change the target memory; resolution (8.6) applies the effect in the same unit of work.
+- **Memory–Entity associations** (section 5) are append-only and unique per memory, entity and role.
