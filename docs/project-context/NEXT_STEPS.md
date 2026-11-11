@@ -3,8 +3,8 @@
 ## Current position
 
 - **Phase:** 8 — Memory Engine Implementation
-- **Subphase:** 8.2 — Database and Persistence: **`VERIFIED` 2026-11-11** and merged (`main` @ `423b6fd`; [acceptance review](PHASE-8-2-ACCEPTANCE-REVIEW.md)). 8.1 `VERIFIED` and merged.
-- **Next approved action:** none. Decisions 8 (local object storage ⚑) and 13 (document parsing ownership ⚑) are settled ([7.1 §24](../technical-decisions/01-baseline-technology-stack.md)). Phase 8.3 (Ingestion Pipeline, [plan](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md)) needs the owner's explicit approval. Do not start 8.3 without approval.
+- **Subphase:** 8.3 — Ingestion Pipeline ([plan](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md)): **approved 2026-11-11**, `INSPECTION`. Nothing implemented yet; the proposed steps are below. 8.1 and 8.2 `VERIFIED` and merged (8.2 [acceptance review](PHASE-8-2-ACCEPTANCE-REVIEW.md)).
+- **Next approved action:** none until the owner starts a step ("start 8.3 step 1"). Each step begins by settling its open design questions with the owner. Do not start 8.4.
 - **Decision review:** [PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) analyses all 15 open decisions, with a deep review of the Phase 8.2 blockers.
 
 ## Prerequisites before Phase 8.2
@@ -26,6 +26,18 @@
 | 4 | Episodes (`pm_episode`, `pm_episode_membership`, `pm_episode_event`), profiles (`pm_profile`, `pm_profile_revision`, `pm_profile_memory`, `pm_profile_refresh`), `pm_memory_category`, `pm_memory_embedding` (metadata); migration `0004`. No consolidation-result table (5.4.23; approved) | Merged (PR #10) |
 | 5 | Source processing events, candidate evaluation history, correction requests, deletion operations and ledger (5.4.24–5.4.26, 5.4.28); migration `0005` | Merged (PR #11) |
 | — | 8.2 acceptance review against plan 8.2 §14; fixes: migration `0006` (episode version), race, commit-failure and migration-failure tests | Merged (PR #11); A4 passed on `main`: **8.2 `VERIFIED`** ([review](PHASE-8-2-ACCEPTANCE-REVIEW.md)) |
+
+## Phase 8.3 steps (proposed 2026-11-11)
+
+Ordered so each step builds on the previous one. All of them are persistence-backed application services; plan 8.3 defines no HTTP endpoints, and the Entry layer stays out of Phase 8 scope.
+
+| Step | Scope | Open questions to settle at the start of the step |
+|---|---|---|
+| 1 | **Object storage:** the storage port, an in-memory fake, the SeaweedFS service in `docker-compose.yml`, a boto3 adapter with checksum verification and multipart-upload cleanup; the object-storage failure tests deferred from 8.2 (store unavailable, partial upload) (Decision 8, 7.1 §24.1) | SeaweedFS image tag and licence check; bucket and prefix layout (7.2 §10); configuration settings |
+| 2 | **Personal memory ingestion:** the request contract (`schema_version`), validation (schema, encoding, size, control characters), normalization (timestamps, speakers, conversation order), original content in object storage plus a `pm_memory_source` row, an idempotent ingestion operation, processing events, and recording remember/forget instructions (plan 8.3 §5, §7–9) | Where the ingestion operation and idempotency live (a `pm_` table or a shared `me_operation`); how `instruction_type` is stored; forget handling until 8.10 exists; text size limits |
+| 3 | **Document ingestion:** actual-format detection (PDF, DOCX, TXT), size limits, checksum, the original in object storage, registration of the document and version, a `doc_processing_operation`, the re-upload policy; no parsing (Decision 13; plan 8.3 §6) | Detection approach (standard-library signature checks or a library); file-size limit (deferred, 7.6 §18); malware scanning (no approved tool); new document vs new version on re-upload |
+| 4 | **Reliable handoff:** the `me_outbox` table written in the same transaction as each registration, a publisher, RabbitMQ in `docker-compose.yml`, Celery wiring; handoff messages to the document pipeline (8.12) and to extraction (8.4); recovery of failed publishing (7.1 §23.6; 7.4) | Queue names and routing keys (deferred, 7.4 §22); message contract and versioning; Celery `send_task` or plain kombu for publishing; RabbitMQ image tag |
+| 5 | **Observability and acceptance:** ingestion events and metrics (plan 8.3 §11), the remaining plan §12 tests, and an acceptance review against plan 8.3 §13 | — |
 
 ## Approved 8.1 decisions (implemented)
 
@@ -72,31 +84,22 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 *Overwrite this section at the end of every session that changes the repository.*
 
 - **Date:** 2026-11-11
-- **Latest (uncommitted, branch `docs/decision-13-parsing`):** the owner settled **Decision 13** (document parsing ownership ⚑) as recommended.
-  - The document pipeline (8.12) parses PDF/DOCX/TXT. Ingestion (8.3) validates, stores, registers and hands off. Memory ingestion parses messages and conversations only.
-  - The document-to-memory path stays disabled until Decision 6 is approved.
-  - Recorded in [7.1 §24.2](../technical-decisions/01-baseline-technology-stack.md), an appended amendment to [6.2](../algorithms/memory/01-memory-ingestion-extraction.md) (algorithm 6.2.1 §3.2 steps split by owner), the decision review outcome (gap G5 closed), `TECHNOLOGY_DECISIONS.md` and the open-decisions table.
-- **Earlier (merged in PR #13):** the owner settled **Decision 8** (local object storage ⚑): a storage port; an in-memory fake for unit tests; SeaweedFS (Apache-2.0) in Docker Compose for integration tests and local development; boto3 as the client.
-  - Recorded in [7.1 §24.1](../technical-decisions/01-baseline-technology-stack.md), the decision review's Decision 8 outcome, `TECHNOLOGY_DECISIONS.md` and the open-decisions table.
-  - MinIO (community images stopped in 2025, repository archived in 2026) and LocalStack (auth token required since 2026) were ruled out after checking their current status.
-  - Nothing is implemented; 8.3 does that once approved.
-- **Objective (earlier this session):** finish Phase 8.2: step 5, the acceptance review and its fixes, the merges, and verification on `main` (A4).
-- **Work completed:**
-  - Step 5 (`42b35c3`): processing events, candidate evaluations, correction requests, deletion operations and ledger; migration `0005`.
-  - Acceptance review ([PHASE-8-2-ACCEPTANCE-REVIEW.md](PHASE-8-2-ACCEPTANCE-REVIEW.md)) and fixes (`1b58b77`):
-    - A1: migration `0006_episode_version`, plus `EpisodeRepository.update(…, expected_version=)`;
-    - A2: tests for racing connections, a failed commit and a failing migration;
-    - A3: owner-accepted deferrals recorded in `KNOWN_CONSTRAINTS.md`;
-    - `CLAUDE.md` "Current phase" corrected.
-  - At the owner's request, merged PR #10 (`977c3b7`) and then PR #11 (`423b6fd`), and ran A4 on `main`.
-  - This branch (`docs/phase-8-2-verified`, from `main`) records the `VERIFIED` status; uncommitted.
-- **Bugs found by the tests and fixed this session:**
-  - JSONB `None` is stored as JSON `null`, so the correction purge now uses `null()`;
-  - a test depended on the order of two operations requested at the same instant;
-  - concurrent episode edits could overwrite each other (A1).
-- **Decisions made:** step-5 vocabularies and designs (5.4 amendment §14); the A3 deferrals (object-storage failure tests to 8.3, database roles to deployment).
-- **Implementation status:** 8.1 and 8.2 `VERIFIED` and merged; 8.3–8.12 `NOT_STARTED`.
-- **Tests and results (A4, `main` @ `423b6fd`):** `uv sync --locked` ok; `ruff check`, `ruff format --check` clean; `mypy` strict clean (63 files); `uv run pytest --cov` → **412 passed** (300 unit, 112 integration against PostgreSQL 17 + pgvector), 96% coverage, plus 3 further green runs; database stopped → 112 skipped.
-- **Unresolved:** language requirement G6; Decision 6 (document-to-memory authorization, needed before the document path of 8.4/8.12); embedding model (before 8.7); Decisions 7, 12, 14 and 15; ratio-label wording (issue 9); uv not on PATH on this machine; Docker Desktop on this machine can take several minutes to start.
-- **Next action:** commit the Decision 13 record (with approval); then the owner decides whether to approve Phase 8.3. Both decisions it needed (8 and 13) are settled.
-- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.3 ([03-ingestion-pipeline.md](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md)), 7.1 §24 (Decisions 8 and 13), the 6.2 amendment on parsing ownership, 7.1 §23.6 (outbox in 8.3), 7.2 §10–11 (object storage and consistency), and `memory-engine/README.md`.
+- **Objective:** start Phase 8.3 (Ingestion Pipeline), which the owner approved on 2026-11-11.
+- **Work completed (uncommitted, branch `docs/phase-8-3-approval`):**
+  - recorded the approval;
+  - read plan 8.3 and checked its dependencies: queue names and topology are deferred (7.4 §22), and file-size limits are deferred (7.6 §18);
+  - proposed the five-step breakdown above, with each step's open questions.
+  - No code yet.
+- **Earlier this session (all merged):**
+  - Phase 8.2 completed and `VERIFIED` (PRs #10, #11, #12; `main` @ `c936fe3`): 412 tests passed on `main`.
+  - Decision 8, local object storage: SeaweedFS and boto3 (PR #13).
+  - Decision 13, document parsing ownership: the document pipeline parses (PR #14).
+- **Decisions made:** the owner approved 8.3; no step designs are decided yet.
+- **Implementation status:** 8.1 and 8.2 `VERIFIED`; 8.3 `INSPECTION` (approved, not started); 8.4–8.12 `NOT_STARTED`.
+- **Tests and results:** none run this turn (documentation only). Last full run: 412 passed on `main` @ `423b6fd`.
+- **Unresolved:**
+  - for 8.3 steps: queue topology, file-size limits, malware scanning, the ingestion-operation table and forget handling;
+  - language requirement G6; Decision 6 (document-to-memory authorization; that path stays disabled); embedding model (before 8.7); Decisions 7, 12, 14 and 15; ratio-label wording (issue 9);
+  - on this machine: uv not on PATH, and Docker Desktop can take minutes to start.
+- **Next action:** commit this approval record (with approval); then, when the owner says "start 8.3 step 1", settle step 1's questions and implement object storage.
+- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.3 ([03-ingestion-pipeline.md](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md)), 7.1 §24 (Decisions 8 and 13), 7.1 §23.6 (outbox in 8.3), 7.2 §10–11 (object storage and consistency), 7.4 (messaging), 6.2.1, and `memory-engine/README.md`.

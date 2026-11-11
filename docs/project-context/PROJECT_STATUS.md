@@ -7,9 +7,9 @@
 | Item | Value |
 |---|---|
 | Current phase | Phase 8 — Memory Engine Implementation |
-| Current subphase | 8.2 — Database and Persistence (**approved 2026-11-11**) |
+| Current subphase | 8.3 — Ingestion Pipeline (**approved 2026-11-11**, `INSPECTION`: step breakdown proposed in [NEXT_STEPS.md](NEXT_STEPS.md), no code yet) |
 | Subphase status | 8.2 **`VERIFIED`** (2026-11-11) and merged: all five steps plus the acceptance-review fixes, with every plan 8.2 §14 criterion met on `main` @ `423b6fd` (two owner-accepted deferrals; [PHASE-8-2-ACCEPTANCE-REVIEW.md](PHASE-8-2-ACCEPTANCE-REVIEW.md)). 8.1 remains `VERIFIED` and merged |
-| Current active task | None. Decisions 8 (local object storage) and 13 (document parsing ownership) were settled on 2026-11-11 ([7.1 §24](../technical-decisions/01-baseline-technology-stack.md)). Phase 8.3 (Ingestion Pipeline) needs the owner's approval to start |
+| Current active task | 8.3 step 1 (object storage), when the owner starts it. Decisions 8 and 13, which 8.3 needed, are settled ([7.1 §24](../technical-decisions/01-baseline-technology-stack.md)) |
 | Application code | 8.1 foundation plus 8.2: Personal Memory core (`0001`), Document Intelligence and the evidence path (`0002`), entities and relationships (`0003`), episodes, profiles, categories and memory embedding metadata (`0004`), processing, evaluation, correction and deletion records (`0005`), episode version (`0006`); owner-scoped repositories and units of work. **Persistence only**: no ingestion, extraction, resolution, consolidation, parsing, chunking, embedding generation, retrieval ranking or deletion workflow |
 
 ## Documentation completion
@@ -31,7 +31,7 @@ Documentation recovery: four specifications that had been overwritten by amendme
 
 | Phase | Status |
 |---|---|
-| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `VERIFIED` (merged); 8.3–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
+| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `VERIFIED` (merged); 8.3 `INSPECTION` (approved 2026-11-11, not started); 8.4–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
 | Research Engine | Not started (later phase) |
 | Agent Orchestrator | Not started (later phase) |
 | Shared Infrastructure | Not started |
@@ -41,5 +41,10 @@ Installed: Phase 8.1 dependencies plus the Phase 8.2 database dependencies (SQLA
 
 ## Pending work
 
-1. Owner approval to start Phase 8.3 (Ingestion Pipeline). Decision 8 is settled: a storage port, an in-memory fake, SeaweedFS in Docker Compose and boto3, all implemented in 8.3. Decision 13 is settled: the document pipeline (8.12) owns parsing, and ingestion only validates, stores, registers and hands off.
-2. Phase 8.3 inherits the 8.2 deferral of the object-storage failure tests.
+1. Phase 8.3, approved 2026-11-11, in five steps ([NEXT_STEPS.md](NEXT_STEPS.md)):
+   1. object storage;
+   2. personal memory ingestion;
+   3. document ingestion;
+   4. outbox and RabbitMQ handoff;
+   5. observability and the acceptance review.
+2. Each step starts by settling its open questions with the owner. Step 1 also takes over the object-storage failure tests deferred from 8.2.

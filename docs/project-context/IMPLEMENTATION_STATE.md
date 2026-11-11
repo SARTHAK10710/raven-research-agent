@@ -12,7 +12,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 |---|---|---|
 | 8.1 Foundation and project setup | `VERIFIED` | `5a0d6e5`, merged in `6efd72d` (PR #3) |
 | 8.2 Database and persistence | `VERIFIED` (2026-11-11) | Steps 1–2 `d2346b6`, `e7fc443` (PR #8); step 3 `7a62cd4` (PR #9); step 4 `38411e1` (PR #10, `977c3b7`); step 5 `42b35c3` and review fixes `1b58b77` (PR #11, `423b6fd`) |
-| 8.3 Ingestion pipeline | `NOT_STARTED` | — |
+| 8.3 Ingestion pipeline | `INSPECTION` (approved 2026-11-11; no code yet) | — |
 | 8.4 Extraction and evaluation | `NOT_STARTED` | — |
 | 8.5 Entity and relationship management | `NOT_STARTED` | — |
 | 8.6 Memory resolution | `NOT_STARTED` | — |
@@ -139,7 +139,16 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 - Full-text search uses the language-neutral `simple` configuration until the language requirement (G6) is decided.
 - Object keys are recorded but nothing is stored yet (object storage is 8.3).
 
-## 8.3–8.12
+## 8.3 — Ingestion pipeline
+
+| Field | Value |
+|---|---|
+| Status | `INSPECTION`: approved by the owner on 2026-11-11. Plan 8.3 read; five steps proposed in [NEXT_STEPS.md](NEXT_STEPS.md) (object storage, personal memory ingestion, document ingestion, outbox and RabbitMQ handoff, observability and acceptance) |
+| Prerequisites | Decision 8 (local object storage) and Decision 13 (parsing ownership) approved ([7.1 §24](../technical-decisions/01-baseline-technology-stack.md)); outbox, RabbitMQ and Celery scheduled for 8.3 (7.1 §23.6) |
+| Open before implementation | Queue names and topology (deferred, 7.4 §22); file-size limits (deferred, 7.6 §18); malware scanning (no approved tool); ingestion-operation storage; forget handling until 8.10. Each is settled at the start of its step |
+| Files, dependencies, tests | None yet |
+
+## 8.4–8.12
 
 `NOT_STARTED`. No files, dependencies or tests.
 
