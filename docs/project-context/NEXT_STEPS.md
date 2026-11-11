@@ -3,8 +3,8 @@
 ## Current position
 
 - **Phase:** 8 — Memory Engine Implementation
-- **Subphase:** 8.3 — Ingestion Pipeline ([plan](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md)): **approved 2026-11-11**, `IN_PROGRESS`. Steps 1–4 merged (PRs #16–#19; step 4, reliable handoff, in `db13113`). Step 5 (observability and acceptance) implemented and tested, uncommitted on `feat/phase-8-3-observability-acceptance`; acceptance review: every §13 criterion met ([PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md)). 8.1 and 8.2 `VERIFIED` and merged.
-- **Next approved action:** owner review of step 5; merge, re-run on `main`, then mark 8.3 `VERIFIED`. Do not start 8.4 without approval.
+- **Subphase:** 8.3 — Ingestion Pipeline ([plan](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md)): **`VERIFIED` 2026-11-12**: all five steps merged (PRs #16–#19, #21; `main` @ `1851f53`) ([PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md)). 8.1 and 8.2 `VERIFIED` and merged.
+- **Next approved action:** none. Phase 8.4 needs the owner's approval before it starts.
 - **Decision review:** [PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) analyses all 15 open decisions, with a deep review of the Phase 8.2 blockers.
 
 ## Prerequisites before Phase 8.2
@@ -37,7 +37,7 @@ Ordered so each step builds on the previous one. All of them are persistence-bac
 | 2 | **Personal memory ingestion:** the request contract (`schema_version`), validation (schema, encoding, size, control characters), normalization (timestamps, speakers, conversation order), original content in object storage plus a `pm_memory_source` row, an idempotent ingestion operation, processing events, and recording remember/forget instructions (plan 8.3 §5, §7–9) | **Settled 2026-11-11:** extend `pm_memory_source` (migration `0007`); forget recorded, never extracted; 256 KiB text, 1,000 messages / 4 MiB per conversation; application dataclasses for the contract. **Merged (PR #17)** |
 | 3 | **Document ingestion:** actual-format detection (PDF, DOCX, TXT), size limits, checksum, the original in object storage, registration of the document and version, a `doc_processing_operation`, the re-upload policy; no parsing (Decision 13; plan 8.3 §6) | **Settled 2026-11-11:** standard-library detection; 25 MiB limit; no malware scan (deferral recorded); caller decides new document vs new version. **Merged (PR #18)** |
 | 4 | **Reliable handoff:** the `me_outbox` table written in the same transaction as each registration, a publisher, RabbitMQ in `docker-compose.yml`, Celery wiring; handoff messages to the document pipeline (8.12) and to extraction (8.4); recovery of failed publishing (7.1 §23.6; 7.4) | **Settled 2026-11-12** (7.1 §24.3): exchange `raven.memory`, two queues, no DLQ yet; 7.4 §7 envelope v1; Celery `send_task` with confirms; `queued` after the broker confirms; no handoff for forget; bounded retries then `failed`; `rabbitmq:4.3.7-alpine`; `celery`, `kombu`. **Merged (PR #19)** |
-| 5 | **Observability and acceptance:** ingestion events and metrics (plan 8.3 §11), the remaining plan §12 tests, and an acceptance review against plan 8.3 §13 | **Settled 2026-11-12** (7.1 §24.4): metrics port with no-op default, OpenTelemetry later; owner id in logs only; unauthorized as scope mismatch (D1). **Implemented and tested; uncommitted**; review: [PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md) |
+| 5 | **Observability and acceptance:** ingestion events and metrics (plan 8.3 §11), the remaining plan §12 tests, and an acceptance review against plan 8.3 §13 | **Settled 2026-11-12** (7.1 §24.4): metrics port with no-op default, OpenTelemetry later; owner id in logs only; unauthorized as scope mismatch (D1). **Merged (PR #21)**; 8.3 `VERIFIED`; review: [PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md) |
 
 ## Approved 8.1 decisions (implemented)
 
@@ -84,32 +84,22 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 *Overwrite this section at the end of every session that changes the repository.*
 
 - **Date:** 2026-11-12
-- **Objective:** Phase 8.3 step 5, observability and the 8.3 acceptance review. Branch `feat/phase-8-3-observability-acceptance` from `main` @ `4af8a92`; uncommitted.
-- **Decisions made (owner, 2026-11-12; recorded in 7.1 §24.4):**
-  - metrics port with a no-op default and an in-memory test recorder; OpenTelemetry adapter when monitoring is deployed; no new dependency;
-  - opaque owner id in logs as `user_scope`, never in metric labels;
-  - "unauthorized request" covered as an owner-scope mismatch; authentication tests deferred to the Entry layer (D1).
-- **Work completed:**
-  - `observability/metrics.py`: the `Metrics` port, bounded-label validation, `NoOpMetrics` (default), `InMemoryMetrics`, metric names.
-  - `observability/ingestion.py`: `observe_ingestion` classifies each request into the plan §9 states and emits one `ingestion.<outcome>` event plus request, rejection and duration metrics. Telemetry failures never change an outcome.
-  - Both ingestion services are wrapped in it (optional `metrics`), and document registrations are counted by kind.
-  - Relay: `handoff.<outcome>` events with message, task and correlation ids; attempt and latency metrics; outbox backlog gauges (`SqlAlchemyOutboxRepository.backlog`, measured on the database clock).
-  - New tests for the remaining plan §12 cases: retry after failure, retry after partial completion, PDF/DOCX/TXT end to end, domain separation, unauthorized as scope mismatch.
-  - [PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md): every §13 criterion met; deferral D1; R1 (merge) and R2 (re-run on `main`) remain.
-- **Tests and results:**
-  - `uv sync --locked` ok; ruff and format clean; mypy strict clean (91 files);
-  - `uv run pytest --cov` with all three services: **652 passed** (473 unit, 179 integration), 97% coverage, 3 green runs;
-  - services stopped: 474 passed, 178 skipped.
-- **Implementation status:** 8.3 `IN_PROGRESS`; steps 1–4 merged; step 5 tested, uncommitted; all §13 criteria met pending R1–R2.
+- **Objective:** close Phase 8.3. Done: **8.3 is `VERIFIED`** on `main` @ `1851f53`.
+- **Work completed this session (all merged):**
+  - Step 4, reliable handoff: `me_outbox`, RabbitMQ `broker-test`, Celery publisher and outbox relay (PR #19, `db13113`; status sync PR #20, `4af8a92`).
+  - Step 5, observability and the acceptance review: the `Metrics` port, `observe_ingestion`, relay handoff metrics and backlog gauges, the remaining plan §12 tests, and [PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md) ([PR #21](https://github.com/SARTHAK10710/raven-research-agent/pull/21), `1851f53`).
+  - This docs change records 8.3 as `VERIFIED`.
+- **Decisions made (owner, 2026-11-12):**
+  - step 4 is in 7.1 §24.3;
+  - step 5 is in 7.1 §24.4;
+  - deferral D1 (authentication tests move to the Entry layer) is accepted.
+- **Verification on merged `main` @ `1851f53`:** `uv sync --locked` ok; ruff and format clean; mypy strict clean (91 files); `uv run pytest --cov` with all three services: 652 passed, 0 failed, 0 skipped, 97% coverage.
+- **Implementation status:** 8.1, 8.2 and 8.3 `VERIFIED`; 8.4–8.12 `NOT_STARTED`.
 - **Unresolved:**
   - no consumers until 8.4 and 8.12; the relay process and metrics export are not deployed (7.7 §20, 7.8);
   - no dead-letter queue or outbox cleanup; 8.10 deletion must remove a subject's outbox rows;
   - no encryption at rest in the development store; no malware scanning; test broker without TLS;
   - G6; Decision 6; embedding model; Decisions 7, 12, 14 and 15; ratio-label wording;
   - on this machine: uv not on PATH, Docker Desktop can take minutes to start, the SeaweedFS image once needed a re-pull, and Python defaults to cp1252 (script doc edits with UTF-8).
-- **Next action:** owner review of step 5 and the acceptance review; commit, PR and merge with approval; re-run the checks on `main` and mark 8.3 `VERIFIED`. 8.4 needs its own approval.
-- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, `PHASE-8-3-ACCEPTANCE-REVIEW.md`, 7.1 §24.3–§24.4, and, for 8.4, plan `04-*` in `docs/implementation-plans/Phase-08-memory-engine/`.
-- **Earlier (all merged):**
-  - Phase 8.3 step 4, reliable handoff (PR #19, `db13113`); status sync (PR #20, `4af8a92`).
-  - Phase 8.3 steps 1–3 (PRs #16–#18).
-  - Phase 8.2 `VERIFIED` (PRs #8–#12); Decisions 8 and 13 (PRs #13, #14); Phase 8.3 approved (PR #15).
+- **Next action:** the owner decides whether to approve Phase 8.4 (memory extraction). Do not start it without approval; settle its open questions first, as for 8.3.
+- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, `PHASE-8-3-ACCEPTANCE-REVIEW.md`, and for 8.4 its plan in `docs/implementation-plans/Phase-08-memory-engine/` plus the decision review entries for Decisions 6, 7 and 14.

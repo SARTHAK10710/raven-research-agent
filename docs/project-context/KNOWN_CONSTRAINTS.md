@@ -45,7 +45,7 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
   - **No malware scanning**: no tool is approved, and the owner accepted the deferral on 2026-11-11. Content is never executed, DOCX macro parts are refused, and the parser (8.12) must treat files as hostile.
   - TXT must be UTF-8.
   - Upload limit: 25 MiB by default (configurable).
-- Ingestion observability (8.3 step 5, uncommitted): metrics go through a port whose default recorder is a no-op; nothing is exported until monitoring is deployed and an OpenTelemetry adapter exists (7.7 §20, 7.8). Events log the opaque owner id as `user_scope`; log retention is still deferred.
+- Ingestion observability (8.3 step 5, merged in PR #21): metrics go through a port whose default recorder is a no-op; nothing is exported until monitoring is deployed and an OpenTelemetry adapter exists (7.7 §20, 7.8). Events log the opaque owner id as `user_scope`; log retention is still deferred.
 - **Accepted deferral from the 8.3 acceptance review (owner, 2026-11-12):** D1, authentication tests. Phase 8 has no authentication layer, so "unauthorized request" (plan 8.3 §12.1) is tested as an owner-scope mismatch; authentication tests move to the Entry layer.
 - Reliable handoff (8.3 step 4, merged in PR #19):
   - registrations write a `me_outbox` row in the same transaction; a relay (`OutboxRelay`) publishes it to RabbitMQ through Celery and only then moves the record to `queued`;

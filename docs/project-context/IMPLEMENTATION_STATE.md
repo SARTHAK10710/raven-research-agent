@@ -12,7 +12,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 |---|---|---|
 | 8.1 Foundation and project setup | `VERIFIED` | `5a0d6e5`, merged in `6efd72d` (PR #3) |
 | 8.2 Database and persistence | `VERIFIED` (2026-11-11) | Steps 1–2 `d2346b6`, `e7fc443` (PR #8); step 3 `7a62cd4` (PR #9); step 4 `38411e1` (PR #10, `977c3b7`); step 5 `42b35c3` and review fixes `1b58b77` (PR #11, `423b6fd`) |
-| 8.3 Ingestion pipeline | `IN_PROGRESS` (steps 1–4 merged; 5 tested, uncommitted) | Step 1 `206bc2f` (PR #16); step 2 `894da0f` (PR #17, `1e93dbd`); step 3 `15d752f` (PR #18, `d51039b`); step 4 `2fed5cb` (PR #19, `db13113`) |
+| 8.3 Ingestion pipeline | **`VERIFIED`** (2026-11-12) | Step 1 `206bc2f` (PR #16); step 2 `894da0f` (PR #17, `1e93dbd`); step 3 `15d752f` (PR #18, `d51039b`); step 4 `2fed5cb` (PR #19, `db13113`); step 5 `d08ae20` (PR #21, `1851f53`) |
 | 8.4 Extraction and evaluation | `NOT_STARTED` | — |
 | 8.5 Entity and relationship management | `NOT_STARTED` | — |
 | 8.6 Memory resolution | `NOT_STARTED` | — |
@@ -143,7 +143,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 
 | Field | Value |
 |---|---|
-| Status | `IN_PROGRESS`: approved 2026-11-11. Steps 1–4 merged (PRs #16–#19; status sync PR #20; `main` @ `4af8a92`). **Step 5 (observability and acceptance) implemented and tested, uncommitted** on `feat/phase-8-3-observability-acceptance`. Acceptance review: every plan §13 criterion met, deferral D1 owner-accepted; `VERIFIED` after merge and a re-run on `main` ([PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md)) |
+| Status | **`VERIFIED`** (2026-11-12): approved 2026-11-11; all five steps merged (PRs #16–#19, #21; status sync PR #20; `main` @ `1851f53`). Every plan §13 criterion met, deferral D1 owner-accepted ([PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md)). Verified on merged `main`: `uv sync --locked` ok; ruff and format clean; mypy strict clean (91 files); `uv run pytest --cov` with all three services: 652 passed, 0 failed, 0 skipped, 97% coverage |
 | Step 5 decisions (owner, 2026-11-12; [7.1 §24.4](../technical-decisions/01-baseline-technology-stack.md)) | Metrics port with a no-op default and an in-memory test recorder, OpenTelemetry adapter later, no new dependency; bounded labels; owner id in logs as `user_scope`; "unauthorized request" covered as a scope mismatch, authentication tests deferred to the Entry layer (D1) |
 | Files created (step 5) | `observability/{metrics,ingestion}.py`; `docs/project-context/PHASE-8-3-ACCEPTANCE-REVIEW.md`. Tests: `unit/test_observability_metrics.py`, `integration/test_ingestion_observability.py`, `integration/test_ingestion_acceptance.py` |
 | Files modified (step 5) | `observability/__init__.py`; `personal/application/ingestion.py` and `documents/application/ingestion.py` (wrapped in `observe_ingestion`, optional `metrics`); `infrastructure/messaging/relay.py` (handoff metrics, backlog gauges, `event_type` and correlation ids on events); `infrastructure/persistence/outbox.py` (`backlog`); docs: 7.1 §24.4 and the project-context files. No migration; no new dependencies |
@@ -176,7 +176,8 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 | Dependencies (step 1) | `boto3` 1.44.0 and its transitive packages (see [TECHNOLOGY_DECISIONS.md](TECHNOLOGY_DECISIONS.md#dependency-timing)) |
 | Commit (step 1) | `206bc2f`, merged through PR #16 (`3d01cbe`) |
 | Tests (step 1) | **453 passed, 0 failed** (333 unit, 120 integration against PostgreSQL 17 + pgvector and SeaweedFS 4.51), 97% coverage, 3 green runs; services stopped → 119 skipped (the unreachable-store test needs no service and passes); Ruff clean; mypy strict clean (69 files) |
-| Open for later steps | Merge step 5 and re-run the checks on `main` (review R1–R2), then mark 8.3 `VERIFIED`. 8.4 needs separate approval |
+| Commit (step 5) | `d08ae20`, merged through PR #21 (`1851f53`) |
+| Open for later steps | None in 8.3. Phase 8.4 needs separate approval |
 
 ## 8.4–8.12
 
