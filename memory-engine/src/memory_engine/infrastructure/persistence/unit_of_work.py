@@ -19,6 +19,11 @@ from memory_engine.infrastructure.persistence.documents.repositories import (
     SqlAlchemyDocumentRepository,
     SqlAlchemyProcessingOperationRepository,
 )
+from memory_engine.infrastructure.persistence.personal.entity_repositories import (
+    SqlAlchemyEntityMentionRepository,
+    SqlAlchemyEntityRepository,
+    SqlAlchemyRelationshipRepository,
+)
 from memory_engine.infrastructure.persistence.personal.repositories import (
     SqlAlchemyAtomicMemoryRepository,
     SqlAlchemyDocumentEvidenceRepository,
@@ -73,6 +78,9 @@ class SqlAlchemyPersonalUnitOfWork(_SqlAlchemyUnitOfWork):
     memories: SqlAlchemyAtomicMemoryRepository
     evidence: SqlAlchemyDocumentEvidenceRepository
     provenance: SqlAlchemyProvenanceRepository
+    entities: SqlAlchemyEntityRepository
+    mentions: SqlAlchemyEntityMentionRepository
+    relationships: SqlAlchemyRelationshipRepository
 
     def _bind(self, session: Session) -> None:
         self.sources = SqlAlchemyMemorySourceRepository(session)
@@ -82,6 +90,9 @@ class SqlAlchemyPersonalUnitOfWork(_SqlAlchemyUnitOfWork):
         self.provenance = SqlAlchemyProvenanceRepository(
             session, self.sources, self.candidates, self.memories, self.evidence
         )
+        self.entities = SqlAlchemyEntityRepository(session)
+        self.mentions = SqlAlchemyEntityMentionRepository(session)
+        self.relationships = SqlAlchemyRelationshipRepository(session)
 
 
 class SqlAlchemyDocumentUnitOfWork(_SqlAlchemyUnitOfWork):

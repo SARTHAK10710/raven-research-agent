@@ -11,14 +11,23 @@ Writes become durable only when the enclosing unit of work commits.
 import uuid
 from collections.abc import Sequence
 from contextlib import AbstractContextManager
+from datetime import datetime
 from typing import Protocol
 
 from memory_engine.domain.identifiers import OwnerScope
+from memory_engine.domain.vocabulary import MentionResolutionStatus
 from memory_engine.personal.domain import (
     AtomicMemory,
     AtomicMemoryRevision,
     DocumentEvidenceRef,
+    Entity,
+    EntityAlias,
+    EntityMention,
+    EntityRelationship,
+    EntityResolutionRecord,
     MemoryCandidate,
+    MemoryEntityAssociation,
+    MemoryRelationship,
     MemorySource,
     ProvenanceRecord,
 )
@@ -113,6 +122,112 @@ class DocumentEvidenceRepository(Protocol):
         ...
 
 
+class EntityRepository(Protocol):
+    def add(self, scope: OwnerScope, entity: Entity) -> None: ...
+
+    def get(self, scope: OwnerScope, entity_id: uuid.UUID) -> Entity | None:
+        """Any status except ``deleted``."""
+        ...
+
+    def canonical(self, scope: OwnerScope, entity_id: uuid.UUID) -> Entity | None:
+        """Follow merges to the surviving entity."""
+        ...
+
+    def add_alias(self, scope: OwnerScope, alias: EntityAlias) -> None: ...
+
+    def list_aliases(self, scope: OwnerScope, entity_id: uuid.UUID) -> Sequence[EntityAlias]: ...
+
+    def find_by_alias(self, scope: OwnerScope, text: str) -> Sequence[Entity]:
+        """Active entities whose name or alias normalizes to ``text``.
+
+        These are candidates only: alias matching never proves identity (5.4.14).
+        """
+        ...
+
+    def merge(self, scope: OwnerScope, record: EntityResolutionRecord) -> None:
+        """Merge ``record.previous_entity_id`` into ``record.entity_id`` and keep the record."""
+        ...
+
+
+class EntityMentionRepository(Protocol):
+    def add(self, scope: OwnerScope, mention: EntityMention) -> None: ...
+
+    def get(self, scope: OwnerScope, mention_id: uuid.UUID) -> EntityMention | None: ...
+
+    def list_for_entity(
+        self, scope: OwnerScope, entity_id: uuid.UUID
+    ) -> Sequence[EntityMention]: ...
+
+    def apply_resolution(
+        self,
+        scope: OwnerScope,
+        record: EntityResolutionRecord,
+        *,
+        expected_status: MentionResolutionStatus,
+    ) -> EntityMention:
+        """Move a mention to the state ``record`` implies and append ``record``.
+
+        Conditional on the mention still being in ``expected_status``.
+        """
+        ...
+
+    def history(
+        self,
+        scope: OwnerScope,
+        *,
+        mention_id: uuid.UUID | None = None,
+        entity_id: uuid.UUID | None = None,
+    ) -> Sequence[EntityResolutionRecord]: ...
+
+
+class RelationshipRepository(Protocol):
+    def add_entity_relationship(
+        self, scope: OwnerScope, relationship: EntityRelationship
+    ) -> None: ...
+
+    def close_entity_relationship(
+        self,
+        scope: OwnerScope,
+        relationship_id: uuid.UUID,
+        *,
+        valid_to: datetime | None,
+        superseded_at: datetime,
+    ) -> None:
+        """End a current relationship; it is kept as history, never overwritten."""
+        ...
+
+    def entity_relationships(
+        self, scope: OwnerScope, entity_id: uuid.UUID, *, include_history: bool = False
+    ) -> Sequence[EntityRelationship]: ...
+
+    def add_memory_relationship(
+        self, scope: OwnerScope, relationship: MemoryRelationship
+    ) -> None: ...
+
+    def close_memory_relationship(
+        self,
+        scope: OwnerScope,
+        relationship_id: uuid.UUID,
+        *,
+        valid_to: datetime | None,
+        superseded_at: datetime,
+    ) -> None: ...
+
+    def memory_relationships(
+        self, scope: OwnerScope, memory_id: uuid.UUID, *, include_history: bool = False
+    ) -> Sequence[MemoryRelationship]: ...
+
+    def associate(self, scope: OwnerScope, association: MemoryEntityAssociation) -> None: ...
+
+    def entities_of_memory(
+        self, scope: OwnerScope, memory_id: uuid.UUID
+    ) -> Sequence[MemoryEntityAssociation]: ...
+
+    def memories_of_entity(
+        self, scope: OwnerScope, entity_id: uuid.UUID
+    ) -> Sequence[MemoryEntityAssociation]: ...
+
+
 class PersonalUnitOfWork(Protocol):
     """One short transaction over Personal Memory records.
 
@@ -135,6 +250,15 @@ class PersonalUnitOfWork(Protocol):
 
     @property
     def evidence(self) -> DocumentEvidenceRepository: ...
+
+    @property
+    def entities(self) -> EntityRepository: ...
+
+    @property
+    def mentions(self) -> EntityMentionRepository: ...
+
+    @property
+    def relationships(self) -> RelationshipRepository: ...
 
 
 class PersonalUnitOfWorkFactory(Protocol):

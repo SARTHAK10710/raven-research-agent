@@ -31,7 +31,8 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
 
 ## Known technical limitations
 
-- **Implemented:** the Phase 8.1 foundation and Phase 8.2 steps 1–2. That is PostgreSQL persistence for Memory Source, Candidate, Atomic Memory with revisions, and Provenance, and for documents, versions, extracted representations, chunks with locations, embedding metadata, processing operations and document evidence. It is persistence only: no ingestion, parsing, chunking, embedding generation, resolution, retrieval ranking or deletion workflow exists, and there is no broker or object storage.
+- **Implemented:** the Phase 8.1 foundation and Phase 8.2 steps 1–3. That is PostgreSQL persistence for Memory Source, Candidate, Atomic Memory with revisions, and Provenance; for documents, versions, extracted representations, chunks with locations, embedding metadata, processing operations and document evidence; and for entities, aliases, mentions, resolution history, entity and memory relationships, and memory–entity associations.
+- Entities are private only (Decision 11). Shared entities need an approved curation process and a migration before they can exist. It is persistence only: no ingestion, parsing, chunking, embedding generation, resolution, retrieval ranking or deletion workflow exists, and there is no broker or object storage.
 - Document keyword search uses the language-neutral `simple` text-search configuration until the language requirement (G6) is decided.
 - Integration tests skip, rather than fail, when the Docker PostgreSQL service is not running. A green test run without Docker does not cover persistence; check that the integration tests were not skipped.
 - Memory Source `content_ref` is optional until object storage exists (Phase 8.3).

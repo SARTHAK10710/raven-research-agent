@@ -1,6 +1,6 @@
 # Project Status
 
-**Last verified update:** 2026-11-11, on branch `feat/phase-8-2-document-persistence`: step 1 (`d2346b6`) and step 2 (`e7fc443`), proposed together for `main`. [PR #6](https://github.com/SARTHAK10710/raven-research-agent/pull/6) is merged into `main` (`8c74d4f`). [PR #7](https://github.com/SARTHAK10710/raven-research-agent/pull/7) (step 1) was merged into PR #6's branch after that branch had already been merged, so step 1 is **not yet on `main`**; it reaches `main` with the step 2 pull request. Phase 8.1 commit `5a0d6e5` is merged into `main` through [PR #3](https://github.com/SARTHAK10710/raven-research-agent/pull/3).
+**Last verified update:** 2026-11-11, on branch `feat/phase-8-2-entities-relationships` (from `main` @ `0743e02`), with Phase 8.2 step 3 in the working tree, uncommitted. 8.2 steps 1–2 are on `main` through [PR #8](https://github.com/SARTHAK10710/raven-research-agent/pull/8); Phase 8.1 through [PR #3](https://github.com/SARTHAK10710/raven-research-agent/pull/3).
 
 ## Current position
 
@@ -8,9 +8,9 @@
 |---|---|
 | Current phase | Phase 8 — Memory Engine Implementation |
 | Current subphase | 8.2 — Database and Persistence (**approved 2026-11-11**) |
-| Subphase status | 8.2 `IN_PROGRESS`: step 1 (`d2346b6`) and step 2 (`e7fc443`) implemented, tested and committed; both pending merge into `main` in one pull request. 8.1 remains `VERIFIED` and merged (`5a0d6e5`) |
-| Current active task | Owner review of 8.2 step 2; then step 3 (entities, relationships, episodes, profiles, categories, memory embedding metadata, deletion records) |
-| Application code | 8.1 foundation plus 8.2 steps 1–2: Personal Memory core tables (migration `0001`), Document Intelligence tables and the document-evidence path (migration `0002`), owner-scoped repositories and units of work for both domains. **No ingestion, extraction, parsing, chunking, embedding generation, retrieval ranking or deletion workflow** — these are persistence only |
+| Subphase status | 8.2 `IN_PROGRESS`: steps 1–2 merged (PR #8); **step 3 (entities and relationships) implemented and tested**, uncommitted; steps 4–5 not started. 8.1 remains `VERIFIED` and merged |
+| Current active task | Owner review of 8.2 step 3; then step 4 (episodes, profiles, categories, consolidation, memory embedding metadata) |
+| Application code | 8.1 foundation plus 8.2 steps 1–3: Personal Memory core tables (`0001`), Document Intelligence and the evidence path (`0002`), entities, mentions, resolution history and relationships (`0003`); owner-scoped repositories and units of work. **Persistence only**: no ingestion, extraction, entity-resolution algorithm, parsing, chunking, embedding generation, retrieval ranking or deletion workflow |
 
 ## Documentation completion
 
@@ -31,7 +31,7 @@ Documentation recovery: four specifications that had been overwritten by amendme
 
 | Phase | Status |
 |---|---|
-| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `IN_PROGRESS` (steps 1–2 committed, pending merge into `main`); 8.3–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
+| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `IN_PROGRESS` (steps 1–2 merged, step 3 tested and uncommitted, steps 4–5 to do); 8.3–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
 | Research Engine | Not started (later phase) |
 | Agent Orchestrator | Not started (later phase) |
 | Shared Infrastructure | Not started |
@@ -41,6 +41,6 @@ Installed: Phase 8.1 dependencies plus the Phase 8.2 database dependencies (SQLA
 
 ## Pending work
 
-1. Review and merge the pull request carrying 8.2 steps 1–2 into `main` (branch `feat/phase-8-2-document-persistence`).
-2. 8.2 step 3.
-3. Remaining 8.2 steps (entities, relationships, episodes, profiles, embedding metadata, deletion records) per plan 8.2, then 8.2 acceptance review.
+1. Review, commit and merge 8.2 step 3 (branch `feat/phase-8-2-entities-relationships`).
+2. 8.2 step 4 (episodes, profiles, categories, consolidation, memory embedding metadata), then step 5 (deletion, correction, evaluation, processing history).
+3. 8.2 acceptance review against plan 8.2 §14.

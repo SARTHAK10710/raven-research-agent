@@ -692,7 +692,14 @@ Approved on 2026-11-11.
 - **Phase 8.3** introduces the outbox table (`me_outbox`), its publisher, RabbitMQ and Celery together, with their tests, when ingestion first publishes work. Outbox rows are then written in the same transaction as the business change (7.4 §9; §23.2).
 - This differs from the [decision review](../project-context/PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) recommendation (outbox table in 8.2). The trade-off it names, a schema change in 8.3, is accepted.
 
-### 23.7 Not decided here
+### 23.7 Decision 11 — Shared public entities ⚑ (privacy)
+
+Approved on 2026-11-11.
+
+- Entities are **private only** for now. Every entity has an owner, and `pm_entity.scope` exists, but a check constraint (`ck_pm_entity_private_only`) and the domain model reject `shared`. Shared entities are the only data that would be visible across users, so they stay disabled until a curation process with its own privacy review is approved (decision review §4, Decision 11).
+- Enabling shared entities later requires that approval, plus a migration that relaxes the check and the owner requirement and adds cross-user isolation rules (5.4.13: private relationships may reference shared entities, never the reverse).
+
+### 23.8 Not decided here
 
 - The embedding model itself, with its dimension, metric and index type (Decision 3). It must be selected, with approval, before Phase 8.7 creates vector storage.
-- The language-scope requirement (gap G6), and Decisions 6–8 and 11–15, per the decision review.
+- The language-scope requirement (gap G6), and Decisions 6–8 and 12–15, per the decision review.

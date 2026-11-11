@@ -11,12 +11,16 @@ content. Translated errors carry a fixed, safe message.
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from sqlalchemy import URL, Engine, create_engine
+from sqlalchemy import URL, ColumnElement, Engine, Update, create_engine, select
 from sqlalchemy.exc import DBAPIError, IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from memory_engine.config.settings import DatabaseSettings
-from memory_engine.exceptions import PersistenceError
+from memory_engine.exceptions import (
+    ConcurrencyConflictError,
+    PersistenceError,
+    RecordNotFoundError,
+)
 from memory_engine.infrastructure.persistence.base import MEMORY_SCHEMA
 
 DRIVER = "postgresql+psycopg"
@@ -80,6 +84,23 @@ def translate_database_errors(operation: str) -> Iterator[None]:
         raise PersistenceError(f"Database operation failed: {operation}") from err
     except SQLAlchemyError as err:
         raise PersistenceError(f"Persistence layer error: {operation}") from err
+
+
+def conditional_update(
+    session: Session, statement: Update, *, exists: ColumnElement[bool], what: str
+) -> None:
+    """Run a guarded UPDATE that must change exactly one row.
+
+    The guard (expected state) lives in ``statement``'s WHERE clause, so the check
+    and the write are one statement. On zero rows, ``exists`` tells "not found"
+    (RecordNotFoundError) from "changed concurrently" (ConcurrencyConflictError).
+    """
+    result = session.execute(statement.execution_options(synchronize_session=False))
+    if getattr(result, "rowcount", 0) == 1:
+        return
+    if not session.scalar(select(exists)):
+        raise RecordNotFoundError(f"{what} not found")
+    raise ConcurrencyConflictError(f"{what} changed since it was read")
 
 
 def _constraint_name(err: IntegrityError) -> str:

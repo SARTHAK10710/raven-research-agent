@@ -10,7 +10,7 @@ import uuid
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import ColumnElement, Update, func, select, update
+from sqlalchemy import ColumnElement, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -37,11 +37,13 @@ from memory_engine.documents.domain.vocabulary import (
 from memory_engine.domain.errors import DomainValidationError, OwnershipError
 from memory_engine.domain.identifiers import OwnerScope
 from memory_engine.exceptions import (
-    ConcurrencyConflictError,
     DeletionInProgressError,
     RecordNotFoundError,
 )
-from memory_engine.infrastructure.persistence.database import translate_database_errors
+from memory_engine.infrastructure.persistence.database import (
+    conditional_update,
+    translate_database_errors,
+)
 from memory_engine.infrastructure.persistence.documents.models import (
     ChunkLocationRow,
     DocumentChunkRow,
@@ -67,18 +69,6 @@ OPEN_OPERATION_STATES = tuple(status.value for status in OperationStatus if stat
 def _require_in_scope(scope: OwnerScope, *owner_ids: uuid.UUID) -> None:
     if not all(scope.owns(owner_id) for owner_id in owner_ids):
         raise OwnershipError("record owner does not match the operation's owner scope")
-
-
-def _conditional_update(
-    session: Session, statement: Update, *, exists: ColumnElement[bool], what: str
-) -> None:
-    """Run a guarded UPDATE; distinguish 'not found' from 'changed concurrently'."""
-    result = session.execute(statement.execution_options(synchronize_session=False))
-    if getattr(result, "rowcount", 0) == 1:
-        return
-    if not session.scalar(select(exists)):
-        raise RecordNotFoundError(f"{what} not found")
-    raise ConcurrencyConflictError(f"{what} changed since it was read")
 
 
 # --- mapping -----------------------------------------------------------------------
@@ -275,7 +265,7 @@ class SqlAlchemyDocumentRepository:
                 raise DomainValidationError("versions are numbered consecutively")
             self._session.add(_version_row(version))
             self._session.flush()
-            _conditional_update(
+            conditional_update(
                 self._session,
                 update(DocumentRow)
                 .where(
@@ -335,7 +325,7 @@ class SqlAlchemyDocumentRepository:
         expected: DocumentLifecycleStatus,
     ) -> None:
         with translate_database_errors("set document lifecycle status"):
-            _conditional_update(
+            conditional_update(
                 self._session,
                 update(DocumentRow)
                 .where(
@@ -357,7 +347,7 @@ class SqlAlchemyDocumentRepository:
         expected: VersionProcessingStatus,
     ) -> None:
         with translate_database_errors("set document version status"):
-            _conditional_update(
+            conditional_update(
                 self._session,
                 update(DocumentVersionRow)
                 .where(
@@ -627,7 +617,7 @@ class SqlAlchemyDocumentContentRepository:
         expected: EmbeddingStatus,
     ) -> None:
         with translate_database_errors("set document embedding status"):
-            _conditional_update(
+            conditional_update(
                 self._session,
                 update(DocumentEmbeddingRow)
                 .where(
@@ -727,7 +717,7 @@ class SqlAlchemyProcessingOperationRepository:
         if count_attempt:
             values["attempts"] = ProcessingOperationRow.attempts + 1
         with translate_database_errors("transition processing operation"):
-            _conditional_update(
+            conditional_update(
                 self._session,
                 update(ProcessingOperationRow)
                 .where(
