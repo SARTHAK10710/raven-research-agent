@@ -6,11 +6,11 @@ Primary instruction and navigation file for Claude Code sessions in this reposit
 
 Raven is an independent AI research agent that builds persistent, evidence-grounded knowledge. It has **three primary engines** — Memory Engine, Research Engine, Agent Orchestrator — supported by Shared Infrastructure, deployed initially as a **modular monolith with independent background workers**. The Memory Engine holds two separate logical domains: **Personal Memory** and **Document Intelligence**.
 
-This repository holds the architecture, data-model, algorithm and technology specifications (Phases 1–7), the Phase 8 Memory Engine implementation plans, and — from Phase 8 onward — the implementation itself. **Only the Phase 8.1 Memory Engine foundation exists** (configuration, errors, logging, tests); there is no memory, document, research or orchestration functionality yet.
+This repository holds the architecture, data-model, algorithm and technology specifications (Phases 1–7), the Phase 8 Memory Engine implementation plans, and — from Phase 8 onward — the implementation itself. **Only the Memory Engine foundation (8.1) and its PostgreSQL persistence layer (8.2) exist**; there is no ingestion, extraction, retrieval, document processing, research or orchestration functionality yet.
 
 ## Current phase
 
-See [`docs/project-context/PROJECT_STATUS.md`](docs/project-context/PROJECT_STATUS.md). At the time of writing: Phase 8 (Memory Engine implementation), subphase 8.1 (Foundation and Project Setup). The foundation is implemented, verified and merged into `main` (PR #3) (Python 3.12, mypy strict, uv workspace, root `tests/`, Pydantic Settings; see [7.1 §22](docs/technical-decisions/01-baseline-technology-stack.md)). Phase 8.2 has not been approved to start.
+See [`docs/project-context/PROJECT_STATUS.md`](docs/project-context/PROJECT_STATUS.md), which is authoritative. At the time of writing: Phase 8 (Memory Engine implementation), subphase 8.2 (Database and Persistence), approved 2026-11-11, with all five steps implemented and an acceptance review recorded in [`PHASE-8-2-ACCEPTANCE-REVIEW.md`](docs/project-context/PHASE-8-2-ACCEPTANCE-REVIEW.md). 8.1 is verified and merged (PR #3). Phase 8.3 has not been approved to start.
 
 Run checks from the repository root: `uv sync`, `uv run pytest`, `uv run ruff check .`, `uv run ruff format --check .`, `uv run mypy`. Never begin or advance a subphase without explicit user approval.
 

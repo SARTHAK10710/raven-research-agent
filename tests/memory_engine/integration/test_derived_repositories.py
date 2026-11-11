@@ -4,6 +4,7 @@
 """
 
 import uuid
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -188,27 +189,40 @@ def test_a_memory_can_be_current_in_an_episode_only_once(
     assert caught.value.details["constraint"] == "uq_pm_episode_membership_current"
 
 
-def test_episode_updates_are_conditional(uow_factory: Uow, owner: OwnerScope) -> None:
+def test_episode_updates_are_conditional_on_the_version(
+    uow_factory: Uow, owner: OwnerScope, other_owner: OwnerScope
+) -> None:
     episode = _episode(owner)
     with uow_factory() as uow:
         uow.episodes.add(owner, episode)
-        bounded = Episode(
-            **{
-                **{f: getattr(episode, f) for f in episode.__dataclass_fields__},
-                "starts_at": T0,
-                "start_precision": TemporalPrecision.MONTH,
-                "status": EpisodeStatus.NEEDS_REFRESH,
-            }
+        bounded = replace(
+            episode,
+            version=2,
+            starts_at=T0,
+            start_precision=TemporalPrecision.MONTH,
+            status=EpisodeStatus.NEEDS_REFRESH,
         )
-        uow.episodes.update(owner, bounded, expected_status=EpisodeStatus.ACTIVE)
+        uow.episodes.update(owner, bounded, expected_version=1)
+    # A writer that read version 1 too: same status as before is not enough any more.
+    retitled = replace(episode, version=2, title="Synthetic internship, renamed")
     with pytest.raises(ConcurrencyConflictError), uow_factory() as uow:
-        uow.episodes.update(owner, episode, expected_status=EpisodeStatus.ACTIVE)
+        uow.episodes.update(owner, retitled, expected_version=1)
+    with pytest.raises(DomainValidationError), uow_factory() as uow:
+        uow.episodes.update(owner, retitled, expected_version=2)  # must write version 3
+    with pytest.raises(DomainValidationError), uow_factory() as uow:
+        uow.episodes.add(owner, replace(_episode(owner), version=2))
+    with pytest.raises(RecordNotFoundError), uow_factory() as uow:
+        uow.episodes.update(
+            other_owner, replace(retitled, owner_id=other_owner.owner_id), expected_version=1
+        )
     with uow_factory() as uow:
         stored = uow.episodes.get(owner, episode.id)
     assert stored is not None
-    assert (stored.status, stored.start_precision) == (
+    assert (stored.version, stored.status, stored.start_precision, stored.title) == (
+        2,
         EpisodeStatus.NEEDS_REFRESH,
         TemporalPrecision.MONTH,
+        episode.title,
     )
 
 

@@ -1555,7 +1555,8 @@ The embedding status vocabulary is now defined once, in the shared kernel, and u
 - **Episodes:**
   - membership has no role column, because 5.4.29 says membership "may" carry a role and no roles are defined;
   - removing a member closes the row (`removed_at`), and at most one current membership exists per episode and memory;
-  - timeline corrections close the old event and add a new one, so the earlier understanding stays (5.4.30).
+  - timeline corrections close the old event and add a new one, so the earlier understanding stays (5.4.30);
+  - an episode carries a `version` that every update must name and increment, so concurrent edits are detected rather than overwritten (added by migration `0006` after the 8.2 acceptance review; 7.2 §7).
 - **Profiles:**
   - content lives in append-only revisions, and the profile points at its current revision (5.4.32);
   - each revision lists its supporting memories together with the memory *revision* used (5.4.31). The foreign key guarantees that version exists, which makes a profile reproducible (6.5.6).
@@ -1567,3 +1568,30 @@ The embedding status vocabulary is now defined once, in the shared kernel, and u
 - **Category assignments** record origin (explicit or inferred) and confidence. A change closes the old row (5.4.22), and at most one assignment per memory and category is current.
 - **Memory embeddings** are metadata only (vectors come in 8.7). Each belongs to one memory revision (5.4.19 rule 2), with at most one `primary` per memory revision, model, model revision and preprocessing version. An `aspect` embedding carries a label.
 - **No consolidation-result table.** 5.4.23 says established consolidation outputs reuse Episodes and Derived Profiles, and that independent records are created only for result types that don't fit. None is defined yet, so a record type is added when Phase 8.9 defines one (no placeholder tables).
+
+## 14. Processing, evaluation, correction and deletion records (Phase 8.2 step 5)
+
+**Approved 2026-11-11.** Decisions 5.4.24–5.4.26 and 5.4.28 require these records; 6.2.3 §6.7 and 6.5.8–6.5.9 give some of their values, and the rest were not enumerated.
+
+| Vocabulary | Values | Source |
+|---|---|---|
+| Processing event type | `transition`, `failure`, `retry`, `recovery` | 5.4.28 ("transitions, failures, retries and recovery") |
+| Evaluation outcome | `proceed`, `needs_review`, `reject`, `defer` | 6.2.3 §6.7 |
+| Correction status | `open`, `accepted`, `rejected`, `withdrawn`, `deleted` | 5.4.26 rules 3 and 7; `deleted` for 5.4.24 rule 7 |
+| Deletion request kind | `user_request`, `account`, `administrative`, `system` | 6.5.8 B and C |
+| Deletion operation status | `requested`, `validating`, `approved`, `in_progress`, `propagating`, `verifying`, `completed`, `partially_completed`, `failed`, `requires_reconciliation` | 6.5.8 |
+| Deletion target kind | one value per `pm_` table without the prefix, except the deletion tables | 6.5.9 dependency inventory |
+| Deletion action | `delete`, `invalidate`, `refresh` | 6.5.9 required handling |
+| Deletion target state | `pending`, `propagated`, `verified`, `failed` | 6.5.9 propagation and verification |
+
+**Persistence rules:**
+- **Processing events** (5.4.28) are append-only and ordered by `(occurred_at, seq)`. Each event changes the source status, and the source status and the event are written together, conditional on the expected status. Only `failure` events carry an error code.
+- **Candidate evaluations** (5.4.25) are append-only. Recording one updates the candidate's latest state (its status, plus any scores the evaluation carries) in the same write. An outcome limits the resulting status: `proceed` → `candidate` or `validated`, `needs_review` → `needs_review`, `reject` → `rejected`, `defer` → `candidate`. Evaluations hold scores and a reason code, never the proposition. The source and candidate tables now allow updates only to their state columns.
+- **Correction requests** (5.4.26) are for complex corrections only; simple ones remain a new Atomic Memory revision. Each request lists the affected memories with the revision it was based on. Acceptance names, for every affected memory, the later revision that applied it; rejection and withdrawal name none, so they never change a memory. `deleted` drops the proposed change, the evidence references and the note.
+- **Deletion operations** (5.4.24; 6.5.8):
+  - one operation per owner and idempotency key;
+  - finished (`completed`, `partially_completed`, `failed`) exactly when `finished_at` is set; `failed` carries an error code, and `completed` has none;
+  - `completed` is refused unless every ledger row is `verified` (6.5.9).
+- **The deletion ledger** has one row per affected record: its kind, its identifier, whether the request named it directly, the action, the state and the attempt count. Rows move `pending` → `propagated` → `verified`; `failed` can return to `pending`. There is no foreign key to the record, so the row outlives a purged record and can be replayed after a restore (6.5.9 backup handling). Nothing in the ledger holds content (5.4.24 rule 7).
+- **Policy-driven forgetting** (6.5.8 A) and simple deletions (5.4.24 rule 3) create no operation.
+- **Error and reason codes** are UPPER_SNAKE_CASE codes, never free text, so they cannot carry user content.

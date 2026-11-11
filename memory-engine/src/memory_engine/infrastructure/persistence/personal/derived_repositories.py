@@ -118,6 +118,7 @@ def _episode(row: EpisodeRow) -> Episode:
         method=row.method,
         method_version=row.method_version,
         recorded_at=row.recorded_at,
+        version=row.version,
         title=row.title,
         summary=row.summary,
         starts_at=row.starts_at,
@@ -231,6 +232,8 @@ class SqlAlchemyEpisodeRepository:
 
     def add(self, scope: OwnerScope, episode: Episode) -> None:
         _require_in_scope(scope, episode.owner_id)
+        if episode.version != 1:
+            raise DomainValidationError("a new episode starts at version 1")
         with translate_database_errors("add episode"):
             self._session.add(
                 EpisodeRow(
@@ -256,23 +259,22 @@ class SqlAlchemyEpisodeRepository:
             )
         return None if row is None else _episode(row)
 
-    def update(
-        self, scope: OwnerScope, episode: Episode, *, expected_status: EpisodeStatus
-    ) -> None:
+    def update(self, scope: OwnerScope, episode: Episode, *, expected_version: int) -> None:
         _require_in_scope(scope, episode.owner_id)
+        if episode.version != expected_version + 1:
+            raise DomainValidationError("an update writes the version after the one it read")
+        live = (
+            EpisodeRow.id == episode.id,
+            EpisodeRow.owner_id == scope.owner_id,
+            EpisodeRow.status != EpisodeStatus.DELETED.value,
+        )
         with translate_database_errors("update episode"):
             conditional_update(
                 self._session,
                 update(EpisodeRow)
-                .where(
-                    EpisodeRow.id == episode.id,
-                    EpisodeRow.owner_id == scope.owner_id,
-                    EpisodeRow.status == expected_status.value,
-                )
-                .values(**_episode_values(episode)),
-                exists=select(EpisodeRow.id)
-                .where(EpisodeRow.id == episode.id, EpisodeRow.owner_id == scope.owner_id)
-                .exists(),
+                .where(*live, EpisodeRow.version == expected_version)
+                .values(version=episode.version, **_episode_values(episode)),
+                exists=select(EpisodeRow.id).where(*live).exists(),
                 what="episode",
             )
 

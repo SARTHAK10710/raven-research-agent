@@ -21,6 +21,14 @@ from memory_engine.personal.domain.entities import (
     MemoryRelationship,
     ordered_pair,
 )
+from memory_engine.personal.domain.lifecycle import (
+    CandidateEvaluation,
+    CorrectionRequest,
+    CorrectionTarget,
+    DeletionOperation,
+    DeletionTarget,
+    SourceProcessingEvent,
+)
 from memory_engine.personal.domain.records import (
     AtomicMemory,
     AtomicMemoryRevision,
@@ -33,7 +41,12 @@ from memory_engine.personal.domain.records import (
 __all__ = [
     "AtomicMemory",
     "AtomicMemoryRevision",
+    "CandidateEvaluation",
     "CategoryAssignment",
+    "CorrectionRequest",
+    "CorrectionTarget",
+    "DeletionOperation",
+    "DeletionTarget",
     "DocumentEvidenceRef",
     "Entity",
     "EntityAlias",
@@ -53,5 +66,6 @@ __all__ = [
     "ProfileRevision",
     "ProfileSupport",
     "ProvenanceRecord",
+    "SourceProcessingEvent",
     "ordered_pair",
 ]

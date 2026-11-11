@@ -30,6 +30,12 @@ from memory_engine.infrastructure.persistence.personal.entity_repositories impor
     SqlAlchemyEntityRepository,
     SqlAlchemyRelationshipRepository,
 )
+from memory_engine.infrastructure.persistence.personal.lifecycle_repositories import (
+    SqlAlchemyCorrectionRepository,
+    SqlAlchemyDeletionRepository,
+    SqlAlchemyEvaluationHistoryRepository,
+    SqlAlchemyProcessingHistoryRepository,
+)
 from memory_engine.infrastructure.persistence.personal.repositories import (
     SqlAlchemyAtomicMemoryRepository,
     SqlAlchemyDocumentEvidenceRepository,
@@ -91,6 +97,10 @@ class SqlAlchemyPersonalUnitOfWork(_SqlAlchemyUnitOfWork):
     profiles: SqlAlchemyProfileRepository
     categories: SqlAlchemyCategoryRepository
     memory_embeddings: SqlAlchemyMemoryEmbeddingRepository
+    processing: SqlAlchemyProcessingHistoryRepository
+    evaluations: SqlAlchemyEvaluationHistoryRepository
+    corrections: SqlAlchemyCorrectionRepository
+    deletions: SqlAlchemyDeletionRepository
 
     def _bind(self, session: Session) -> None:
         self.sources = SqlAlchemyMemorySourceRepository(session)
@@ -107,6 +117,10 @@ class SqlAlchemyPersonalUnitOfWork(_SqlAlchemyUnitOfWork):
         self.profiles = SqlAlchemyProfileRepository(session)
         self.categories = SqlAlchemyCategoryRepository(session)
         self.memory_embeddings = SqlAlchemyMemoryEmbeddingRepository(session)
+        self.processing = SqlAlchemyProcessingHistoryRepository(session)
+        self.evaluations = SqlAlchemyEvaluationHistoryRepository(session)
+        self.corrections = SqlAlchemyCorrectionRepository(session)
+        self.deletions = SqlAlchemyDeletionRepository(session)
 
 
 class SqlAlchemyDocumentUnitOfWork(_SqlAlchemyUnitOfWork):

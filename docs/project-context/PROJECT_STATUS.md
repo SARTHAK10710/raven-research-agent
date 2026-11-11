@@ -1,6 +1,6 @@
 # Project Status
 
-**Last verified update:** 2026-11-11, on branch `feat/phase-8-2-episodes-profiles` (from `main` @ `b31a97e`), with Phase 8.2 step 4 in the working tree, uncommitted. 8.2 steps 1–3 are on `main` through [PR #8](https://github.com/SARTHAK10710/raven-research-agent/pull/8) and [PR #9](https://github.com/SARTHAK10710/raven-research-agent/pull/9); Phase 8.1 through [PR #3](https://github.com/SARTHAK10710/raven-research-agent/pull/3).
+**Last verified update:** 2026-11-11, on branch `feat/phase-8-2-deletion-corrections-history`, with Phase 8.2 step 5 in the working tree, uncommitted. The branch is stacked on step 4 (`38411e1`, open in [PR #10](https://github.com/SARTHAK10710/raven-research-agent/pull/10), not yet merged). 8.2 steps 1–3 are on `main` through [PR #8](https://github.com/SARTHAK10710/raven-research-agent/pull/8) and [PR #9](https://github.com/SARTHAK10710/raven-research-agent/pull/9); Phase 8.1 through [PR #3](https://github.com/SARTHAK10710/raven-research-agent/pull/3).
 
 ## Current position
 
@@ -8,9 +8,9 @@
 |---|---|
 | Current phase | Phase 8 — Memory Engine Implementation |
 | Current subphase | 8.2 — Database and Persistence (**approved 2026-11-11**) |
-| Subphase status | 8.2 `IN_PROGRESS`: steps 1–3 merged (PR #8, #9); **step 4 (episodes, profiles, categories, memory embedding metadata) implemented and tested**, uncommitted; step 5 not started. 8.1 remains `VERIFIED` and merged |
-| Current active task | Owner review of 8.2 step 4; then step 5 (deletion, correction, evaluation and processing-history records) and the 8.2 acceptance review |
-| Application code | 8.1 foundation plus 8.2 steps 1–4: Personal Memory core (`0001`), Document Intelligence and the evidence path (`0002`), entities and relationships (`0003`), episodes, profiles, categories and memory embedding metadata (`0004`); owner-scoped repositories and units of work. **Persistence only**: no ingestion, extraction, resolution, consolidation, parsing, chunking, embedding generation, retrieval ranking or deletion workflow |
+| Subphase status | 8.2 `IN_PROGRESS`: steps 1–3 merged (PR #8, #9); step 4 in PR #10 (open); **step 5 (processing events, candidate evaluations, correction requests, deletion operations and ledger) implemented and tested**, uncommitted. All five planned steps are built; the 8.2 acceptance review has not been done. 8.1 remains `VERIFIED` and merged |
+| Current active task | 8.2 acceptance review ([PHASE-8-2-ACCEPTANCE-REVIEW.md](PHASE-8-2-ACCEPTANCE-REVIEW.md)): A1 fixed (migration `0006`, episode version) and A2 fixed (race, commit-failure and migration-failure tests), both uncommitted; A3 deferrals accepted. **Remaining: A4**, re-running the checks on `main` after PRs #10 and #11 (with the A1–A2 changes) merge; then 8.2 can be marked `VERIFIED` |
+| Application code | 8.1 foundation plus 8.2 steps 1–5: Personal Memory core (`0001`), Document Intelligence and the evidence path (`0002`), entities and relationships (`0003`), episodes, profiles, categories and memory embedding metadata (`0004`), processing, evaluation, correction and deletion records (`0005`), episode version (`0006`, uncommitted); owner-scoped repositories and units of work. **Persistence only**: no ingestion, extraction, resolution, consolidation, parsing, chunking, embedding generation, retrieval ranking or deletion workflow |
 
 ## Documentation completion
 
@@ -31,7 +31,7 @@ Documentation recovery: four specifications that had been overwritten by amendme
 
 | Phase | Status |
 |---|---|
-| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `IN_PROGRESS` (steps 1–3 merged, step 4 tested and uncommitted, step 5 to do); 8.3–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
+| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `IN_PROGRESS` (steps 1–3 merged, step 4 in PR #10, step 5 tested and uncommitted; acceptance review to do); 8.3–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
 | Research Engine | Not started (later phase) |
 | Agent Orchestrator | Not started (later phase) |
 | Shared Infrastructure | Not started |
@@ -41,6 +41,5 @@ Installed: Phase 8.1 dependencies plus the Phase 8.2 database dependencies (SQLA
 
 ## Pending work
 
-1. Review, commit and merge 8.2 step 4 (branch `feat/phase-8-2-episodes-profiles`).
-2. 8.2 step 5 (deletion operations, correction requests, candidate evaluation history, source processing events).
-3. 8.2 acceptance review against plan 8.2 §14.
+1. Commit the A1–A2 fixes and the review (with approval); merge PR #10 (8.2 step 4), then PR #11 (step 5 plus the fixes).
+2. Re-run the checks on `main` (A4); mark 8.2 `VERIFIED` only if they pass.

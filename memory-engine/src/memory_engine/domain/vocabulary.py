@@ -9,6 +9,8 @@ check constraints. Sources:
 * Phase 6.2 section 8.6 (candidate states) and 6.2.5 (origin classification).
 * Decision 5.4.18 rule 4 (provenance origin kinds).
 * Phase 5.4 "Memory Source processing states" amendment (approved 2026-11-11).
+* Phase 5.4 Phase 8.2 amendment sections 12-14 (entities; derived knowledge;
+  processing events, evaluation, correction and deletion records).
 
 Do not add values here without an approved specification change.
 """
@@ -339,6 +341,160 @@ class RefreshOutcome(StrEnum):
             RefreshOutcome.FAILED: ProfileStatus.REFRESH_FAILED,
             RefreshOutcome.NEEDS_REVIEW: ProfileStatus.NEEDS_REVIEW,
         }[self]
+
+
+class ProcessingEventType(StrEnum):
+    """Meaningful Memory Source processing events (Decision 5.4.28; amendment section 14)."""
+
+    TRANSITION = "transition"
+    FAILURE = "failure"
+    RETRY = "retry"
+    RECOVERY = "recovery"
+
+
+class EvaluationOutcome(StrEnum):
+    """Candidate evaluation decisions (6.2.3 section 6.7); not memory lifecycle states."""
+
+    PROCEED = "proceed"
+    NEEDS_REVIEW = "needs_review"
+    REJECT = "reject"
+    DEFER = "defer"
+
+    def allowed_statuses(self) -> frozenset[CandidateStatus]:
+        """Candidate statuses an evaluation with this outcome may leave behind."""
+        return {
+            EvaluationOutcome.PROCEED: frozenset(
+                {CandidateStatus.CANDIDATE, CandidateStatus.VALIDATED}
+            ),
+            EvaluationOutcome.NEEDS_REVIEW: frozenset({CandidateStatus.NEEDS_REVIEW}),
+            EvaluationOutcome.REJECT: frozenset({CandidateStatus.REJECTED}),
+            EvaluationOutcome.DEFER: frozenset({CandidateStatus.CANDIDATE}),
+        }[self]
+
+
+class CorrectionStatus(StrEnum):
+    """Memory Correction Request states (Decision 5.4.26; amendment section 14)."""
+
+    OPEN = "open"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    WITHDRAWN = "withdrawn"
+    DELETED = "deleted"
+
+    @property
+    def resolved(self) -> bool:
+        return self in (
+            CorrectionStatus.ACCEPTED,
+            CorrectionStatus.REJECTED,
+            CorrectionStatus.WITHDRAWN,
+        )
+
+
+class DeletionRequestKind(StrEnum):
+    """Who asked for a coordinated deletion (6.5.8 B and C).
+
+    Policy-driven forgetting (6.5.8 A) is a lifecycle decision and creates no
+    deletion operation.
+    """
+
+    USER_REQUEST = "user_request"
+    ACCOUNT = "account"
+    ADMINISTRATIVE = "administrative"
+    SYSTEM = "system"
+
+
+class DeletionOperationStatus(StrEnum):
+    """Memory Deletion Operation states (6.5.8)."""
+
+    REQUESTED = "requested"
+    VALIDATING = "validating"
+    APPROVED = "approved"
+    IN_PROGRESS = "in_progress"
+    PROPAGATING = "propagating"
+    VERIFYING = "verifying"
+    COMPLETED = "completed"
+    PARTIALLY_COMPLETED = "partially_completed"
+    FAILED = "failed"
+    REQUIRES_RECONCILIATION = "requires_reconciliation"
+
+    @property
+    def finished(self) -> bool:
+        """No further propagation is planned. ``requires_reconciliation`` is resumable."""
+        return self in (
+            DeletionOperationStatus.COMPLETED,
+            DeletionOperationStatus.PARTIALLY_COMPLETED,
+            DeletionOperationStatus.FAILED,
+        )
+
+
+class DeletionTargetKind(StrEnum):
+    """Personal Memory record kinds a deletion ledger row can name.
+
+    One value per ``pm_`` table (without the prefix), except the deletion
+    tables themselves; a unit test keeps the two in step.
+    """
+
+    MEMORY_SOURCE = "memory_source"
+    SOURCE_PROCESSING_EVENT = "source_processing_event"
+    MEMORY_CANDIDATE = "memory_candidate"
+    CANDIDATE_EVALUATION = "candidate_evaluation"
+    ATOMIC_MEMORY = "atomic_memory"
+    ATOMIC_MEMORY_REVISION = "atomic_memory_revision"
+    PROVENANCE = "provenance"
+    DOCUMENT_EVIDENCE_REF = "document_evidence_ref"
+    ENTITY = "entity"
+    ENTITY_ALIAS = "entity_alias"
+    ENTITY_MENTION = "entity_mention"
+    ENTITY_RESOLUTION = "entity_resolution"
+    ENTITY_RELATIONSHIP = "entity_relationship"
+    MEMORY_RELATIONSHIP = "memory_relationship"
+    MEMORY_ENTITY = "memory_entity"
+    EPISODE = "episode"
+    EPISODE_MEMBERSHIP = "episode_membership"
+    EPISODE_EVENT = "episode_event"
+    PROFILE = "profile"
+    PROFILE_REVISION = "profile_revision"
+    PROFILE_MEMORY = "profile_memory"
+    PROFILE_REFRESH = "profile_refresh"
+    MEMORY_CATEGORY = "memory_category"
+    MEMORY_EMBEDDING = "memory_embedding"
+    CORRECTION_REQUEST = "correction_request"
+    CORRECTION_MEMORY = "correction_memory"
+
+
+class DeletionAction(StrEnum):
+    """Required handling of one ledger row (6.5.9 dependency inventory)."""
+
+    DELETE = "delete"
+    INVALIDATE = "invalidate"
+    REFRESH = "refresh"
+
+
+class DeletionTargetState(StrEnum):
+    """Propagation progress of one ledger row (6.5.9)."""
+
+    PENDING = "pending"
+    PROPAGATED = "propagated"
+    VERIFIED = "verified"
+    FAILED = "failed"
+
+    def can_move_to(self, state: "DeletionTargetState") -> bool:
+        """Propagate, then verify; a failure can be retried, a verified row is final."""
+        return (
+            state
+            in {
+                DeletionTargetState.PENDING: (
+                    DeletionTargetState.PROPAGATED,
+                    DeletionTargetState.FAILED,
+                ),
+                DeletionTargetState.PROPAGATED: (
+                    DeletionTargetState.VERIFIED,
+                    DeletionTargetState.FAILED,
+                ),
+                DeletionTargetState.FAILED: (DeletionTargetState.PENDING,),
+                DeletionTargetState.VERIFIED: (),
+            }[self]
+        )
 
 
 class MemoryRelationshipType(StrEnum):
