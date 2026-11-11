@@ -702,4 +702,31 @@ Approved on 2026-11-11.
 ### 23.8 Not decided here
 
 - The embedding model itself, with its dimension, metric and index type (Decision 3). It must be selected, with approval, before Phase 8.7 creates vector storage.
-- The language-scope requirement (gap G6), and Decisions 6–8 and 12–15, per the decision review.
+- The language-scope requirement (gap G6), and Decisions 6–8 and 12–15, per the decision review. (Decision 8 was later settled in §24.1.)
+
+---
+
+## 24. Approved Phase 8.3 Prerequisite Decisions
+
+### 24.1 Decision 8 — Local object storage for development and tests ⚑ (new infrastructure)
+
+**Status:** Approved by the project owner on 2026-11-11, before Phase 8.3. Analysis: [decision review](../project-context/PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) §4, Decision 8. Nothing is implemented yet; Phase 8.3 implements it once 8.3 is approved.
+
+This decision covers development and tests only. It does not choose the production object-storage provider, which stays deferred (§8; 7.8 §21), and it does not change the approved S3-compatible approach (§8; 7.2 §10).
+
+- **Storage port.** Object storage sits behind a Memory Engine port in `memory_engine.infrastructure` (§23.1). Application code depends only on the port.
+- **Unit tests** use an in-memory fake that implements the port. No container or disk is needed.
+- **Integration tests and local development** use **SeaweedFS** (Apache-2.0) as an S3-compatible service in `docker-compose.yml`, beside `postgres-test`. It runs as a single container serving the S3 API, bound to `127.0.0.1`, with development-only credentials and synthetic data only (7.8 §4, §7.2). The image tag is pinned to an exact version, and its licence is re-checked, when 8.3 adds the service.
+- **Python client:** **boto3** (Apache-2.0), synchronous like the rest of the stack (§23.2), and pointed at any S3-compatible endpoint by configuration. It is added as a dependency in 8.3, not earlier (§22.1 dependency timing).
+- **Rejected:**
+  - a cloud bucket for development: cost, and data leaving the machine;
+  - a fake-only approach: it would leave multipart, partial-upload and error behaviour untested (7.2 §11; plan 8.2 §13, deferred to 8.3);
+  - MinIO: community images stopped in October 2025, and the repository was archived in April 2026;
+  - LocalStack: its free image requires an account and auth token since March 2026;
+  - Garage: viable, but AGPL-3.0 and needs a bootstrap step;
+  - minio-py: tied to the archived MinIO project.
+- **Consequences for 8.3:**
+  - object keys stay opaque and owner-partitioned (`DocumentVersion.object_key_for`; 7.2 §10);
+  - writes follow the operation-state and reconciliation workflow of 7.2 §11;
+  - the object-storage failure tests deferred from 8.2 (unavailable store, partial upload) run against the SeaweedFS container;
+  - integration tests skip with a message when the container is not running, as they already do for PostgreSQL.
