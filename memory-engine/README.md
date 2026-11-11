@@ -20,7 +20,9 @@ The two domains can share infrastructure (PostgreSQL, pgvector, object storage, 
 >
 > Phase 8.3 step 3 adds document ingestion (`documents/application/ingestion.py`). PDF, DOCX and TXT uploads are checked by content, stored, and registered as a document or a new version, with an `extraction` operation waiting for the document pipeline. Nothing is parsed here.
 >
-> Not yet: queueing and handoff, extraction, parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking, and the deletion workflow.
+> Phase 8.3 step 4 adds the reliable handoff. Each registration writes a `me_outbox` row in the same transaction; `memory_engine.infrastructure.messaging.OutboxRelay` publishes it to RabbitMQ through Celery (`raven.memory` exchange; queues `memory.personal.extraction` and `memory.document.processing`) and only then moves the record to `queued`. Forget instructions get no handoff. Failed publishes back off and, after the configured attempts, wait as `failed` for an explicit retry. No consumer exists yet (8.4, 8.12).
+>
+> Not yet: extraction, parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking, and the deletion workflow.
 
 ## Boundaries
 
@@ -54,8 +56,11 @@ memory-engine/
     │   │                     #   ChunkLocation, DocumentEmbedding, ProcessingOperation, vocabularies
     │   └── application/      # ports: repository protocols and the unit of work
     └── infrastructure/
-        └── persistence/      # engine, units of work; personal/ (pm_) and documents/ (doc_)
-                              #   models and repositories
+        ├── object_storage/   # in-memory fake and boto3 adapter for the storage port
+        ├── messaging/        # Celery app, topology, publisher and outbox relay (the only
+        │                     #   code that imports celery/kombu)
+        └── persistence/      # engine, units of work, me_outbox; personal/ (pm_) and
+                              #   documents/ (doc_) models and repositories
 ```
 
 Persistence rules that the code and the database both enforce:
@@ -72,7 +77,7 @@ Tests live in the repository-root `tests/memory_engine/`, not in this directory.
 
 Settings come from environment variables prefixed `RAVEN_MEMORY__` (nested values use `__`). See [`.env.example`](.env.example).
 
-- `RAVEN_MEMORY__ENVIRONMENT` and the `RAVEN_MEMORY__DATABASE__*` host, name, user and password are required. Missing or invalid values stop startup with a `ConfigurationError` that names the fields but never echoes their values.
+- `RAVEN_MEMORY__ENVIRONMENT`, the `RAVEN_MEMORY__DATABASE__*` host, name, user and password, the object-storage settings and the `RAVEN_MEMORY__BROKER__*` host, virtual host, user and password are required. Missing or invalid values stop startup with a `ConfigurationError` that names the fields but never echoes their values.
 - No `.env` file is read unless you pass one explicitly: `load_settings(".env")`.
 - Database access uses psycopg 3 with synchronous SQLAlchemy. Pool size, overflow, recycle and connect timeout are configurable (`RAVEN_MEMORY__DATABASE__POOL_SIZE` and so on). The engine hides bound parameters in error messages, because they can contain personal memory content.
 
@@ -106,16 +111,17 @@ uv run mypy
 
 `uv sync` creates `.venv/` at the repository root and installs this package in editable mode together with the development tools. To activate the environment manually, use `.venv\Scripts\activate` on Windows or `source .venv/bin/activate` elsewhere.
 
-### Integration tests (real PostgreSQL and object storage)
+### Integration tests (real PostgreSQL, object storage and broker)
 
-Integration tests are marked `integration`. They run against two services from the repository's `docker-compose.yml`, both for development and testing only (Docker Desktop must be running):
+Integration tests are marked `integration`. They run against three services from the repository's `docker-compose.yml`, all for development and testing only (Docker Desktop must be running):
 - PostgreSQL with pgvector (`postgres-test`);
-- SeaweedFS as the S3-compatible store (`object-storage-test`).
+- SeaweedFS as the S3-compatible store (`object-storage-test`);
+- RabbitMQ as the handoff broker (`broker-test`, `127.0.0.1:55672`; override with `RAVEN_TEST_BROKER_URL`, whose virtual host must end in `_test` because the tests purge the handoff queues).
 
 Without a service, its tests are skipped with a message, not failed.
 
 ```bash
-docker compose up -d --wait postgres-test object-storage-test
+docker compose up -d --wait postgres-test object-storage-test broker-test
 ```
 
 ```bash

@@ -229,4 +229,5 @@ def test_append_only_trigger_function_installed(engine: Engine) -> None:
         "pm_correction_memory_guard",
         "pm_deletion_operation_guard",
         "pm_deletion_target_guard",
+        "me_outbox_guard",
     }

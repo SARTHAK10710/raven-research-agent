@@ -151,6 +151,19 @@ def test_infrastructure_never_imports_interfaces() -> None:
     assert violations == []
 
 
+def test_only_the_messaging_adapter_imports_the_broker_libraries() -> None:
+    # 8.3 step 4: Celery, kombu and amqp stay inside infrastructure/messaging.
+    messaging = PACKAGE_ROOT / "infrastructure" / "messaging"
+    violations = [
+        f"{path.relative_to(PACKAGE_ROOT)}: {module}"
+        for path in sorted(PACKAGE_ROOT.rglob("*.py"))
+        if messaging not in path.parents
+        for module in _imports(path)
+        if _matches(module, ("celery", "kombu", "amqp"))
+    ]
+    assert violations == []
+
+
 @pytest.mark.parametrize("package", ["exceptions", "config", "observability"])
 def test_foundation_packages_have_no_infrastructure_imports(package: str) -> None:
     violations = [

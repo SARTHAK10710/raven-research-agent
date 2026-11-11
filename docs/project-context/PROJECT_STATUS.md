@@ -1,16 +1,16 @@
 # Project Status
 
-**Last verified update:** 2026-11-11, `main` @ `423b6fd`. All of Phase 8.2 is on `main` through [PR #8](https://github.com/SARTHAK10710/raven-research-agent/pull/8), [PR #9](https://github.com/SARTHAK10710/raven-research-agent/pull/9), [PR #10](https://github.com/SARTHAK10710/raven-research-agent/pull/10) (`977c3b7`) and [PR #11](https://github.com/SARTHAK10710/raven-research-agent/pull/11) (`423b6fd`); Phase 8.1 through [PR #3](https://github.com/SARTHAK10710/raven-research-agent/pull/3).
+**Last verified update:** 2026-11-12, branch `feat/phase-8-3-reliable-handoff` from `main` @ `d51039b` (8.3 steps 1–3 merged through PRs #16–#18); step 4 uncommitted. Earlier: 2026-11-11, `main` @ `423b6fd`. All of Phase 8.2 is on `main` through [PR #8](https://github.com/SARTHAK10710/raven-research-agent/pull/8), [PR #9](https://github.com/SARTHAK10710/raven-research-agent/pull/9), [PR #10](https://github.com/SARTHAK10710/raven-research-agent/pull/10) (`977c3b7`) and [PR #11](https://github.com/SARTHAK10710/raven-research-agent/pull/11) (`423b6fd`); Phase 8.1 through [PR #3](https://github.com/SARTHAK10710/raven-research-agent/pull/3).
 
 ## Current position
 
 | Item | Value |
 |---|---|
 | Current phase | Phase 8 — Memory Engine Implementation |
-| Current subphase | 8.3 — Ingestion Pipeline (**approved 2026-11-11**, `IN_PROGRESS`: steps 1–2 (object storage, personal memory ingestion) merged (PR #16, #17); step 3, document ingestion, implemented and tested, uncommitted; steps in [NEXT_STEPS.md](NEXT_STEPS.md)) |
+| Current subphase | 8.3 — Ingestion Pipeline (**approved 2026-11-11**, `IN_PROGRESS`: steps 1–3 (object storage, personal memory ingestion, document ingestion) merged (PRs #16–#18); step 4, reliable handoff, implemented and tested, uncommitted; steps in [NEXT_STEPS.md](NEXT_STEPS.md)) |
 | Subphase status | 8.2 **`VERIFIED`** (2026-11-11) and merged: all five steps plus the acceptance-review fixes, with every plan 8.2 §14 criterion met on `main` @ `423b6fd` (two owner-accepted deferrals; [PHASE-8-2-ACCEPTANCE-REVIEW.md](PHASE-8-2-ACCEPTANCE-REVIEW.md)). 8.1 remains `VERIFIED` and merged |
-| Current active task | Owner review of 8.3 step 3 (document ingestion: content-based format detection, size limit, original in object storage, document/version registration, `extraction` operation, re-upload policy); then step 4 (outbox and RabbitMQ handoff) |
-| Application code | 8.1 foundation plus 8.2: Personal Memory core (`0001`), Document Intelligence and the evidence path (`0002`), entities and relationships (`0003`), episodes, profiles, categories and memory embedding metadata (`0004`), processing, evaluation, correction and deletion records (`0005`), episode version (`0006`); owner-scoped repositories and units of work. 8.3 step 1 (merged): an owner-scoped object-storage port with an in-memory fake and a boto3/S3 adapter. 8.3 step 2 (merged): text and conversation ingestion into a `validated` Memory Source (`0007`). 8.3 step 3 (uncommitted): document uploads checked, stored and registered with an `extraction` operation. **No** queueing or handoff yet, extraction, resolution, consolidation, parsing, chunking, embedding generation, retrieval ranking or deletion workflow |
+| Current active task | Owner review of 8.3 step 4 (reliable handoff: `me_outbox`, RabbitMQ `broker-test`, Celery publisher, outbox relay, recovery of failed publishing); then step 5 (observability and acceptance review) |
+| Application code | 8.1 foundation plus 8.2: Personal Memory core (`0001`), Document Intelligence and the evidence path (`0002`), entities and relationships (`0003`), episodes, profiles, categories and memory embedding metadata (`0004`), processing, evaluation, correction and deletion records (`0005`), episode version (`0006`); owner-scoped repositories and units of work. 8.3 step 1 (merged): an owner-scoped object-storage port with an in-memory fake and a boto3/S3 adapter. 8.3 step 2 (merged): text and conversation ingestion into a `validated` Memory Source (`0007`). 8.3 step 3 (merged): document uploads checked, stored and registered with an `extraction` operation. 8.3 step 4 (uncommitted): a transactional outbox (`me_outbox`, `0008`) written with each registration, and a relay that publishes to RabbitMQ through Celery and only then marks the source or operation `queued`; forget instructions get no handoff. **No** consumer, extraction, resolution, consolidation, parsing, chunking, embedding generation, retrieval ranking or deletion workflow |
 
 ## Documentation completion
 
@@ -31,13 +31,13 @@ Documentation recovery: four specifications that had been overwritten by amendme
 
 | Phase | Status |
 |---|---|
-| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `VERIFIED` (merged); 8.3 `IN_PROGRESS` (steps 1–2 merged; step 3 tested, uncommitted); 8.4–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
+| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `VERIFIED` (merged); 8.3 `IN_PROGRESS` (steps 1–3 merged; step 4 tested, uncommitted); 8.4–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
 | Research Engine | Not started (later phase) |
 | Agent Orchestrator | Not started (later phase) |
 | Shared Infrastructure | Not started |
 | User Interface / Entry Layer | **Not started.** Out of Phase 8 scope (Phase 8 Readme §11). **Design status:** the Entry Layer's responsibilities are defined at architecture level only (request reception and validation, authentication context, cancellation intake, response delivery; [phase-01](../architecture/phase-01-overall-architecture.md)). The API entry layer has a logical design: FastAPI, `/api/v1/` endpoint groups, and the API layer's responsibilities and exclusions ([7.6](../technical-decisions/06-api-security-and-internal-communication.md) §4–5; exact routes deferred). **No frontend or user-interface design specification exists**: no client type, framework, screens or interaction design has been documented |
 
-Installed: Phase 8.1 dependencies, the Phase 8.2 database dependencies (SQLAlchemy 2.1.8, Alembic 1.20.1, psycopg 3.3.8) and, from 8.3 step 1, boto3 1.44.0, all locked in the root `uv.lock` (see [TECHNOLOGY_DECISIONS.md](TECHNOLOGY_DECISIONS.md#dependency-timing)). Development/test-only services in `docker-compose.yml`: PostgreSQL + pgvector (`postgres-test`) and, from 8.3 step 1, SeaweedFS 4.51 (`object-storage-test`). Integration tests run against both. No broker has been provisioned.
+Installed: Phase 8.1 dependencies, the Phase 8.2 database dependencies (SQLAlchemy 2.1.8, Alembic 1.20.1, psycopg 3.3.8) and, from 8.3 step 1, boto3 1.44.0, and from step 4 (uncommitted) celery 5.7.0 and kombu 5.7.0, all locked in the root `uv.lock` (see [TECHNOLOGY_DECISIONS.md](TECHNOLOGY_DECISIONS.md#dependency-timing)). Development/test-only services in `docker-compose.yml`: PostgreSQL + pgvector (`postgres-test`), from 8.3 step 1 SeaweedFS 4.51 (`object-storage-test`), and from step 4 RabbitMQ 4.3.7 (`broker-test`). Integration tests run against all three.
 
 ## Pending work
 

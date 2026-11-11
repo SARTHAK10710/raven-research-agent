@@ -12,12 +12,14 @@ choices:
    content matches another (plan 8.3 section 8). With ``document_id`` it becomes
    the next version, refused when identical to the current one.
 5. Store the original under its owner-partitioned key, then, in one
-   transaction, register the document or version (``stored``) and create the
-   ``extraction`` operation for the document pipeline (``created``). If that
-   fails, the stored object is removed (7.2 section 11).
+   transaction, register the document or version (``stored``), create the
+   ``extraction`` operation for the document pipeline (``created``) and record
+   its handoff in the outbox (8.3 step 4). If that fails, the stored object is
+   removed (7.2 section 11).
 
+The outbox relay later publishes the handoff and only then moves the operation
+to ``queued``; nothing here reports processing as started or complete.
 No malware scan runs (none is approved; recorded as a known constraint).
-Handing the operation to the pipeline through the outbox is step 4.
 """
 
 import contextlib
@@ -48,6 +50,7 @@ from memory_engine.documents.domain.vocabulary import (
     VersionProcessingStatus,
 )
 from memory_engine.domain.errors import OwnershipError
+from memory_engine.domain.handoff import HandoffKind, OutboxMessage
 from memory_engine.domain.identifiers import OwnerScope, new_id
 from memory_engine.domain.object_storage import ObjectStorage
 from memory_engine.exceptions import (
@@ -105,6 +108,29 @@ class _LostRaceError(Exception):
 
 def _utc_now() -> datetime:
     return datetime.now(UTC)
+
+
+def extraction_handoff(
+    scope: OwnerScope, operation: ProcessingOperation, version: DocumentVersion
+) -> OutboxMessage:
+    """The handoff of a registered version to the document pipeline (plan 8.12 section 6.3)."""
+    return OutboxMessage.new(
+        scope,
+        kind=HandoffKind.DOCUMENT_EXTRACTION,
+        subject_id=operation.id,
+        payload={
+            "document_id": str(version.document_id),
+            "version_id": str(version.id),
+            "operation_id": str(operation.id),
+            "operation_type": operation.operation_type.value,
+            "media_type": version.media_type.value,
+            "content_sha256": version.content_sha256,
+            "size_bytes": str(version.size_bytes),
+        },
+        payload_reference=version.object_key,
+        priority="normal",
+        created_at=version.uploaded_at,
+    )
 
 
 class DocumentIngestionService:
@@ -187,6 +213,7 @@ class DocumentIngestionService:
                 stored, created = uow.operations.start(scope, operation)
                 if not created:  # a concurrent request with the same key won
                     raise _LostRaceError(stored)
+                uow.outbox.add(scope, extraction_handoff(scope, operation, version))
         except _LostRaceError as lost:
             self._discard(scope, version.object_key)
             return self._replay(scope, lost.operation, upload, checked)

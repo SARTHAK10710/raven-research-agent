@@ -5,7 +5,9 @@ and always closes the session. An operation is never reported as successful
 before the commit has succeeded (coding standards: error handling).
 
 Personal Memory and Document Intelligence have separate units of work, matching
-their separate ports; neither exposes the other's repositories.
+their separate ports; neither exposes the other's repositories. Both expose the
+shared ``me_outbox`` writer, so a handoff is recorded in the same transaction
+as the record it hands off (7.4 section 9.1).
 """
 
 from types import TracebackType
@@ -19,6 +21,7 @@ from memory_engine.infrastructure.persistence.documents.repositories import (
     SqlAlchemyDocumentRepository,
     SqlAlchemyProcessingOperationRepository,
 )
+from memory_engine.infrastructure.persistence.outbox import SqlAlchemyOutboxRepository
 from memory_engine.infrastructure.persistence.personal.derived_repositories import (
     SqlAlchemyCategoryRepository,
     SqlAlchemyEpisodeRepository,
@@ -101,9 +104,11 @@ class SqlAlchemyPersonalUnitOfWork(_SqlAlchemyUnitOfWork):
     evaluations: SqlAlchemyEvaluationHistoryRepository
     corrections: SqlAlchemyCorrectionRepository
     deletions: SqlAlchemyDeletionRepository
+    outbox: SqlAlchemyOutboxRepository
 
     def _bind(self, session: Session) -> None:
         self.sources = SqlAlchemyMemorySourceRepository(session)
+        self.outbox = SqlAlchemyOutboxRepository(session)
         self.candidates = SqlAlchemyMemoryCandidateRepository(session, self.sources)
         self.memories = SqlAlchemyAtomicMemoryRepository(session)
         self.evidence = SqlAlchemyDocumentEvidenceRepository(session, self.candidates)
@@ -127,8 +132,10 @@ class SqlAlchemyDocumentUnitOfWork(_SqlAlchemyUnitOfWork):
     documents: SqlAlchemyDocumentRepository
     contents: SqlAlchemyDocumentContentRepository
     operations: SqlAlchemyProcessingOperationRepository
+    outbox: SqlAlchemyOutboxRepository
 
     def _bind(self, session: Session) -> None:
+        self.outbox = SqlAlchemyOutboxRepository(session)
         self.documents = SqlAlchemyDocumentRepository(session)
         self.contents = SqlAlchemyDocumentContentRepository(session)
         self.operations = SqlAlchemyProcessingOperationRepository(session)

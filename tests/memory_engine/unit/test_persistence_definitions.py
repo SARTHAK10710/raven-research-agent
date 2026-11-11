@@ -368,6 +368,7 @@ def test_every_table_is_owner_scoped_with_a_domain_prefix() -> None:
         "doc_chunk_location",
         "doc_embedding",
         "doc_processing_operation",
+        "me_outbox",
     }
     for table in tables.values():
         assert table.c.owner_id.nullable is False
@@ -383,6 +384,9 @@ ROOT_TABLES = {
     "pm_correction_request",
     "pm_deletion_operation",
     "doc_document",
+    # The outbox has no foreign key to its subject, which lives in either domain
+    # (only the evidence path may cross them); see infrastructure/persistence/outbox.py.
+    "me_outbox",
 }
 
 

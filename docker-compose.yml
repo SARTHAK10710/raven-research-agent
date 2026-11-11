@@ -2,14 +2,16 @@
 #
 # Approved in docs/technical-decisions/01-baseline-technology-stack.md section 23.2
 # (integration tests against real PostgreSQL with pgvector via Docker Compose) and
-# section 24.1 (SeaweedFS as the S3-compatible object store for tests and development).
+# section 24.1 (SeaweedFS as the S3-compatible object store for tests and development),
+# and section 24.3 (RabbitMQ as the test broker for the ingestion handoff).
 # Never use this file, or its default credentials, for staging or production.
 #
-#   docker compose up -d --wait postgres-test object-storage-test
+#   docker compose up -d --wait postgres-test object-storage-test broker-test
 #   uv run pytest -m integration
 #
-# The password below is a throwaway local default, not a secret. Override it with
-# RAVEN_TEST_DB_PASSWORD and pass the same value to the tests via RAVEN_TEST_DATABASE_URL.
+# The passwords below are throwaway local defaults, not secrets. Override them with
+# RAVEN_TEST_DB_PASSWORD / RAVEN_TEST_BROKER_PASSWORD and pass the same values to the
+# tests via RAVEN_TEST_DATABASE_URL / RAVEN_TEST_BROKER_URL.
 # The object-store keys in docker/seaweedfs/s3.json are likewise test-only values.
 
 services:
@@ -58,3 +60,25 @@ services:
       interval: 2s
       timeout: 3s
       retries: 30
+
+  broker-test:
+    # RabbitMQ (MPL-2.0), official image, pinned; licence and version checked 2026-11-12
+    # (7.1 section 24.3). No management plugin.
+    image: rabbitmq:4.3.7-alpine
+    container_name: raven-broker-test
+    hostname: raven-broker-test
+    environment:
+      RABBITMQ_DEFAULT_USER: raven_test
+      RABBITMQ_DEFAULT_PASS: ${RAVEN_TEST_BROKER_PASSWORD:-raven_test_only}
+      RABBITMQ_DEFAULT_VHOST: raven_test
+    ports:
+      # Non-default host port so a developer's own broker on 5672 is never touched.
+      - "127.0.0.1:55672:5672"
+    tmpfs:
+      # Test messages are disposable: nothing persists across container restarts.
+      - /var/lib/rabbitmq:uid=100,gid=101,mode=0750
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 3s
+      timeout: 10s
+      retries: 40

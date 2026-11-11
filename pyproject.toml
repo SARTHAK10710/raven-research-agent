@@ -65,6 +65,12 @@ explicit_package_bases = true
 module = ["boto3", "boto3.*", "botocore", "botocore.*", "s3transfer", "s3transfer.*"]
 ignore_missing_imports = true
 
+# celery and kombu ship no type information either (Phase 8.3 step 4); confined to
+# memory_engine.infrastructure.messaging and the broker tests.
+[[tool.mypy.overrides]]
+module = ["celery", "celery.*", "kombu", "kombu.*", "amqp", "amqp.*"]
+ignore_missing_imports = true
+
 [tool.pydantic-mypy]
 init_forbid_extra = true
 init_typed = true
@@ -77,7 +83,7 @@ warn_required_dynamic_aliases = true
 testpaths = ["tests"]
 addopts = ["--import-mode=importlib", "-ra", "--strict-markers", "--strict-config"]
 markers = [
-    "integration: requires real infrastructure (docker compose up -d postgres-test object-storage-test); skipped if absent",
+    "integration: requires real infrastructure (docker compose up -d --wait postgres-test object-storage-test broker-test); skipped if absent",
 ]
 
 [tool.coverage.run]

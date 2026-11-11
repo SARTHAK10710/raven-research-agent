@@ -32,20 +32,29 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
 ## Known technical limitations
 
 - **Implemented:** the Phase 8.1 foundation and Phase 8.2 steps 1–5. That is PostgreSQL persistence for Memory Source, Candidate, Atomic Memory with revisions, and Provenance; for documents, versions, extracted representations, chunks with locations, embedding metadata, processing operations and document evidence; and for entities, aliases, mentions, resolution history, entity and memory relationships, and memory–entity associations; and for episodes with membership and events, profiles with revisions, supporting memories and refresh history, memory categories, and memory embedding metadata (no vectors before 8.7); and for source processing events, candidate evaluations, correction requests, and deletion operations with their ledger. No consolidation-result table exists until 8.9 defines one, and nothing performs a deletion until 8.10.
-- Entities are private only (Decision 11). Shared entities need an approved curation process and a migration before they can exist. It is persistence only: no ingestion, parsing, chunking, embedding generation, resolution, retrieval ranking or deletion workflow exists, and there is no broker yet (object storage arrived in 8.3 step 1).
+- Entities are private only (Decision 11). Shared entities need an approved curation process and a migration before they can exist. No parsing, chunking, embedding generation, resolution, retrieval ranking or deletion workflow exists; ingestion and its handoff arrived in 8.3 steps 2–4.
 - Document keyword search uses the language-neutral `simple` text-search configuration until the language requirement (G6) is decided.
 - Object storage (8.3 step 1): a port in the shared kernel, an in-memory fake, and a boto3 adapter, tested against SeaweedFS in `docker-compose.yml` (`object-storage-test`, `127.0.0.1:58333`, test-only keys in `docker/seaweedfs/s3.json`). The development store has no server-side encryption. Encrypting sensitive content at rest (7.1 §8) is a production-provider concern that is still deferred.
 - Personal memory ingestion (8.3 step 2):
   - text and conversations are validated, normalized and stored, and end as a `validated` Memory Source;
-  - nothing is queued, handed off or extracted until step 4 and 8.4;
+  - from step 4, each non-forget source is handed off through the outbox; nothing is extracted until 8.4;
   - forget instructions are recorded but delete nothing until 8.10;
   - input limits (256 KiB text; 1,000 messages / 4 MiB per conversation) are configurable defaults, because 7.6 §18 still defers the final limits.
 - Document ingestion (8.3 step 3):
-  - PDF, DOCX and TXT uploads are format-checked, stored and registered, with an `extraction` operation created; nothing is parsed (8.12) or handed off (step 4).
+  - PDF, DOCX and TXT uploads are format-checked, stored and registered, with an `extraction` operation created and, from step 4, handed off through the outbox; nothing is parsed (8.12).
   - **No malware scanning**: no tool is approved, and the owner accepted the deferral on 2026-11-11. Content is never executed, DOCX macro parts are refused, and the parser (8.12) must treat files as hostile.
   - TXT must be UTF-8.
   - Upload limit: 25 MiB by default (configurable).
-- Integration tests need both `postgres-test` and `object-storage-test` running (`docker compose up -d --wait postgres-test object-storage-test`).
+- Reliable handoff (8.3 step 4, uncommitted):
+  - registrations write a `me_outbox` row in the same transaction; a relay (`OutboxRelay`) publishes it to RabbitMQ through Celery and only then moves the record to `queued`;
+  - **no consumer exists yet**: messages wait on `memory.personal.extraction` and `memory.document.processing` until 8.4 and 8.12 register their tasks, and nothing deploys or schedules the relay process yet (7.8);
+  - forget instructions get no handoff and stay `validated` until 8.10;
+  - no dead-letter queue and no outbox cleanup (7.4 §13, §22); published rows are kept;
+  - `me_outbox` has no foreign key to its subject, so plan 8.10 deletion must remove a subject's outbox rows explicitly;
+  - delivery is at least once: a commit failure after a confirmed publish republishes the same message id, so consumers must deduplicate;
+  - the test broker has no TLS (127.0.0.1 only); production broker hosting, TLS and per-component credentials are deferred (7.4 §18, 7.8).
+- Integration tests need `postgres-test`, `object-storage-test` and `broker-test` running (`docker compose up -d --wait postgres-test object-storage-test broker-test`).
+- On 2026-11-12 the local `chrislusf/seaweedfs:4.51` image segfaulted at start-up (a Go runtime fault during initialization) until it was removed and pulled again; the pinned tag itself was fine. If `object-storage-test` exits with code 2, re-pull the image.
 - Integration tests skip, rather than fail, when the Docker PostgreSQL service is not running. A green test run without Docker does not cover persistence; check that the integration tests were not skipped.
 - Memory Source `content_ref` is optional until object storage exists (Phase 8.3).
 - **Accepted deferrals from the 8.2 acceptance review (owner, 2026-11-11):**

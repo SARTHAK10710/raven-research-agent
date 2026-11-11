@@ -8,12 +8,15 @@ Flow, with owner-approved choices from 8.3 step 2:
 3. Replay: a known idempotency key returns the existing source, or raises
    :class:`IdempotencyKeyReusedError` if the request differs.
 4. Store the original and the normalized representation in object storage, then
-   record the Memory Source as ``validated``. If the record cannot be written,
-   the uploaded objects are removed (7.2 section 11).
+   record the Memory Source as ``validated`` and, in the same transaction, its
+   handoff to extraction in the outbox (8.3 step 4). If the record cannot be
+   written, the uploaded objects are removed (7.2 section 11).
 
-Nothing here extracts memories. Explicit forget instructions are stored and
-marked, never handed to extraction; plan 8.10 resolves them. Documents are not
-accepted here: they go through document ingestion (Decision 13).
+The outbox relay later publishes the handoff and only then moves the source to
+``queued``. Nothing here extracts memories. Explicit forget instructions are
+stored and marked, but get **no** handoff: they never reach extraction, and
+plan 8.10 picks them up from the database (owner decision, 8.3 step 4).
+Documents are not accepted here: they go through document ingestion (Decision 13).
 """
 
 import contextlib
@@ -28,6 +31,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from memory_engine.domain.errors import OwnershipError
+from memory_engine.domain.handoff import HandoffKind, OutboxMessage
 from memory_engine.domain.identifiers import OwnerScope, new_id
 from memory_engine.domain.object_storage import ObjectStorage
 from memory_engine.domain.vocabulary import (
@@ -302,6 +306,9 @@ class PersonalIngestionService:
         try:
             with self._uow_factory() as uow:
                 uow.sources.add(scope, source)
+                handoff = extraction_handoff(scope, source)
+                if handoff is not None:
+                    uow.outbox.add(scope, handoff)
         except PersistenceError:
             self._discard(scope, original_key, normalized_key)
             # A concurrent request with the same key may have won the race.
@@ -337,6 +344,31 @@ class PersonalIngestionService:
         for key in keys:
             with contextlib.suppress(ObjectStorageError):
                 self._storage.delete(scope, key)
+
+
+def extraction_handoff(scope: OwnerScope, source: MemorySource) -> OutboxMessage | None:
+    """The handoff of a new source to extraction (plan 8.4), or ``None`` for forget.
+
+    Forget instructions bypass extraction entirely (plan 8.3 section 5.4).
+    """
+    if source.instruction_type is InstructionType.FORGET:
+        return None
+    payload = {
+        "source_id": str(source.id),
+        "source_type": source.source_type.value,
+        "instruction_type": source.instruction_type.value,
+    }
+    if source.normalized_ref is not None:
+        payload["normalized_ref"] = source.normalized_ref
+    return OutboxMessage.new(
+        scope,
+        kind=HandoffKind.PERSONAL_EXTRACTION,
+        subject_id=source.id,
+        payload=payload,
+        payload_reference=source.content_ref,
+        priority=source.priority.value,
+        created_at=source.received_at,
+    )
 
 
 def _replay(existing: MemorySource, prepared: _Prepared) -> IngestionResult:
