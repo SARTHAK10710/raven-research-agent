@@ -4,6 +4,7 @@
 * :func:`create_celery_app`: Celery configured for the handoff topology.
 * :class:`CeleryPublisher`: publishes one outbox message with publisher confirms.
 * :class:`OutboxRelay`: moves pending ``me_outbox`` rows to the broker.
+* :func:`register_extraction_task`: the Celery consumer for personal extraction (8.4).
 
 Only this package (and the tests) import celery, kombu or amqp.
 """
@@ -20,6 +21,7 @@ from memory_engine.infrastructure.messaging.relay import (
     RelayReport,
     backoff_seconds,
 )
+from memory_engine.infrastructure.messaging.tasks import register_extraction_task, retry_delay
 from memory_engine.infrastructure.messaging.topology import EXCHANGE_NAME, ROUTES, Route
 
 __all__ = [
@@ -35,4 +37,6 @@ __all__ = [
     "build_broker_url",
     "create_celery_app",
     "handoff_queues",
+    "register_extraction_task",
+    "retry_delay",
 ]

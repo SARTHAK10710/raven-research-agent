@@ -24,7 +24,9 @@ The two domains can share infrastructure (PostgreSQL, pgvector, object storage, 
 >
 > Phase 8.3 step 5 adds ingestion observability: one structured event per ingestion request and relay attempt, and metrics through the `Metrics` port in `memory_engine.observability` (a no-op by default until monitoring is deployed). The [8.3 acceptance review](../docs/project-context/PHASE-8-3-ACCEPTANCE-REVIEW.md) maps every plan §13 criterion to its tests.
 >
-> Not yet: extraction, parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking, and the deletion workflow.
+> Phase 8.4 step 1 adds the extraction worker (`personal/application/extraction.py`, `infrastructure/messaging/tasks.py`). It is the Celery consumer for `memory.personal.extraction`. It validates the handoff, defers non-English sources, and writes each source's outcome atomically. The pipeline it runs (relevance gate, fact extraction, evaluation, candidates) arrives in steps 2–5.
+>
+> Not yet: the extraction pipeline itself, parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking, and the deletion workflow.
 
 ## Boundaries
 

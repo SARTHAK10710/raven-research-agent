@@ -37,6 +37,14 @@ class SourceProcessingStatus(StrEnum):
     REJECTED = "rejected"
     PARSING_FAILED = "parsing_failed"
     PROCESSING_FAILED = "processing_failed"
+    # Held for controlled later processing, with a reason code (6.2.2 DEFER;
+    # G6 English first). 5.4 Phase 8.4 amendment, approved 2026-11-12.
+    DEFERRED = "deferred"
+
+    @property
+    def needs_reason(self) -> bool:
+        """Transitions into these states record why (5.4 Phase 8.4 amendment)."""
+        return self in (SourceProcessingStatus.DEFERRED, SourceProcessingStatus.REJECTED)
 
 
 class InstructionType(StrEnum):

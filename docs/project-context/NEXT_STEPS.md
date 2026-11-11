@@ -45,7 +45,7 @@ Approved with 8.4 ([7.1 §25](../technical-decisions/01-baseline-technology-stac
 
 | Step | Scope | Open questions to settle at the start of the step |
 |---|---|---|
-| 1 | **Extraction worker:** the Celery consumer for `memory.personal.extraction` (envelope validation, idempotency, Memory Source `queued` → `processing` → outcome), the English-language check, the spaCy dependency, the synthetic dataset scaffold | Task retry and failure policy (Celery retries vs a reprocessing record); which source states mark failure, deferral and completion; language detection method; how the spaCy model is installed (direct wheel); dataset schema |
+| 1 | **Extraction worker:** the Celery consumer for `memory.personal.extraction` (envelope validation, idempotency, Memory Source `queued` → `processing` → outcome), the English-language check, the spaCy dependency, the synthetic dataset scaffold | **Settled 2026-11-12** (7.1 §25.5): atomic outcome with Celery retries, then `processing_failed`; `deferred` state and `reason_code` (5.4 §16); deterministic English check; JSON Lines datasets; spaCy deferred to its first user. **Implemented and tested; uncommitted** |
 | 2 | **Relevance gate** (6.2.2): `PROCESS` / `DEFER` / `REJECT` with reason codes; protection rules | Initial dimensions and weights (uncalibrated defaults); where a deferral is recorded; reason-code vocabulary |
 | 3 | **Atomic fact extraction** (6.2.3): segmentation, speaker attribution, statement classification, negation, conditions, time and quantities | Fact representation inside the candidate (subject, predicate, object); pattern coverage; coreference scope |
 | 4 | **Evaluation and classification** (6.2.4–6.2.5): independent importance and confidence; explicit, inferred or unresolved | Initial scoring rules and thresholds; method versioning |
@@ -97,23 +97,33 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 *Overwrite this section at the end of every session that changes the repository.*
 
 - **Date:** 2026-11-12
-- **Objective:** close Phase 8.3. Done: **8.3 is `VERIFIED`** on `main` @ `1851f53`.
-- **Work completed this session (all merged):**
-  - Step 4, reliable handoff: `me_outbox`, RabbitMQ `broker-test`, Celery publisher and outbox relay (PR #19, `db13113`; status sync PR #20, `4af8a92`).
-  - Step 5, observability and the acceptance review: the `Metrics` port, `observe_ingestion`, relay handoff metrics and backlog gauges, the remaining plan §12 tests, and [PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md) ([PR #21](https://github.com/SARTHAK10710/raven-research-agent/pull/21), `1851f53`).
-  - This docs change records 8.3 as `VERIFIED`.
-  - Phase 8.4 approved (personal path) with Decision 7, G6 (English first) and Decision 14 (spaCy + `en_core_web_sm`), and its six steps recorded (7.1 §25; branch `docs/phase-8-4-approval`).
-- **Decisions made (owner, 2026-11-12):**
-  - step 4 is in 7.1 §24.3;
-  - step 5 is in 7.1 §24.4;
-  - deferral D1 (authentication tests move to the Entry layer) is accepted.
-- **Verification on merged `main` @ `1851f53`:** `uv sync --locked` ok; ruff and format clean; mypy strict clean (91 files); `uv run pytest --cov` with all three services: 652 passed, 0 failed, 0 skipped, 97% coverage.
-- **Implementation status:** 8.1, 8.2 and 8.3 `VERIFIED`; 8.4–8.12 `NOT_STARTED`.
+- **Objective:** Phase 8.4 step 1, the extraction worker. Branch `feat/phase-8-4-extraction-worker` from `main` @ `f59c602`; uncommitted.
+- **Decisions made (owner, 2026-11-12; 7.1 §25.5, 5.4 §16):**
+  - atomic outcome: Celery retries for transient errors (5, 2 s doubling to 5 min), then `processing_failed`, then an explicit reprocess;
+  - new source state `deferred`, and a `reason_code` on events for deferral and rejection;
+  - deterministic English check;
+  - JSON Lines datasets.
+- **Work completed:**
+  - `personal/application/extraction.py`: `ExtractionService`.
+    - Validates the envelope, enforces the owner scope, and refuses forget sources.
+    - Reads the normalized content into segments and defers non-English sources.
+    - Runs the `ExtractionPipeline` port, then writes the candidates and `queued` → `processing` → outcome atomically.
+    - `mark_failed` and `reprocess_failed` (the latter re-arms the outbox row).
+  - `personal/application/language.py`: the English check (`assess`, `language_policy`).
+  - `infrastructure/messaging/tasks.py`: `register_extraction_task` (bounded Celery retries, then `mark_failed`).
+  - Migration `0009`: `deferred` and `reason_code`.
+  - `OutboxWriter.rearm`; `ExtractionSettings`.
+  - The quality dataset scaffold and language dataset v1 (26 cases).
+- **Tests and results:**
+  - `uv sync --locked` ok; ruff and format clean; mypy strict clean (98 files);
+  - `uv run pytest --cov` with all three services: **732 passed** (527 unit and quality, 205 integration), 97% coverage, 3 green runs;
+  - services stopped: 528 passed, 204 skipped;
+  - end to end through RabbitMQ: ingest, relay, consume, extract with a stand-in pipeline.
+- **Implementation status:** 8.4 `IN_PROGRESS`; step 1 tested, uncommitted; steps 2–6 to do.
 - **Unresolved:**
-  - no consumers until 8.4 and 8.12; the relay process and metrics export are not deployed (7.7 §20, 7.8);
-  - no dead-letter queue or outbox cleanup; 8.10 deletion must remove a subject's outbox rows;
-  - no encryption at rest in the development store; no malware scanning; test broker without TLS;
-  - G6; Decision 6; embedding model; Decisions 7, 12, 14 and 15; ratio-label wording;
+  - the pipeline (steps 2–5) does not exist; no worker is deployed; deferred sources are not re-queued yet; no reconciliation sweep for sources stuck `queued`;
+  - from 8.3: no dead-letter queue or outbox cleanup; no encryption at rest in the development store; no malware scanning; test broker without TLS;
+  - Decisions 6, 12 and 15; the embedding model (Decision 3); ratio-label wording;
   - on this machine: uv not on PATH, Docker Desktop can take minutes to start, the SeaweedFS image once needed a re-pull, and Python defaults to cp1252 (script doc edits with UTF-8).
-- **Next action:** 8.4 was approved on 2026-11-12 (personal path; see 7.1 §25). Start step 1 (extraction worker) with its open questions.
-- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.4 with its 2026-11-12 amendment, 7.1 §25, algorithm 6.2 (`docs/algorithms/memory/01-memory-ingestion-extraction.md`) §4–§8, 7.5 §3.1, `domain/handoff.py`, `personal/domain/records.py` (`MemoryCandidate`) and `personal/domain/lifecycle.py` (`CandidateEvaluation`).
+- **Next action:** owner review of step 1; commit, PR and merge with approval; then step 2 (relevance gate) with its open questions.
+- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.4 and its amendment, 7.1 §25, 5.4 §16, algorithm 6.2.2 (`docs/algorithms/memory/01-memory-ingestion-extraction.md` §4), `personal/application/extraction.py`.

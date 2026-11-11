@@ -93,6 +93,10 @@ def _owner_fk(column: str, table: str) -> ForeignKeyConstraint:
 # --- source processing and candidate evaluation ---------------------------------------
 
 
+# 5.4 Phase 8.4 amendment: a reason code exactly for deferral and rejection.
+REASON_REQUIRED = "(to_status IN ('deferred', 'rejected')) = (reason_code IS NOT NULL)"
+
+
 class SourceProcessingEventRow(Base):
     __tablename__ = "pm_source_processing_event"
 
@@ -105,6 +109,7 @@ class SourceProcessingEventRow(Base):
     to_status: Mapped[str] = mapped_column(String(32), nullable=False)
     attempt: Mapped[int] = mapped_column(Integer, nullable=False)
     error_code: Mapped[str | None] = mapped_column(String(64))
+    reason_code: Mapped[str | None] = mapped_column(String(64))
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = _now()
 
@@ -117,6 +122,8 @@ class SourceProcessingEventRow(Base):
         CheckConstraint("attempt >= 1", name="attempt_positive"),
         CheckConstraint("(event_type = 'failure') = (error_code IS NOT NULL)", name="failure_code"),
         CheckConstraint(_safe_code("error_code"), name="error_code"),
+        CheckConstraint(REASON_REQUIRED, name="reason_required"),
+        CheckConstraint(_safe_code("reason_code"), name="reason_code"),
         Index(None, "owner_id", "source_id"),
     )
 

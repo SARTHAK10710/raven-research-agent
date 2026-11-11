@@ -34,7 +34,12 @@ from memory_engine.domain.vocabulary import (
     SourceProcessingStatus,
     SourceType,
 )
-from memory_engine.exceptions import MessagePublishError, PersistenceError
+from memory_engine.exceptions import (
+    ConcurrencyConflictError,
+    MessagePublishError,
+    PersistenceError,
+    RecordNotFoundError,
+)
 from memory_engine.infrastructure.messaging import OutboxRelay
 from memory_engine.infrastructure.messaging.relay import SUBJECT_NOT_PENDING
 from memory_engine.infrastructure.object_storage import InMemoryObjectStorage
@@ -531,3 +536,11 @@ def test_concurrent_relays_skip_a_claimed_message(
         assert other is None or other.id != committed_message.id
         first.rollback()
         second.rollback()
+
+
+def test_rearm_needs_a_published_or_failed_handoff(uow_factory: Uow, owner: OwnerScope) -> None:
+    source_id = _ingest_text(uow_factory, owner)
+    with pytest.raises(ConcurrencyConflictError), uow_factory() as uow:  # still pending
+        uow.outbox.rearm(owner, HandoffKind.PERSONAL_EXTRACTION, source_id, T0)
+    with pytest.raises(RecordNotFoundError), uow_factory() as uow:
+        uow.outbox.rearm(owner, HandoffKind.PERSONAL_EXTRACTION, uuid.uuid4(), T0)

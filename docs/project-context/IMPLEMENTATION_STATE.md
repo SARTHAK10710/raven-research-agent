@@ -13,7 +13,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 | 8.1 Foundation and project setup | `VERIFIED` | `5a0d6e5`, merged in `6efd72d` (PR #3) |
 | 8.2 Database and persistence | `VERIFIED` (2026-11-11) | Steps 1–2 `d2346b6`, `e7fc443` (PR #8); step 3 `7a62cd4` (PR #9); step 4 `38411e1` (PR #10, `977c3b7`); step 5 `42b35c3` and review fixes `1b58b77` (PR #11, `423b6fd`) |
 | 8.3 Ingestion pipeline | **`VERIFIED`** (2026-11-12) | Step 1 `206bc2f` (PR #16); step 2 `894da0f` (PR #17, `1e93dbd`); step 3 `15d752f` (PR #18, `d51039b`); step 4 `2fed5cb` (PR #19, `db13113`); step 5 `d08ae20` (PR #21, `1851f53`) |
-| 8.4 Extraction and evaluation | `IN_PROGRESS` (approved 2026-11-12; personal path; no code yet) | — |
+| 8.4 Extraction and evaluation | `IN_PROGRESS` (approved 2026-11-12; personal path; step 1 tested, uncommitted) | — |
 | 8.5 Entity and relationship management | `NOT_STARTED` | — |
 | 8.6 Memory resolution | `NOT_STARTED` | — |
 | 8.7 Memory storage and indexing | `NOT_STARTED` | — |
@@ -183,7 +183,13 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 
 | Field | Value |
 |---|---|
-| Status | `IN_PROGRESS`: approved 2026-11-12. No code yet; step 1 starts with its open questions ([NEXT_STEPS.md](NEXT_STEPS.md)) |
+| Status | `IN_PROGRESS`: approved 2026-11-12. **Step 1 (extraction worker) implemented and tested, uncommitted** on `feat/phase-8-4-extraction-worker`. Steps 2–6 to do ([NEXT_STEPS.md](NEXT_STEPS.md)) |
+| Step 1 decisions (owner, 2026-11-12; [7.1 §25.5](../technical-decisions/01-baseline-technology-stack.md)) | Atomic outcome with Celery retries (5, 2 s doubling to 5 min), then `processing_failed`; explicit reprocess. New source state `deferred` and `reason_code` on events (5.4 §16). Deterministic English check. JSON Lines datasets. spaCy waits for the step that uses it |
+| Files created (step 1) | `personal/application/{extraction,language}.py`; `infrastructure/messaging/tasks.py`; `migrations/versions/20261112_0009_source_deferral.py`; `tests/memory_engine/quality/{datasets.py,test_language_quality.py,data/language/v1.jsonl}`. Tests: `unit/test_extraction_worker_rules.py`, `integration/test_extraction_worker.py` |
+| Files modified (step 1) | `domain/vocabulary.py` (`DEFERRED`, `needs_reason`); `domain/handoff.py` (`OutboxWriter.rearm`); `personal/domain/lifecycle.py` (`reason_code`); `persistence/personal/{lifecycle_models,lifecycle_repositories}.py`; `persistence/outbox.py` (`rearm`); `config/{__init__,settings}.py` (`ExtractionSettings`); `infrastructure/messaging/__init__.py`. Tests: `unit/test_persistence_definitions.py`, `integration/{test_outbox_relay,test_broker_handoff}.py`. Docs: 5.4 §16, 7.1 §25.5, coding standards, status files |
+| Migration (step 1) | `0009_source_deferral`: `deferred` in the source and event status checks; `reason_code` column with a safe-code check and `ck_pm_source_processing_event_reason_required` |
+| Tests (step 1) | **732 passed, 0 failed** (527 unit and quality, 205 integration), 97% coverage, 3 green runs; services stopped: 528 passed, 204 skipped; Ruff clean; mypy strict clean (98 files). Language dataset v1: 26 of 26 cases correct at the default thresholds |
+| What step 1 does not do | No relevance gate, fact extraction, evaluation or candidate generation yet: the pipeline is a port, and tests use a stand-in. No spaCy yet. No deployed worker. Deferred sources are not re-queued until their blocker is lifted |
 | Approval decisions (owner, 2026-11-12; [7.1 §25](../technical-decisions/01-baseline-technology-stack.md)) | Decision 7: personal path now, document path after 8.12 (with Decision 6), 8.11 last. G6: English first. Decision 14: spaCy 3.8 + `en_core_web_sm` 3.8.0. Six steps |
 | Out of scope for now | The document-derived path (plan 8.4 §4.2, §10–§11), its tests and acceptance criteria 7, 8 and 10. Resolution (8.6), entities (8.5) and deletion (8.10) remain their own plans |
 

@@ -103,6 +103,7 @@ def _event(row: SourceProcessingEventRow) -> SourceProcessingEvent:
         attempt=row.attempt,
         occurred_at=row.occurred_at,
         error_code=row.error_code,
+        reason_code=row.reason_code,
     )
 
 
@@ -206,6 +207,7 @@ class SqlAlchemyProcessingHistoryRepository:
                     to_status=event.to_status.value,
                     attempt=event.attempt,
                     error_code=event.error_code,
+                    reason_code=event.reason_code,
                     occurred_at=event.occurred_at,
                 )
             )
