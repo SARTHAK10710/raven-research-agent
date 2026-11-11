@@ -1,17 +1,14 @@
 # Phase 8.3 Acceptance Review
 
-**Date:** 2026-11-12. **Reviewed:** branch `feat/phase-8-3-observability-acceptance` (step 5, uncommitted) on top of `main` @ `4af8a92`, which holds steps 1–4 ([PR #16](https://github.com/SARTHAK10710/raven-research-agent/pull/16)–[PR #19](https://github.com/SARTHAK10710/raven-research-agent/pull/19)) and the status sync ([PR #20](https://github.com/SARTHAK10710/raven-research-agent/pull/20)). Step 5 is not merged yet, so the checks must be repeated on `main` after its merge.
+**Date:** 2026-11-12. **Reviewed:** branch `feat/phase-8-3-observability-acceptance` (step 5, uncommitted) on top of `main` @ `4af8a92`, which holds steps 1–4 ([PR #16](https://github.com/SARTHAK10710/raven-research-agent/pull/16)–[PR #19](https://github.com/SARTHAK10710/raven-research-agent/pull/19)) and the status sync ([PR #20](https://github.com/SARTHAK10710/raven-research-agent/pull/20)). Step 5 was merged through [PR #21](https://github.com/SARTHAK10710/raven-research-agent/pull/21) (`1851f53`), and the checks were repeated on that `main` (section 7).
 
 **Against:** [plan 8.3](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md) §11 (observability), §12 (testing requirements) and §13 (acceptance criteria); [7.1 §23.6 and §24](../technical-decisions/01-baseline-technology-stack.md); [7.4](../technical-decisions/04-background-processing-and-messaging.md) §7, §9, §11–§12; [7.7](../technical-decisions/07-observability-and-testing-infrastructure.md) §5–§7 and §18.
 
 ## Verdict
 
-**Every plan 8.3 §13 criterion is met**, with one owner-accepted deferral (D1). Two steps remain before `VERIFIED`:
+**Every plan 8.3 §13 criterion is met**, with one owner-accepted deferral (D1).
 
-- **R1:** merge step 5;
-- **R2:** re-run the checks on the merged `main`.
-
-8.3 stays `IN_PROGRESS` until then.
+**Update (2026-11-12): 8.3 is `VERIFIED`.** Step 5 is merged (R1), and the checks passed on the merged `main` @ `1851f53` (R2; section 7).
 
 ## 1. Checks run
 
@@ -91,9 +88,9 @@ All metrics go through the `Metrics` port. The default recorder is a no-op; the 
 - The test broker has no TLS (127.0.0.1 only).
 - Metrics go to a no-op recorder until monitoring is deployed.
 
-## 7. Remaining before `VERIFIED`
+## 7. Items before `VERIFIED` (resolved)
 
-| # | Item | Owner action |
+| # | Item | Result |
 |---|---|---|
-| R1 | Merge step 5 | Approve commit, PR and merge |
-| R2 | Re-run `uv sync --locked`, ruff, mypy and `uv run pytest --cov` (all three services) on the merged `main`, then mark 8.3 `VERIFIED` | None beyond R1 |
+| R1 | Merge step 5 | Done: [PR #21](https://github.com/SARTHAK10710/raven-research-agent/pull/21), merge commit `1851f53` |
+| R2 | Re-run the checks on the merged `main` | Done on `main` @ `1851f53`: `uv sync --locked` ok; ruff and format clean; mypy strict clean (91 files); `uv run pytest --cov` with all three services: 652 passed, 0 failed, 0 skipped, 97% coverage. 8.3 marked `VERIFIED` |
