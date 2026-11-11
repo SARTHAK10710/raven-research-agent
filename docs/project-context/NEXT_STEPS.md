@@ -3,8 +3,8 @@
 ## Current position
 
 - **Phase:** 8 — Memory Engine Implementation
-- **Subphase:** 8.3 — Ingestion Pipeline ([plan](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md)): **approved 2026-11-11**, `IN_PROGRESS`. Steps 1–3 merged (PRs #16–#18). Step 4 (reliable handoff) implemented and tested, uncommitted on `feat/phase-8-3-reliable-handoff`. 8.1 and 8.2 `VERIFIED` and merged.
-- **Next approved action:** owner review of step 4; step 5 (observability and acceptance) starts when the owner says so. Do not start 8.4.
+- **Subphase:** 8.3 — Ingestion Pipeline ([plan](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md)): **approved 2026-11-11**, `IN_PROGRESS`. Steps 1–4 merged (PRs #16–#19; step 4, reliable handoff, in `db13113`). 8.1 and 8.2 `VERIFIED` and merged.
+- **Next approved action:** step 5 (observability and acceptance) starts when the owner says so. Do not start 8.4.
 - **Decision review:** [PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) analyses all 15 open decisions, with a deep review of the Phase 8.2 blockers.
 
 ## Prerequisites before Phase 8.2
@@ -36,7 +36,7 @@ Ordered so each step builds on the previous one. All of them are persistence-bac
 | 1 | **Object storage:** the storage port, an in-memory fake, the SeaweedFS service in `docker-compose.yml`, a boto3 adapter with checksum verification and multipart-upload cleanup; the object-storage failure tests deferred from 8.2 (store unavailable, partial upload) (Decision 8, 7.1 §24.1) | **Settled 2026-11-11:** port in the shared kernel; `chrislusf/seaweedfs:4.51`; one engine bucket with owner checks; required settings. **Merged (PR #16)** |
 | 2 | **Personal memory ingestion:** the request contract (`schema_version`), validation (schema, encoding, size, control characters), normalization (timestamps, speakers, conversation order), original content in object storage plus a `pm_memory_source` row, an idempotent ingestion operation, processing events, and recording remember/forget instructions (plan 8.3 §5, §7–9) | **Settled 2026-11-11:** extend `pm_memory_source` (migration `0007`); forget recorded, never extracted; 256 KiB text, 1,000 messages / 4 MiB per conversation; application dataclasses for the contract. **Merged (PR #17)** |
 | 3 | **Document ingestion:** actual-format detection (PDF, DOCX, TXT), size limits, checksum, the original in object storage, registration of the document and version, a `doc_processing_operation`, the re-upload policy; no parsing (Decision 13; plan 8.3 §6) | **Settled 2026-11-11:** standard-library detection; 25 MiB limit; no malware scan (deferral recorded); caller decides new document vs new version. **Merged (PR #18)** |
-| 4 | **Reliable handoff:** the `me_outbox` table written in the same transaction as each registration, a publisher, RabbitMQ in `docker-compose.yml`, Celery wiring; handoff messages to the document pipeline (8.12) and to extraction (8.4); recovery of failed publishing (7.1 §23.6; 7.4) | **Settled 2026-11-12** (7.1 §24.3): exchange `raven.memory`, two queues, no DLQ yet; 7.4 §7 envelope v1; Celery `send_task` with confirms; `queued` after the broker confirms; no handoff for forget; bounded retries then `failed`; `rabbitmq:4.3.7-alpine`; `celery`, `kombu`. **Implemented and tested; uncommitted** |
+| 4 | **Reliable handoff:** the `me_outbox` table written in the same transaction as each registration, a publisher, RabbitMQ in `docker-compose.yml`, Celery wiring; handoff messages to the document pipeline (8.12) and to extraction (8.4); recovery of failed publishing (7.1 §23.6; 7.4) | **Settled 2026-11-12** (7.1 §24.3): exchange `raven.memory`, two queues, no DLQ yet; 7.4 §7 envelope v1; Celery `send_task` with confirms; `queued` after the broker confirms; no handoff for forget; bounded retries then `failed`; `rabbitmq:4.3.7-alpine`; `celery`, `kombu`. **Merged (PR #19)** |
 | 5 | **Observability and acceptance:** ingestion events and metrics (plan 8.3 §11), the remaining plan §12 tests, and an acceptance review against plan 8.3 §13 | — |
 
 ## Approved 8.1 decisions (implemented)
@@ -84,7 +84,7 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 *Overwrite this section at the end of every session that changes the repository.*
 
 - **Date:** 2026-11-12
-- **Objective:** Phase 8.3 step 4, reliable handoff. Branch `feat/phase-8-3-reliable-handoff` from `main` @ `d51039b`; uncommitted.
+- **Objective:** Phase 8.3 step 4, reliable handoff. Commit `2fed5cb` on `feat/phase-8-3-reliable-handoff`, merged into `main` through [PR #19](https://github.com/SARTHAK10710/raven-research-agent/pull/19) (`db13113`).
 - **Decisions made (owner, 2026-11-12; recorded in 7.1 §24.3):**
   - topology: exchange `raven.memory`; queues `memory.document.processing` (key `document.extraction.requested`) and `memory.personal.extraction` (key `personal.extraction.requested`); no dead-letter queue yet;
   - contract: the 7.4 §7 envelope, `schema_version` "1", identifiers and object keys only;
@@ -93,7 +93,7 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
   - forget instructions get no handoff;
   - retries: 10 attempts, 2 s doubling to 5 min with jitter, then `failed` until `retry_failed`;
   - test broker `rabbitmq:4.3.7-alpine` (MPL-2.0); new dependencies `celery` and `kombu` 5.7.0 (BSD-3-Clause).
-- **Implementation choices to confirm with the owner:** the relay runs as its own loop (`OutboxRelay.run_forever`), not as a Celery beat task (which would need a third queue); a batch stops at the first publish failure; a subject that no longer waits (for example a cancelled operation) makes its row `failed` with `SUBJECT_NOT_PENDING`; `me_outbox` has no foreign key to its subject.
+- **Implementation choices (merged with PR #19):** the relay runs as its own loop (`OutboxRelay.run_forever`), not as a Celery beat task (which would need a third queue); a batch stops at the first publish failure; a subject that no longer waits (for example a cancelled operation) makes its row `failed` with `SUBJECT_NOT_PENDING`; `me_outbox` has no foreign key to its subject.
 - **Work completed:**
   - `domain/handoff.py`: `HandoffEnvelope` (to/from dict, validation), `OutboxMessage`, the `OutboxWriter` port, `HandoffKind`, `OutboxStatus`.
   - Migration `0008_outbox` and `persistence/outbox.py`: owner-scoped `add`/`get`/`for_subject`/`retry_failed`, and relay methods `claim_next` (`FOR UPDATE SKIP LOCKED`), `mark_published`, `record_failure`. Both units of work expose `outbox`.
@@ -105,14 +105,14 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
   - `uv run pytest --cov` with `docker compose up -d --wait postgres-test object-storage-test broker-test`: **613 passed** (446 unit, 167 integration), 97% coverage, 3 green runs;
   - broker stopped: the 2 broker tests skip with a message.
   - Plan §12.3: successful handoff, traceable operation, valid original reference, recoverable failed handoff (broker down, then up), no duplicate registration or handoff on retry, never falsely marked complete (version stays `stored`), personal and document handoffs separate.
-- **Implementation status:** 8.3 `IN_PROGRESS`; steps 1–3 merged; step 4 tested, uncommitted; step 5 to do.
+- **Implementation status:** 8.3 `IN_PROGRESS`; steps 1–4 merged; step 5 to do.
 - **Unresolved:**
   - no consumers until 8.4 and 8.12; the relay process is not deployed or scheduled (7.8);
   - no dead-letter queue or outbox cleanup (7.4 §22); 8.10 deletion must remove a subject's outbox rows;
   - no encryption at rest in the development store; no malware scanning; test broker without TLS;
   - G6; Decision 6; embedding model; Decisions 7, 12, 14 and 15; ratio-label wording;
   - on this machine: uv not on PATH, Docker Desktop can take minutes to start, and the SeaweedFS image once needed a re-pull (segfault at start-up).
-- **Next action:** owner review of step 4 (including the implementation choices above); commit and PR with approval; then step 5 (observability and the 8.3 acceptance review).
+- **Next action:** step 5 (observability and the 8.3 acceptance review).
 - **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.3 §11–§13, 7.1 §24.3, 7.4 §19 (monitoring), 7.7 (observability), `domain/handoff.py`, `infrastructure/messaging/relay.py`, and `memory-engine/README.md`.
 - **Earlier (all merged):**
   - Phase 8.3 step 3, document ingestion (PR #18, `d51039b`).

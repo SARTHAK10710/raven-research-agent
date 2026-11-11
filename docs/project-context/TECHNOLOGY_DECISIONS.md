@@ -32,7 +32,7 @@ Approved by the project owner on 2026-11-11. Recorded in [7.1 §23](../technical
 
 ## Approved Phase 8.3 prerequisite decisions
 
-Approved by the project owner on 2026-11-11 (Decisions 8 and 13) and 2026-11-12 (step 4). Recorded in [7.1 §24](../technical-decisions/01-baseline-technology-stack.md). Decision 8 is implemented (8.3 step 1); the step-4 decisions are implemented on `feat/phase-8-3-reliable-handoff` (uncommitted).
+Approved by the project owner on 2026-11-11 (Decisions 8 and 13) and 2026-11-12 (step 4). Recorded in [7.1 §24](../technical-decisions/01-baseline-technology-stack.md). Decision 8 is implemented (8.3 step 1); the step-4 decisions are implemented and merged (PR #19, `db13113`).
 
 | # | Decision | Choice | Status |
 |---|---|---|---|
@@ -48,7 +48,7 @@ Approved by the project owner on 2026-11-11 (Decisions 8 and 13) and 2026-11-12 
 | Phase 8.1 — development | `pytest`, `pytest-cov`, `ruff`, `mypy` | Yes — 9.2.0, 7.1.0, 0.17.4, 2.4.1 (locked) |
 | Phase 8.2 | `SQLAlchemy` 2.x, `alembic`, `psycopg[binary]` (psycopg 3, approved 2026-11-11) | Yes — 2.1.8, 1.20.1, 3.3.8 (locked, merged). Transitive: `mako`, `markupsafe`, `tzdata`. Test database: `pgvector/pgvector:pg17` via `docker-compose.yml` (dev/test only) |
 | Phase 8.3 (approved 2026-11-11, Decision 8) | `boto3` (object-storage client); SeaweedFS container for integration tests and local development | Yes (8.3 step 1, merged in PR #16): `boto3` 1.44.0 (Apache-2.0). Transitive: `botocore` 1.44.0, `s3transfer` 0.19.3 (Apache-2.0), `jmespath` 1.1.0, `urllib3` 2.8.0, `six` 1.17.0 (MIT), `python-dateutil` 2.9.0.post0 (Apache-2.0/BSD). Image `chrislusf/seaweedfs:4.51` (Apache-2.0) in `docker-compose.yml`. No stubs package: mypy treats boto3 as untyped, confined to the S3 adapter |
-| Phase 8.3 step 4 (approved 2026-11-12, 7.1 §24.3) | `celery` (worker framework and publisher), `kombu` (declared: tests consume with it); RabbitMQ container for integration tests and local development | Yes (uncommitted on `feat/phase-8-3-reliable-handoff`): `celery` 5.7.0, `kombu` 5.7.0 (BSD-3-Clause). Transitive: `amqp` 5.4.2, `billiard` 4.3.2, `vine` 5.1.0 (BSD-3-Clause), `click` 8.5.1, `click-didyoumean` 0.3.1, `click-plugins` 1.1.1.2, `click-repl` 0.4.1 (BSD/MIT), `prompt-toolkit` 3.0.53, `wcwidth` 0.9.4, `tzlocal` 5.4.5 (BSD/MIT). Image `rabbitmq:4.3.7-alpine` (MPL-2.0). Untyped for mypy; confined to `infrastructure/messaging` (boundary test) |
+| Phase 8.3 step 4 (approved 2026-11-12, 7.1 §24.3) | `celery` (worker framework and publisher), `kombu` (declared: tests consume with it); RabbitMQ container for integration tests and local development | Yes (8.3 step 4, merged in PR #19): `celery` 5.7.0, `kombu` 5.7.0 (BSD-3-Clause). Transitive: `amqp` 5.4.2, `billiard` 4.3.2, `vine` 5.1.0 (BSD-3-Clause), `click` 8.5.1, `click-didyoumean` 0.3.1, `click-plugins` 1.1.1.2, `click-repl` 0.4.1 (BSD/MIT), `prompt-toolkit` 3.0.53, `wcwidth` 0.9.4, `tzlocal` 5.4.5 (BSD/MIT). Image `rabbitmq:4.3.7-alpine` (MPL-2.0). Untyped for mypy; confined to `infrastructure/messaging` (boundary test) |
 | When required | `HTTPX` (API/HTTP testing); OpenTelemetry API/SDK (instrumentation) | No |
 | Later milestones | NLP, embedding, messaging and storage libraries, in the subphase that needs them | No |
 
