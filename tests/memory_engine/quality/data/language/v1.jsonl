@@ -1,0 +1,26 @@
+{"schema_version": "1", "id": "lang-001", "input": {"texts": ["I prefer window seats when I fly to conferences."]}, "expected": {"english": true}, "notes": "plain English preference"}
+{"schema_version": "1", "id": "lang-002", "input": {"texts": ["Remember that my sister's birthday is on the 14th of March and she likes orchids."]}, "expected": {"english": true}, "notes": "English with a possessive"}
+{"schema_version": "1", "id": "lang-003", "input": {"texts": ["I’ve decided to move the project to PostgreSQL because it fits our data better."]}, "expected": {"english": true}, "notes": "typographic apostrophe"}
+{"schema_version": "1", "id": "lang-004", "input": {"texts": ["Can you remind me about the dentist?", "Sure, when is it?", "It is on Tuesday at nine in the morning."]}, "expected": {"english": true}, "notes": "short conversation turns"}
+{"schema_version": "1", "id": "lang-005", "input": {"texts": ["Dark mode please."]}, "expected": {"english": true}, "notes": "short text: below the word threshold"}
+{"schema_version": "1", "id": "lang-006", "input": {"texts": ["My goal for this year is to run a half marathon and to read twenty books."]}, "expected": {"english": true}, "notes": "goal"}
+{"schema_version": "1", "id": "lang-007", "input": {"texts": ["I met José García at the café in München and we talked about the new job offer."]}, "expected": {"english": true}, "notes": "English with accented foreign names"}
+{"schema_version": "1", "id": "lang-008", "input": {"texts": ["We shipped version 2.4 on Friday; the migration took 35 minutes and nothing broke 🎉."]}, "expected": {"english": true}, "notes": "numbers and an emoji"}
+{"schema_version": "1", "id": "lang-009", "input": {"texts": ["Kubernetes, Terraform, PostgreSQL, Redis and RabbitMQ are all part of the stack I maintain at work."]}, "expected": {"english": true}, "notes": "many proper nouns"}
+{"schema_version": "1", "id": "lang-010", "input": {"texts": ["I usually say gracias and merci when I travel, but I only speak English fluently."]}, "expected": {"english": true}, "notes": "English with a few foreign words"}
+{"schema_version": "1", "id": "lang-011", "input": {"texts": ["Me gusta mucho viajar en tren porque puedo leer y descansar durante el viaje largo."]}, "expected": {"english": false}, "notes": "Spanish"}
+{"schema_version": "1", "id": "lang-012", "input": {"texts": ["Je préfère travailler le matin parce que la maison est calme et je suis plus concentré."]}, "expected": {"english": false}, "notes": "French"}
+{"schema_version": "1", "id": "lang-013", "input": {"texts": ["Ich habe beschlossen, nächstes Jahr nach Berlin zu ziehen, weil meine Familie dort wohnt."]}, "expected": {"english": false}, "notes": "German"}
+{"schema_version": "1", "id": "lang-014", "input": {"texts": ["Eu quero aprender a tocar violão este ano e praticar todos os dias depois do trabalho."]}, "expected": {"english": false}, "notes": "Portuguese"}
+{"schema_version": "1", "id": "lang-015", "input": {"texts": ["Domani devo consegnare il progetto al cliente e poi finalmente posso andare in vacanza."]}, "expected": {"english": false}, "notes": "Italian"}
+{"schema_version": "1", "id": "lang-016", "input": {"texts": ["Ik werk graag thuis omdat ik dan meer tijd heb voor mijn kinderen en de tuin."]}, "expected": {"english": false}, "notes": "Dutch"}
+{"schema_version": "1", "id": "lang-017", "input": {"texts": ["मुझे सुबह चाय पीना पसंद है और मैं रोज़ टहलने जाता हूँ।"]}, "expected": {"english": false}, "notes": "Hindi, Devanagari"}
+{"schema_version": "1", "id": "lang-018", "input": {"texts": ["我每天早上都喜欢喝咖啡然后去公司上班。"]}, "expected": {"english": false}, "notes": "Chinese"}
+{"schema_version": "1", "id": "lang-019", "input": {"texts": ["私は来年日本語の試験を受けるつもりです。"]}, "expected": {"english": false}, "notes": "Japanese"}
+{"schema_version": "1", "id": "lang-020", "input": {"texts": ["Я решил учиться программированию каждый вечер после работы."]}, "expected": {"english": false}, "notes": "Russian, Cyrillic"}
+{"schema_version": "1", "id": "lang-021", "input": {"texts": ["أنا أحب القراءة في المساء قبل النوم."]}, "expected": {"english": false}, "notes": "Arabic"}
+{"schema_version": "1", "id": "lang-022", "input": {"texts": ["Привет"]}, "expected": {"english": false}, "notes": "short, but non-Latin script"}
+{"schema_version": "1", "id": "lang-023", "input": {"texts": ["Hola amigo"]}, "expected": {"english": true}, "notes": "short Latin text: policy treats it as English (below the word threshold)"}
+{"schema_version": "1", "id": "lang-024", "input": {"texts": ["Please remember: I am allergic to peanuts.", "¿Y tú?", "I don't have any allergies, but I really dislike mushrooms on pizza."]}, "expected": {"english": true}, "notes": "mostly English conversation with one short Spanish turn"}
+{"schema_version": "1", "id": "lang-025", "input": {"texts": ["Estoy muy contento con el nuevo trabajo.", "Mi jefe es muy amable y el equipo también es genial.", "Empiezo el lunes a las nueve."]}, "expected": {"english": false}, "notes": "Spanish conversation"}
+{"schema_version": "1", "id": "lang-026", "input": {"texts": ["I have to call the bank tomorrow about the mortgage and then pick up the kids from school."]}, "expected": {"english": true}, "notes": "commitment"}

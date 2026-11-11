@@ -91,6 +91,7 @@ class SourceProcessingEvent:
     attempt: int
     occurred_at: datetime
     error_code: str | None = None
+    reason_code: str | None = None
 
     def __post_init__(self) -> None:
         _require_aware("occurred_at", self.occurred_at)
@@ -101,6 +102,11 @@ class SourceProcessingEvent:
         if (self.event_type is ProcessingEventType.FAILURE) != (self.error_code is not None):
             raise DomainValidationError("an error_code is required exactly for failures")
         _require_code("error_code", self.error_code)
+        if self.to_status.needs_reason != (self.reason_code is not None):
+            raise DomainValidationError(
+                "a reason_code is required exactly for deferral and rejection"
+            )
+        _require_code("reason_code", self.reason_code)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

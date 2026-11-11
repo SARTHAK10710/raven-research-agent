@@ -180,6 +180,32 @@ class SqlAlchemyOutboxRepository:
             result = self._session.execute(statement)
         return int(result.rowcount)  # type: ignore[attr-defined]
 
+    def rearm(
+        self, scope: OwnerScope, kind: HandoffKind, subject_id: uuid.UUID, now: datetime
+    ) -> None:
+        match = (
+            OutboxRow.owner_id == scope.owner_id,
+            OutboxRow.kind == kind.value,
+            OutboxRow.subject_id == subject_id,
+        )
+        with translate_database_errors("rearm outbox message"):
+            conditional_update(
+                self._session,
+                update(OutboxRow)
+                .where(
+                    *match,
+                    OutboxRow.status.in_([OutboxStatus.PUBLISHED.value, OutboxStatus.FAILED.value]),
+                )
+                .values(
+                    status=OutboxStatus.PENDING.value,
+                    attempts=0,
+                    published_at=None,
+                    next_attempt_at=now,
+                ),
+                exists=select(OutboxRow.id).where(*match).exists(),
+                what="outbox message",
+            )
+
     # --- relay (system process; claims across owners, then writes per owner) ---
 
     def backlog(self) -> OutboxBacklog:

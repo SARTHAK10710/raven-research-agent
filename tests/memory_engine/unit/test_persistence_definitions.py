@@ -72,6 +72,7 @@ MIGRATION_0004 = VERSIONS / "20261111_0004_episodes_profiles_categories.py"
 MIGRATION_0005 = VERSIONS / "20261111_0005_processing_corrections_deletion.py"
 MIGRATION_0006 = VERSIONS / "20261111_0006_episode_version.py"
 MIGRATION_0007 = VERSIONS / "20261111_0007_memory_source_ingestion.py"
+MIGRATION_0009 = VERSIONS / "20261112_0009_source_deferral.py"
 PASSWORD = "synthetic-db-password-91c2"  # noqa: S105 - test-only value
 
 
@@ -165,7 +166,6 @@ def test_migration_0003_rules_match_the_models(rule: str) -> None:
     ("frozen_name", "enum"),
     [
         ("SOURCE_TYPES", vocabulary.SourceType),
-        ("SOURCE_PROCESSING_STATUSES", vocabulary.SourceProcessingStatus),
         ("CANDIDATE_STATUSES", vocabulary.CandidateStatus),
         ("CANDIDATE_ORIGINS", vocabulary.CandidateOrigin),
         ("MEMORY_ORIGINS", vocabulary.MemoryOrigin),
@@ -231,7 +231,6 @@ def test_migration_0004_rules_match_the_models() -> None:
 @pytest.mark.parametrize(
     ("frozen_name", "enum"),
     [
-        ("SOURCE_PROCESSING_STATUSES", vocabulary.SourceProcessingStatus),
         ("CANDIDATE_STATUSES", vocabulary.CandidateStatus),
         ("PROCESSING_EVENT_TYPES", vocabulary.ProcessingEventType),
         ("EVALUATION_OUTCOMES", vocabulary.EvaluationOutcome),
@@ -266,6 +265,21 @@ def test_migration_0007_matches_the_models_and_enums() -> None:
     assert migration.down_revision == _load_migration(MIGRATION_0006).revision
     columns = set(Base.metadata.tables["memory.pm_memory_source"].c.keys())
     assert {"instruction_type", "priority", "idempotency_key", "normalized_ref"} <= columns
+
+
+def test_source_processing_statuses_evolve_through_0009() -> None:
+    # 0001 and 0005 froze the original eight states; 0009 adds 'deferred' (8.4 step 1).
+    migration = _load_migration(MIGRATION_0009)
+    for earlier in (MIGRATION, MIGRATION_0005):
+        frozen = _load_migration(earlier).SOURCE_PROCESSING_STATUSES
+        assert tuple(frozen) == migration.PREVIOUS_SOURCE_PROCESSING_STATUSES
+    current = tuple(s.value for s in vocabulary.SourceProcessingStatus)
+    assert current == migration.SOURCE_PROCESSING_STATUSES
+    assert migration.REASON_REQUIRED == lifecycle_models.REASON_REQUIRED
+    assert migration.down_revision == "0008_outbox"
+    needs_reason = {s.value for s in vocabulary.SourceProcessingStatus if s.needs_reason}
+    assert needs_reason == {"deferred", "rejected"}
+    assert all(f"'{value}'" in migration.REASON_REQUIRED for value in needs_reason)
 
 
 def test_migration_0006_extends_the_episode_guard_from_0004() -> None:

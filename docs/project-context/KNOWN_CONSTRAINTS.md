@@ -45,6 +45,11 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
   - **No malware scanning**: no tool is approved, and the owner accepted the deferral on 2026-11-11. Content is never executed, DOCX macro parts are refused, and the parser (8.12) must treat files as hostile.
   - TXT must be UTF-8.
   - Upload limit: 25 MiB by default (configurable).
+- Extraction worker (8.4 step 1, uncommitted):
+  - the Celery consumer exists, but the pipeline behind it (steps 2–5) does not yet, and no worker process is deployed;
+  - non-English sources are `deferred` with `UNSUPPORTED_LANGUAGE`, and nothing re-queues them yet;
+  - the English check is a heuristic; short Latin-script texts count as English;
+  - if the database is down for the whole retry window, the task cannot record the failure and the source stays `queued` (no reconciliation sweep yet).
 - Ingestion observability (8.3 step 5, merged in PR #21): metrics go through a port whose default recorder is a no-op; nothing is exported until monitoring is deployed and an OpenTelemetry adapter exists (7.7 §20, 7.8). Events log the opaque owner id as `user_scope`; log retention is still deferred.
 - **Accepted deferral from the 8.3 acceptance review (owner, 2026-11-12):** D1, authentication tests. Phase 8 has no authentication layer, so "unauthorized request" (plan 8.3 §12.1) is tested as an owner-scope mismatch; authentication tests move to the Entry layer.
 - Reliable handoff (8.3 step 4, merged in PR #19):

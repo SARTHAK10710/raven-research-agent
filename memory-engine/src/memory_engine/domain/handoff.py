@@ -301,3 +301,13 @@ class OutboxWriter(Protocol):
     def add(self, scope: OwnerScope, message: OutboxMessage) -> None:
         """Refuses a message of another owner and a second handoff of the same subject."""
         ...
+
+    def rearm(
+        self, scope: OwnerScope, kind: HandoffKind, subject_id: uuid.UUID, now: datetime
+    ) -> None:
+        """Make a subject's published or failed handoff pending again (explicit reprocess).
+
+        The same message is published again, so consumers see its id twice and
+        rely on the subject's state, never on the message, to decide what to do.
+        """
+        ...

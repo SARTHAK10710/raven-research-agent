@@ -20,7 +20,7 @@ from kombu.connection import Connection
 from pydantic import SecretStr
 from sqlalchemy.orm import Session, sessionmaker
 
-from memory_engine.config.settings import BrokerSettings, OutboxSettings
+from memory_engine.config.settings import BrokerSettings, ExtractionSettings, OutboxSettings
 from memory_engine.documents.application.ingestion import (
     DocumentIngestionService,
     DocumentUpload,
@@ -34,17 +34,24 @@ from memory_engine.infrastructure.messaging import (
     CeleryPublisher,
     OutboxRelay,
     create_celery_app,
+    register_extraction_task,
 )
 from memory_engine.infrastructure.object_storage import InMemoryObjectStorage
 from memory_engine.infrastructure.persistence import (
     SqlAlchemyDocumentUnitOfWorkFactory,
     SqlAlchemyPersonalUnitOfWorkFactory,
 )
+from memory_engine.personal.application.extraction import (
+    ExtractionService,
+    PipelineResult,
+    SourceContent,
+)
 from memory_engine.personal.application.ingestion import (
     IngestionLimits,
     IngestionRequest,
     PersonalIngestionService,
 )
+from memory_engine.personal.application.language import language_policy
 
 pytestmark = pytest.mark.integration
 
@@ -232,3 +239,53 @@ def test_an_unreachable_broker_leaves_the_handoff_recoverable(
     with uow_factory() as uow:
         source = uow.sources.get(owner, source_id)
     assert source is not None and source.processing_status is SourceProcessingStatus.QUEUED
+
+
+class _OneCandidate:
+    """Stands in for the 8.4 pipeline (steps 2-5)."""
+
+    def run(self, content: SourceContent) -> PipelineResult:
+        return PipelineResult(status=SourceProcessingStatus.EXTRACTED)
+
+
+def test_a_published_handoff_is_consumed_by_the_extraction_task(
+    celery_app: Celery,
+    broker_settings: BrokerSettings,
+    make_relay: Callable[..., OutboxRelay],
+    uow_factory: SqlAlchemyPersonalUnitOfWorkFactory,
+    owner: OwnerScope,
+) -> None:
+    storage = InMemoryObjectStorage()
+    service = PersonalIngestionService(uow_factory, storage, LIMITS, clock=lambda: T0)
+    source_id = service.ingest(
+        owner,
+        IngestionRequest(
+            owner_id=owner.owner_id,
+            idempotency_key="broker-extract",
+            source_type=SourceType.TEXT,
+            text="I prefer window seats when I fly to conferences abroad.",
+        ),
+    ).source_id
+    publisher = CeleryPublisher(
+        celery_app, confirm_timeout_seconds=broker_settings.confirm_timeout_seconds
+    )
+    assert make_relay(publisher).relay_due().published == 1
+    task = register_extraction_task(
+        celery_app,
+        lambda: ExtractionService(
+            uow_factory,
+            storage,
+            _OneCandidate(),
+            language_policy(ExtractionSettings()),
+            clock=lambda: NOW,
+        ),
+        ExtractionSettings(),
+    )
+    [(headers, body)] = _drain(celery_app, HandoffKind.PERSONAL_EXTRACTION)
+    assert celery_app.tasks[headers["task"]].name == task.name  # registered under that name
+    args, kwargs, _ = body
+    result = task.apply(args=args, kwargs=kwargs, task_id=headers["id"]).get()
+    assert (result["outcome"], result["status"]) == ("completed", "extracted")
+    with uow_factory() as uow:
+        stored = uow.sources.get(owner, source_id)
+    assert stored is not None and stored.processing_status is SourceProcessingStatus.EXTRACTED

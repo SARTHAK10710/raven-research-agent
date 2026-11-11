@@ -56,6 +56,11 @@ Phase 8.1 created the foundation code (`memory-engine/src/memory_engine/`: `conf
   - Envelopes carry identifiers and object keys only, never content; the contract is `memory_engine.domain.handoff` (schema version "1"). Consumers validate with `HandoffEnvelope.from_dict` and deduplicate on the message id: delivery is at least once.
   - A record moves to `queued` only in the relay's transaction after the broker confirmed. Forget instructions never get a handoff to extraction.
   - Only `memory_engine.infrastructure.messaging` imports celery, kombu or amqp (tested). Celery never retries a publish; the outbox does.
+- Established in 8.4 step 1 (extraction worker):
+  - A worker validates the envelope with `HandoffEnvelope.from_dict` and refuses invalid messages without side effects. It decides from the subject's state (`queued`), never from the message, so duplicates are harmless.
+  - Pipeline outcomes are written atomically with their candidates, in one unit of work, conditional on the expected source state. Transient infrastructure errors (`TRANSIENT_ERRORS`) propagate for the Celery retry; every other failure becomes a final state with an error code.
+  - Transitions into `deferred` or `rejected` carry a `reason_code`; only failures carry an `error_code`.
+  - Quality datasets are versioned JSON Lines under `tests/memory_engine/quality/data/` and are never edited once a result depends on them: add a new version instead.
 - Established in 8.3 step 5 (observability):
   - Record metrics only through the `Metrics` port (`memory_engine.observability.metrics`), injected with a no-op default; tests use `InMemoryMetrics`. Labels are limited to `input`, `outcome`, `reason` and `kind`, with word or code values: identifiers belong in logs, never in labels.
   - Log events set `event_type` (`<area>.<outcome>`) and carry ids, codes and durations, plus `user_scope` (the opaque owner id); never content, filenames or caller-supplied keys.

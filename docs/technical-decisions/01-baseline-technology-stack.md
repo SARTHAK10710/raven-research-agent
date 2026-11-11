@@ -813,3 +813,20 @@ Approved by the project owner on 2026-11-12, when Phase 8.4 (Extraction and Eval
 6. **Observability, dataset evaluation and the acceptance review** (plan 8.4 §15–§16, personal path).
 
 Each step settles its own open questions with the owner at its start.
+
+### 25.5 Phase 8.4 step 1 — Extraction worker
+
+**Status:** Approved by the project owner on 2026-11-12, at the start of 8.4 step 1.
+
+- **Atomic outcome:** the pipeline runs in memory. One transaction then writes the candidates and moves the source `queued` → `processing` → outcome, conditional on `queued`. A crash leaves nothing partial, and a duplicate delivery does nothing.
+  - **Transient failures** (database, object storage) are retried by the Celery task with exponential backoff: 5 retries, 2 s doubling to 5 min, configurable.
+  - **When the retries run out,** the source becomes `processing_failed` with the error code.
+  - **Explicit reprocess:** `processing_failed` → `validated`, and the same handoff is re-armed.
+- **Deferral:** a new source state `deferred` and a `reason_code` on processing events, required exactly for deferral and rejection (5.4 §16; migration `0009`).
+- **Language check:** a deterministic heuristic with no new dependency.
+  - A text is not English when most of its letters are outside the Latin script, or when a text of six words or more has a low share of English function words.
+  - Shorter Latin-script texts count as English.
+  - The thresholds are configurable and checked against `tests/memory_engine/quality/data/language/v1.jsonl`.
+- **Datasets:** versioned JSON Lines, `tests/memory_engine/quality/data/<capability>/v<N>.jsonl` (`schema_version`, `id`, `input`, `expected`, `notes`), validated by a loader test.
+- **spaCy:** not added in step 1, which does not use it. It arrives in the first step whose code imports it, as §25.3 requires.
+- **Known limitation:** if the database is down for the whole retry window, the task cannot record the failure and the source stays `queued`. A reconciliation sweep is not built yet.

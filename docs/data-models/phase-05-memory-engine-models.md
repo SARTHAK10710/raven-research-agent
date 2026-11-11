@@ -1641,3 +1641,11 @@ The embedding status vocabulary is now defined once, in the shared kernel, and u
 - These fields are immutable once written (the 0005 column guard).
 - A `forget` instruction is stored and never handed to extraction. Plan 8.10 resolves what it targets.
 - Original and normalized content live in object storage under `memory-sources/{owner}/{source}/original` and `/normalized`.
+
+## 16. Deferred sources and reason codes (Phase 8.4 step 1)
+
+**Approved 2026-11-12.** Section 11 listed no state for "held for later processing", although 6.2.2 has a `DEFER` outcome and the English-first decision (G6) defers non-English sources. Also, only `failure` events could carry a code, so a rejection or deferral could not say why. Migration `0009`.
+
+- **New Memory Source state `deferred`:** held for controlled later processing, never discarded. A deferred source may later return to `queued` when its blocker is lifted (for example, when multilingual support is approved).
+- **`reason_code` on Source Processing Events:** an UPPER_SNAKE_CASE code, required exactly for transitions into `deferred` or `rejected` (for example `UNSUPPORTED_LANGUAGE`). `error_code` stays for `failure` events only.
+- **Extraction transitions (8.4):** `queued` → `processing` → outcome, written in one transaction with the candidates, where the outcome is `extracted`, `partially_extracted`, `rejected`, `deferred`, `parsing_failed` or `processing_failed`. When the worker's retries run out, `queued` → `processing_failed`. The explicit reprocess goes `processing_failed` → `validated` as a `retry` event, and the handoff is re-armed.

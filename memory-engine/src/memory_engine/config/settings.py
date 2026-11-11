@@ -112,6 +112,29 @@ class IngestionSettings(BaseModel):
     max_upload_bytes: int = Field(default=25 * MIB, ge=1, le=512 * MIB)
 
 
+class ExtractionSettings(BaseModel):
+    """Extraction worker policy (owner-approved, 8.4 step 1; 7.1 section 25).
+
+    Retries cover transient failures (database, object storage) through Celery,
+    with exponential backoff; when they run out, the source becomes
+    ``processing_failed``. The language thresholds drive the deterministic
+    English check (G6); they are uncalibrated defaults, checked against the
+    synthetic dataset.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    max_retries: int = Field(default=5, ge=0, le=100)
+    retry_backoff_seconds: float = Field(default=2.0, gt=0, le=3600)
+    retry_backoff_max_seconds: float = Field(default=300.0, gt=0, le=86_400)
+    # Texts with fewer words are treated as English unless mostly non-Latin.
+    language_min_words: int = Field(default=6, ge=1, le=1000)
+    # Defer when fewer than this share of the words are common English words.
+    english_min_function_word_share: float = Field(default=0.2, ge=0, le=1)
+    # Defer when more than this share of the letters are not Latin script.
+    max_non_latin_letter_share: float = Field(default=0.3, ge=0, le=1)
+
+
 class BrokerSettings(BaseModel):
     """RabbitMQ connection for handoff messages (7.4; 7.1 section 24.3).
 
@@ -177,6 +200,7 @@ class MemoryEngineSettings(BaseSettings):
     broker: BrokerSettings
     ingestion: IngestionSettings = IngestionSettings()
     outbox: OutboxSettings = OutboxSettings()
+    extraction: ExtractionSettings = ExtractionSettings()
 
 
 def load_settings(env_file: str | Path | None = None) -> MemoryEngineSettings:
