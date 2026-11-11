@@ -7,17 +7,23 @@ stays independent of application and infrastructure concerns.
 from memory_engine.exceptions.base import (
     ApplicationError,
     AuthorizationError,
+    ConcurrencyConflictError,
     ConfigurationError,
+    DeletionInProgressError,
     InfrastructureError,
     MemoryEngineError,
     PersistenceError,
+    RecordNotFoundError,
 )
 
 __all__ = [
     "ApplicationError",
     "AuthorizationError",
+    "ConcurrencyConflictError",
     "ConfigurationError",
+    "DeletionInProgressError",
     "InfrastructureError",
     "MemoryEngineError",
     "PersistenceError",
+    "RecordNotFoundError",
 ]

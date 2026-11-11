@@ -7,7 +7,7 @@ The Memory Engine is one of Raven's three primary engines. It owns Raven's persi
 
 The two domains can share infrastructure (PostgreSQL, pgvector, object storage, workers) but never share records, retrieval workflows or lifecycle rules. Document chunks are not personal memories, and uploading a document never creates memories automatically.
 
-> **Status:** Phase 8.1 (foundation) only. This package currently provides validated configuration, the error hierarchy, structured logging and the domain-layer boundary. No ingestion, extraction, storage, retrieval or document processing exists yet.
+> **Status:** Phase 8.1 foundation plus Phase 8.2 steps 1–2: PostgreSQL persistence for the core Personal Memory records (Memory Source, Memory Candidate, Atomic Memory with immutable revisions, Provenance) and for Document Intelligence (documents, versions, extracted representations, chunks with locations, embedding metadata, processing operations), plus the document-evidence path from documents into Personal Memory. This is persistence only: no ingestion, parsing, chunking, embedding generation, resolution, retrieval ranking or deletion workflow exists yet.
 
 ## Boundaries
 
@@ -17,20 +17,41 @@ The two domains can share infrastructure (PostgreSQL, pgvector, object storage, 
 | Research Engine | Owns external research. The Memory Engine does not perform external discovery. |
 | Shared Infrastructure | Provides database, storage, messaging, identity and monitoring. It contains no Memory Engine business logic, and the Memory Engine owns all of its own data. |
 
-Layering inside the package: the `domain` layer holds business concepts and invariants and must not import FastAPI, database drivers, SQLAlchemy, Celery, storage SDKs or `memory_engine.infrastructure`. A unit test enforces this.
+Layering inside the package ([7.1 §23.1](../docs/technical-decisions/01-baseline-technology-stack.md)): domain packages hold business concepts and invariants and must not import FastAPI, database drivers, SQLAlchemy, Celery, storage SDKs or `memory_engine.infrastructure`; application code depends on ports, never on infrastructure. Unit tests enforce these rules.
 
-## Package layout (Phase 8.1)
+## Package layout
 
 ```text
 memory-engine/
 ├── pyproject.toml            # workspace member: raven-memory-engine
 ├── .env.example              # configuration template (placeholders only)
+├── alembic.ini               # migration config; the URL comes from settings, never this file
+├── migrations/               # Alembic environment and versions (schema from settings)
 └── src/memory_engine/
     ├── config/               # Pydantic Settings: MemoryEngineSettings, load_settings()
-    ├── domain/               # domain layer (Phase 8.1: domain errors only)
+    ├── domain/               # shared kernel: domain errors, OwnerScope, ids, vocabularies
     ├── exceptions/           # base, configuration, application, infrastructure errors
-    └── observability/        # JSON logging and correlation context
+    ├── observability/        # JSON logging and correlation context
+    ├── personal/
+    │   ├── domain/           # MemorySource, MemoryCandidate, AtomicMemory, revisions, provenance,
+    │   │                     #   DocumentEvidenceRef (the only link into documents)
+    │   └── application/      # ports: repository protocols and the unit of work
+    ├── documents/            # never imports personal/ (one-way dependency, tested)
+    │   ├── domain/           # Document, DocumentVersion, ExtractedRepresentation, DocumentChunk,
+    │   │                     #   ChunkLocation, DocumentEmbedding, ProcessingOperation, vocabularies
+    │   └── application/      # ports: repository protocols and the unit of work
+    └── infrastructure/
+        └── persistence/      # engine, units of work; personal/ (pm_) and documents/ (doc_)
+                              #   models and repositories
 ```
+
+Persistence rules that the code and the database both enforce:
+- **Ownership:** every row carries `owner_id` and every query filters on it, so another owner's record behaves exactly like a missing one.
+- **Links:** child records reference parents through composite foreign keys (owner or version included) with `RESTRICT`, so there are no implicit cascades and a chunk can never mix two versions.
+- **Vocabularies:** vocabulary columns have check constraints.
+- **Immutability:** Atomic Memory revisions, provenance, extracted representations, chunks and chunk locations are append-only. Documents, versions, embeddings and operations may change only their status columns (database triggers).
+- **Concurrency:** status changes and revisions are conditional updates on the expected current state.
+- **Deletion:** once a document's deletion is requested, no derived content can be written for it (`DeletionInProgressError`). Active document evidence blocks deletion of the passage it cites until the deletion workflow marks it `source_deleted`.
 
 Tests live in the repository-root `tests/memory_engine/`, not in this directory.
 
@@ -40,7 +61,7 @@ Settings come from environment variables prefixed `RAVEN_MEMORY__` (nested value
 
 - `RAVEN_MEMORY__ENVIRONMENT` and the `RAVEN_MEMORY__DATABASE__*` host, name, user and password are required. Missing or invalid values stop startup with a `ConfigurationError` that names the fields but never echoes their values.
 - No `.env` file is read unless you pass one explicitly: `load_settings(".env")`.
-- Phase 8.1 validates database settings but does not connect to a database.
+- Database access uses psycopg 3 with synchronous SQLAlchemy. Pool size, overflow, recycle and connect timeout are configurable (`RAVEN_MEMORY__DATABASE__POOL_SIZE` and so on). The engine hides bound parameters in error messages, because they can contain personal memory content.
 
 ## Development setup
 
@@ -71,6 +92,32 @@ uv run mypy
 ```
 
 `uv sync` creates `.venv/` at the repository root and installs this package in editable mode together with the development tools. To activate the environment manually, use `.venv\Scripts\activate` on Windows or `source .venv/bin/activate` elsewhere.
+
+### Integration tests (real PostgreSQL)
+
+Integration tests are marked `integration` and run against PostgreSQL with pgvector from the repository's `docker-compose.yml` (development and testing only; Docker Desktop must be running). Without the database they are skipped with a message, not failed.
+
+```bash
+docker compose up -d --wait postgres-test
+```
+
+```bash
+uv run pytest -m integration
+```
+
+```bash
+uv run pytest -m "not integration"
+```
+
+The tests use the `raven_memory_test` database on `127.0.0.1:55432`; override with `RAVEN_TEST_DATABASE_URL`. As a guard, the database name must end in `_test`, because the fixtures drop and recreate schemas. Each test runs inside a transaction that is rolled back.
+
+### Migrations
+
+```bash
+uv run alembic -c memory-engine/alembic.ini upgrade head
+```
+
+The URL and schema come from the `RAVEN_MEMORY__` settings. Migration files freeze their vocabularies as literals, and a unit test checks they still match the domain enums. Name constraints in migrations with `op.f(...)`, or Alembic applies the naming convention a second time.
 
 ## Architecture documentation
 

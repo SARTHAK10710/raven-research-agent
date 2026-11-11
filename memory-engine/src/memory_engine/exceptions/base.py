@@ -46,6 +46,35 @@ class AuthorizationError(ApplicationError):
     code: ClassVar[str] = "AUTHORIZATION_DENIED"
 
 
+class RecordNotFoundError(ApplicationError):
+    """The record does not exist within the caller's owner scope.
+
+    Raised identically for a missing record and for another owner's record, so
+    the error never reveals whether a private resource exists.
+    """
+
+    code: ClassVar[str] = "RECORD_NOT_FOUND"
+
+
+class DeletionInProgressError(ApplicationError):
+    """The target is being deleted; derived content must not be (re)created.
+
+    Raised so a stale worker cannot recreate content from a document whose
+    deletion has been requested (memory/05 sections 18-19).
+    """
+
+    code: ClassVar[str] = "DELETION_IN_PROGRESS"
+
+
+class ConcurrencyConflictError(ApplicationError):
+    """An optimistic-concurrency check failed: the record changed since it was read.
+
+    The caller may reload and retry; nothing was written (Decision 5.9.4).
+    """
+
+    code: ClassVar[str] = "CONCURRENCY_CONFLICT"
+
+
 class InfrastructureError(MemoryEngineError):
     """A technical dependency (database, storage, broker, model) failed."""
 

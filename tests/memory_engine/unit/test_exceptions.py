@@ -6,10 +6,13 @@ from memory_engine.domain.errors import DomainError, DomainValidationError, Owne
 from memory_engine.exceptions import (
     ApplicationError,
     AuthorizationError,
+    ConcurrencyConflictError,
     ConfigurationError,
+    DeletionInProgressError,
     InfrastructureError,
     MemoryEngineError,
     PersistenceError,
+    RecordNotFoundError,
 )
 
 ALL_ERRORS: list[type[MemoryEngineError]] = [
@@ -19,6 +22,9 @@ ALL_ERRORS: list[type[MemoryEngineError]] = [
     AuthorizationError,
     InfrastructureError,
     PersistenceError,
+    RecordNotFoundError,
+    ConcurrencyConflictError,
+    DeletionInProgressError,
     DomainError,
     DomainValidationError,
     OwnershipError,
