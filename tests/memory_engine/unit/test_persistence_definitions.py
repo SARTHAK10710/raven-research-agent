@@ -10,12 +10,13 @@ import re
 from enum import StrEnum
 from pathlib import Path
 from types import ModuleType
+from typing import cast
 
 import pytest
 from pydantic import SecretStr
 from sqlalchemy import CheckConstraint
 from sqlalchemy.exc import IntegrityError, OperationalError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from memory_engine.config.settings import DatabaseSettings
 from memory_engine.documents.application.ports import (
@@ -69,6 +70,7 @@ MIGRATION_0002 = VERSIONS / "20261111_0002_document_intelligence.py"
 MIGRATION_0003 = VERSIONS / "20261111_0003_entities_and_relationships.py"
 MIGRATION_0004 = VERSIONS / "20261111_0004_episodes_profiles_categories.py"
 MIGRATION_0005 = VERSIONS / "20261111_0005_processing_corrections_deletion.py"
+MIGRATION_0006 = VERSIONS / "20261111_0006_episode_version.py"
 PASSWORD = "synthetic-db-password-91c2"  # noqa: S105 - test-only value
 
 
@@ -109,7 +111,7 @@ def test_migration_0002_shares_the_evidence_rules_with_the_models() -> None:
 
 @pytest.mark.parametrize(
     "path",
-    [MIGRATION_0002, MIGRATION_0003, MIGRATION_0004, MIGRATION_0005],
+    [MIGRATION_0002, MIGRATION_0003, MIGRATION_0004, MIGRATION_0005, MIGRATION_0006],
     ids=lambda p: p.stem[:13],
 )
 def test_every_guarded_column_list_names_real_columns(path: Path) -> None:
@@ -252,6 +254,14 @@ def test_migration_0005_rules_match_the_models(rule: str) -> None:
     migration = _load_migration(MIGRATION_0005)
     assert getattr(migration, rule) == getattr(lifecycle_models, rule)
     assert migration.down_revision == _load_migration(MIGRATION_0004).revision
+
+
+def test_migration_0006_extends_the_episode_guard_from_0004() -> None:
+    migration = _load_migration(MIGRATION_0006)
+    before = _load_migration(MIGRATION_0004).GUARDED_TABLES["pm_episode"]
+    assert before == migration.EPISODE_MUTABLE_0004
+    assert migration.GUARDED_TABLES["pm_episode"] == (*before, "version")
+    assert migration.down_revision == _load_migration(MIGRATION_0005).revision
 
 
 def test_the_deletion_ledger_can_name_every_personal_memory_table() -> None:
@@ -472,3 +482,33 @@ def test_connection_errors_become_persistence_errors() -> None:
 def test_domain_errors_pass_through_untranslated() -> None:
     with pytest.raises(ValueError, match="kept"), translate_database_errors("noop"):
         raise ValueError("kept")
+
+
+class _FailingCommitSession:
+    """Stands in for a Session whose COMMIT fails (for example, the connection drops)."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def commit(self) -> None:
+        self.calls.append("commit")
+        raise OperationalError("COMMIT", None, Exception("server closed the connection"))
+
+    def rollback(self) -> None:
+        self.calls.append("rollback")
+
+    def close(self) -> None:
+        self.calls.append("close")
+
+
+def test_a_failed_commit_is_reported_rolled_back_and_closed() -> None:
+    # Plan 8.2 section 13 "database write failure": never report success before commit.
+    session = _FailingCommitSession()
+    factory = SqlAlchemyPersonalUnitOfWorkFactory(cast("sessionmaker[Session]", lambda: session))
+    completed = False
+    with pytest.raises(PersistenceError, match="commit unit of work"):
+        with factory():
+            pass
+        completed = True
+    assert not completed
+    assert session.calls == ["commit", "rollback", "close"]

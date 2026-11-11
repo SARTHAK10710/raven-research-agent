@@ -36,6 +36,9 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
 - Document keyword search uses the language-neutral `simple` text-search configuration until the language requirement (G6) is decided.
 - Integration tests skip, rather than fail, when the Docker PostgreSQL service is not running. A green test run without Docker does not cover persistence; check that the integration tests were not skipped.
 - Memory Source `content_ref` is optional until object storage exists (Phase 8.3).
+- **Accepted deferrals from the 8.2 acceptance review (owner, 2026-11-11):**
+  - Object-storage failure tests (object storage unavailable, partial upload; plan 8.2 §13) move to Phase 8.3, which introduces object storage.
+  - Least-privilege database roles (7.2 §3 and §17; 7.1 §23.3) move to the first deployment environment (7.8). Until then the migrations create no roles or grants, and tests use a single database user.
 - On Windows, a repository at a very long path cannot load mypy's compiled DLLs from `.venv` ("filename or extension is too long"), even with long paths enabled, because the DLL loader does not honour that setting. Verified 2026-11-11: it fails at a 180-character repository root (extension paths 256–263 characters) and passes from a 109-character root. Keep the repository root short (under about 100 characters), especially before adding deep ML dependencies such as PyTorch; otherwise point `UV_PROJECT_ENVIRONMENT` at a shorter path.
 - Docker for PostgreSQL integration tests (Phase 8.2): Verified 2026-11-11: Docker Engine 29.9.3 (linux/amd64), Compose v5.5.1; a throwaway `pgvector/pgvector:pg17` container started, accepted connections (PostgreSQL 17.11), loaded `vector` 0.8.7 and ran a distance query, then was removed. Docker Desktop must be running.
 - OCR is not supported; scanned PDFs cannot be assumed processable.

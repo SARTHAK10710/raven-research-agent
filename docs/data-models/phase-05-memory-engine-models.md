@@ -1555,7 +1555,8 @@ The embedding status vocabulary is now defined once, in the shared kernel, and u
 - **Episodes:**
   - membership has no role column, because 5.4.29 says membership "may" carry a role and no roles are defined;
   - removing a member closes the row (`removed_at`), and at most one current membership exists per episode and memory;
-  - timeline corrections close the old event and add a new one, so the earlier understanding stays (5.4.30).
+  - timeline corrections close the old event and add a new one, so the earlier understanding stays (5.4.30);
+  - an episode carries a `version` that every update must name and increment, so concurrent edits are detected rather than overwritten (added by migration `0006` after the 8.2 acceptance review; 7.2 §7).
 - **Profiles:**
   - content lives in append-only revisions, and the profile points at its current revision (5.4.32);
   - each revision lists its supporting memories together with the memory *revision* used (5.4.31). The foreign key guarantees that version exists, which makes a profile reproducible (6.5.6).

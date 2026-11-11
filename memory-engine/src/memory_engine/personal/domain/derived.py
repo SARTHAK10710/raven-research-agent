@@ -76,7 +76,11 @@ def _require_closed_after(opened: datetime, closed: datetime | None, name: str) 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Episode:
-    """A derived grouping of related memories with temporal boundaries (5.4.16, 5.4.30)."""
+    """A derived grouping of related memories with temporal boundaries (5.4.16, 5.4.30).
+
+    ``version`` increases with every update, so a concurrent edit is detected
+    instead of silently overwritten (7.2 section 7).
+    """
 
     id: uuid.UUID
     owner_id: uuid.UUID
@@ -84,6 +88,7 @@ class Episode:
     method: str
     method_version: str
     recorded_at: datetime
+    version: int = 1
     title: str | None = None
     summary: str | None = None
     starts_at: datetime | None = None
@@ -92,6 +97,8 @@ class Episode:
     end_precision: TemporalPrecision = TemporalPrecision.UNKNOWN
 
     def __post_init__(self) -> None:
+        if self.version < 1:
+            raise DomainValidationError("version starts at 1")
         _require_text("method", self.method)
         _require_text("method_version", self.method_version)
         _require_aware("recorded_at", self.recorded_at)

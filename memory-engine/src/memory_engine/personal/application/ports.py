@@ -21,7 +21,6 @@ from memory_engine.domain.vocabulary import (
     DeletionTargetKind,
     DeletionTargetState,
     EmbeddingStatus,
-    EpisodeStatus,
     MemoryCategory,
     MentionResolutionStatus,
     ProfileStatus,
@@ -259,10 +258,13 @@ class EpisodeRepository(Protocol):
         """Any status except ``deleted``."""
         ...
 
-    def update(
-        self, scope: OwnerScope, episode: Episode, *, expected_status: EpisodeStatus
-    ) -> None:
-        """Replace title, summary, boundaries and status; conditional on the current status."""
+    def update(self, scope: OwnerScope, episode: Episode, *, expected_version: int) -> None:
+        """Replace title, summary, boundaries and status.
+
+        Conditional on the stored episode still being at ``expected_version``;
+        ``episode.version`` must be the next one. A concurrent edit raises
+        :class:`ConcurrencyConflictError` instead of being overwritten.
+        """
         ...
 
     def add_member(self, scope: OwnerScope, membership: EpisodeMembership) -> None: ...

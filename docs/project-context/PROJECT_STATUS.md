@@ -9,8 +9,8 @@
 | Current phase | Phase 8 — Memory Engine Implementation |
 | Current subphase | 8.2 — Database and Persistence (**approved 2026-11-11**) |
 | Subphase status | 8.2 `IN_PROGRESS`: steps 1–3 merged (PR #8, #9); step 4 in PR #10 (open); **step 5 (processing events, candidate evaluations, correction requests, deletion operations and ledger) implemented and tested**, uncommitted. All five planned steps are built; the 8.2 acceptance review has not been done. 8.1 remains `VERIFIED` and merged |
-| Current active task | Owner review of 8.2 step 5 and merge of PR #10; then the 8.2 acceptance review against plan 8.2 §14 |
-| Application code | 8.1 foundation plus 8.2 steps 1–5: Personal Memory core (`0001`), Document Intelligence and the evidence path (`0002`), entities and relationships (`0003`), episodes, profiles, categories and memory embedding metadata (`0004`), processing, evaluation, correction and deletion records (`0005`); owner-scoped repositories and units of work. **Persistence only**: no ingestion, extraction, resolution, consolidation, parsing, chunking, embedding generation, retrieval ranking or deletion workflow |
+| Current active task | 8.2 acceptance review ([PHASE-8-2-ACCEPTANCE-REVIEW.md](PHASE-8-2-ACCEPTANCE-REVIEW.md)): A1 fixed (migration `0006`, episode version) and A2 fixed (race, commit-failure and migration-failure tests), both uncommitted; A3 deferrals accepted. **Remaining: A4**, re-running the checks on `main` after PRs #10 and #11 (with the A1–A2 changes) merge; then 8.2 can be marked `VERIFIED` |
+| Application code | 8.1 foundation plus 8.2 steps 1–5: Personal Memory core (`0001`), Document Intelligence and the evidence path (`0002`), entities and relationships (`0003`), episodes, profiles, categories and memory embedding metadata (`0004`), processing, evaluation, correction and deletion records (`0005`), episode version (`0006`, uncommitted); owner-scoped repositories and units of work. **Persistence only**: no ingestion, extraction, resolution, consolidation, parsing, chunking, embedding generation, retrieval ranking or deletion workflow |
 
 ## Documentation completion
 
@@ -41,6 +41,5 @@ Installed: Phase 8.1 dependencies plus the Phase 8.2 database dependencies (SQLA
 
 ## Pending work
 
-1. Merge PR #10 (8.2 step 4).
-2. Review, commit and merge 8.2 step 5 (branch `feat/phase-8-2-deletion-corrections-history`, stacked on step 4).
-3. 8.2 acceptance review against plan 8.2 §14.
+1. Commit the A1–A2 fixes and the review (with approval); merge PR #10 (8.2 step 4), then PR #11 (step 5 plus the fixes).
+2. Re-run the checks on `main` (A4); mark 8.2 `VERIFIED` only if they pass.

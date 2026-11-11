@@ -71,6 +71,13 @@ def test_unknown_dates_are_never_fabricated() -> None:
         episode(end_precision=TemporalPrecision.YEAR)  # known precision without a date
 
 
+def test_episode_versions_start_at_one() -> None:
+    assert episode().version == 1
+    assert episode(version=3).version == 3
+    with pytest.raises(DomainValidationError, match="version"):
+        episode(version=0)
+
+
 def test_episode_boundaries_are_ordered() -> None:
     with pytest.raises(DomainValidationError, match="end before"):
         episode(

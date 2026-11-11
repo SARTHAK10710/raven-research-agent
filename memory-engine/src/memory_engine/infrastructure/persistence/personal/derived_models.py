@@ -10,6 +10,7 @@ Integrity enforced by PostgreSQL in addition to owner-scoped foreign keys:
 * At most one live profile per owner and type (or type and subject entity).
 * Refresh history is append-only and ordered by ``seq``; outcomes imply exactly
   whether a revision was created and whether an error code is present.
+* Episodes carry a ``version`` (0006) that every update checks and increments.
 * Memberships, timeline events and category assignments are closed, never
   overwritten; at most one current row per pair (partial unique indexes).
 * At most one primary embedding per memory revision, model and preprocessing.
@@ -105,11 +106,14 @@ class EpisodeRow(Base):
     method: Mapped[str] = mapped_column(Text, nullable=False)
     method_version: Mapped[str] = mapped_column(Text, nullable=False)
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Optimistic concurrency (0006): every update must name the version it read.
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     created_at: Mapped[datetime] = _now()
     updated_at: Mapped[datetime] = _updated()
 
     __table_args__ = (
         UniqueConstraint("id", "owner_id"),
+        CheckConstraint("version >= 1", name="version_positive"),
         in_vocabulary("status", EpisodeStatus, name="status"),
         in_vocabulary("start_precision", TemporalPrecision, name="start_precision"),
         in_vocabulary("end_precision", TemporalPrecision, name="end_precision"),

@@ -90,7 +90,12 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 - 10: failure behavior is tested: rollback, stale update, duplicate key, failed extraction, retry, idempotency, a stale worker after deletion is requested, and the database unreachable.
 - 11: deletion dependencies, including citing memories, are discoverable.
 
-Not yet assessed: 1 and 12 for the full model, which needs the acceptance review now that steps 3–5 exist. Object-storage failure tests (plan 8.2 §13) wait for object storage in 8.3.
+**Acceptance review (2026-11-11, on the step-5 branch before PRs #10 and #11 merged):** see [PHASE-8-2-ACCEPTANCE-REVIEW.md](PHASE-8-2-ACCEPTANCE-REVIEW.md). Criteria 2–7, 9 and 11 met. 1, 8 and 10 partly met, and 12 met for the existing 406 tests. Not yet `VERIFIED`. Follow-up, the same day:
+- A1 fixed: migration `0006_episode_version` adds `pm_episode.version`, and `EpisodeRepository.update` takes `expected_version`.
+- A2 fixed: new tests for two racing connections, a failed commit and a failing migration (`integration/test_concurrency_and_failures.py`, plus a unit test).
+- A3 deferrals accepted by the owner (recorded in `KNOWN_CONSTRAINTS.md`).
+- After the fixes: **412 passed** (300 unit, 112 integration), 96% coverage, 6 runs green; mypy strict clean (63 files). The fixes are uncommitted.
+- **A4 open:** re-run the checks on `main` after the merges.
 
 **Step 5 decisions and findings (recorded):**
 - The owner approved the processing-event, evaluation, correction and deletion vocabularies and designs (5.4 Phase 8.2 amendment §14), and stacking step 5 on the unmerged step-4 branch.
@@ -129,7 +134,6 @@ Not yet assessed: 1 and 12 for the full model, which needs the acceptance review
 - Entity persistence stores and protects decisions; it does not make them. Entity resolution itself (6.3.4) is Phase 8.5.
 - Likewise, episode, profile and category persistence records outcomes only: episode detection, profile generation and refresh logic (consolidation) are 8.9, and memory embedding vectors are 8.7.
 - Integration tests need Docker Desktop running; without it they skip, so a green run without the database does not cover persistence.
-- The commit-failure path of the unit of work is not exercised by a test.
 - Full-text search uses the language-neutral `simple` configuration until the language requirement (G6) is decided.
 - Object keys are recorded but nothing is stored yet (object storage is 8.3).
 
