@@ -10,7 +10,7 @@ This repository holds the architecture, data-model, algorithm and technology spe
 
 ## Current phase
 
-See [`docs/project-context/PROJECT_STATUS.md`](docs/project-context/PROJECT_STATUS.md), which is authoritative. At the time of writing: Phase 8 (Memory Engine implementation), 8.1 (Foundation), 8.2 (Database and Persistence) and 8.3 (Ingestion Pipeline) are verified and merged; see the 8.2 [acceptance review](docs/project-context/PHASE-8-2-ACCEPTANCE-REVIEW.md) and the 8.3 [acceptance review](docs/project-context/PHASE-8-3-ACCEPTANCE-REVIEW.md). Phase 8.4 has not been approved.
+See [`docs/project-context/PROJECT_STATUS.md`](docs/project-context/PROJECT_STATUS.md), which is authoritative. At the time of writing: Phase 8 (Memory Engine implementation), 8.1 (Foundation), 8.2 (Database and Persistence) and 8.3 (Ingestion Pipeline) are verified and merged; see the 8.2 [acceptance review](docs/project-context/PHASE-8-2-ACCEPTANCE-REVIEW.md) and the 8.3 [acceptance review](docs/project-context/PHASE-8-3-ACCEPTANCE-REVIEW.md). Phase 8.4 (Extraction and Evaluation) was approved on 2026-11-12 for the personal-memory path, in owner-approved steps (see `NEXT_STEPS.md`; 7.1 §25).
 
 Run checks from the repository root: `uv sync`, `uv run pytest`, `uv run ruff check .`, `uv run ruff format --check .`, `uv run mypy`. Never begin or advance a subphase without explicit user approval.
 

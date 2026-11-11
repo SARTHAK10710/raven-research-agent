@@ -415,3 +415,14 @@ After implementation, report:
 - Known limitations.
 
 Do not automatically proceed to plan 8.5.
+
+---
+
+## Amendment — Scope, language and NLP stack (approved 2026-11-12)
+
+Recorded in [7.1 §25](../../technical-decisions/01-baseline-technology-stack.md). It extends this plan; it does not replace it.
+
+- **Personal path first.** This plan is implemented now for personal-memory sources (§4.1). The document-derived path (§4.2, §10, §11, and the document-derived tests in §15) stays disabled until plan 8.12 exists and Decision 6 (document-to-memory authorization) is approved. That path is completed after 8.12 (Decision 7).
+- **English first.** Non-English sources are deferred with a reason code, never extracted with English rules (gap G6).
+- **NLP stack.** spaCy 3.8 with `en_core_web_sm` 3.8.0, plus deterministic rules (Decision 14).
+- **Acceptance.** Criteria 7, 8 and 10 (§16) and the document-derived tests are reviewed when the document path is completed. The personal-path acceptance review covers the rest. Criterion 10 (no automatic document-to-memory conversion on upload) already holds: ingestion never creates a Memory Source from a document (8.3 acceptance review).
