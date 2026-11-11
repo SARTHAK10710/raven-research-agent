@@ -6,7 +6,7 @@
 
 ## Verdict
 
-**Not yet `VERIFIED`.** *(Update: A1–A3 have since been resolved; only A4 remains. See section 6.)* Criteria 2–7, 9 and 11 are met. Criteria 1, 8 and 10 are partly met, and criterion 12 is met only for the tests that exist. Four items stand between 8.2 and `VERIFIED` (section 4): one design gap that needs a migration (A1), missing failure tests (A2), two deferrals that need the owner's acceptance (A3), and the re-run on merged `main` (A4).
+**Not yet `VERIFIED`** when first run. *(Update: A1–A4 have since been resolved, and 8.2 is `VERIFIED` as of 2026-11-11 on `main` @ `423b6fd`. See section 6.)* At first run, criteria 2–7, 9 and 11 were met. Criteria 1, 8 and 10 are partly met, and criterion 12 is met only for the tests that exist. Four items stand between 8.2 and `VERIFIED` (section 4): one design gap that needs a migration (A1), missing failure tests (A2), two deferrals that need the owner's acceptance (A3), and the re-run on merged `main` (A4).
 
 ## 1. Checks run
 
@@ -100,11 +100,11 @@ The owner answered "Yes, fix A1–A2" to "Should I fix A1–A2 here, deferring A
 | A1 | **Fixed.** Migration `0006_episode_version` adds `pm_episode.version` (≥ 1, existing rows start at 1) and recreates the episode guard trigger with `version` added. `EpisodeRepository.update` now takes `expected_version` and writes the next version; a stale writer gets `ConcurrencyConflictError`. Tests: `test_episode_updates_are_conditional_on_the_version`, `test_episode_versions_start_at_one`, `test_migration_0006_extends_the_episode_guard_from_0004` |
 | A2 | **Fixed.** `test_racing_transactions_cannot_both_update_an_episode`: two real connections race, and the second blocks on the row lock and then gets `ConcurrencyConflictError`. `test_a_failed_commit_is_reported_rolled_back_and_closed`: a failed COMMIT raises `PersistenceError`, then rollback and close run. `test_a_failing_migration_leaves_the_previous_revision_intact`: 0005 fails part-way, and the schema stays at 0004 with nothing from 0005 left |
 | A3 | **Accepted as deferrals** and recorded in [KNOWN_CONSTRAINTS.md](KNOWN_CONSTRAINTS.md): object-storage failure tests move to 8.3; least-privilege database roles move to the first deployment environment |
-| A4 | **Open.** Merge PRs #10 and #11 (and the A1–A2 changes), then re-run the section 1 checks on `main` |
+| A4 | **Done.** PR #10 merged (`977c3b7`), then PR #11 with step 5 and the A1–A2 fixes (`423b6fd`). On `main` @ `423b6fd`: `uv sync --locked` ok; ruff and format clean; mypy strict clean (63 files); `pytest --cov` **412 passed** (300 unit, 112 integration), 96% coverage, plus 3 further green runs; database stopped → 112 skipped |
 
 **Checks after the fixes** (same branch, uncommitted changes): `uv sync --locked` ok; ruff and format clean; mypy strict clean (63 files); `uv run pytest --cov` **412 passed** (300 unit, 112 integration), 96% coverage, 6 consecutive runs green; database stopped → 112 skipped.
 
-**Criteria now:** 1, 8, 10 and 12 are met, given the accepted A3 deferrals. Only A4 remains before 8.2 can be marked `VERIFIED`.
+**Criteria now:** all twelve are met, given the accepted A3 deferrals, and A4 confirmed them on `main`. **Phase 8.2 is `VERIFIED` (2026-11-11).**
 
 ## 7. Other observations
 

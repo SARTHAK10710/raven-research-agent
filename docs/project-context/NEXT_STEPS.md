@@ -3,8 +3,8 @@
 ## Current position
 
 - **Phase:** 8 — Memory Engine Implementation
-- **Subphase:** 8.2 — Database and Persistence: **approved 2026-11-11**, `IN_PROGRESS`. Steps 1–2 merged (PR #8), step 3 merged (PR #9, `b31a97e`), step 4 committed (`38411e1`, PR #10, open). Step 5 (processing, evaluation, correction and deletion records) implemented and tested, uncommitted on `feat/phase-8-2-deletion-corrections-history` (stacked on step 4). 8.1 `VERIFIED` and merged.
-- **Next approved action:** none pending. A1–A2 are fixed and the A3 deferrals accepted; committing them, merging PRs #10 and #11, and the A4 re-run on `main` need the owner. 8.2 is not `VERIFIED` until A4 passes. Do not start 8.3.
+- **Subphase:** 8.2 — Database and Persistence: **`VERIFIED` 2026-11-11** and merged (`main` @ `423b6fd`; [acceptance review](PHASE-8-2-ACCEPTANCE-REVIEW.md)). 8.1 `VERIFIED` and merged.
+- **Next approved action:** none. Phase 8.3 (Ingestion Pipeline, [plan](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md)) needs the owner's explicit approval, and Decision 8 (local object storage ⚑) must be decided for it. Do not start 8.3 without approval.
 - **Decision review:** [PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) analyses all 15 open decisions, with a deep review of the Phase 8.2 blockers.
 
 ## Prerequisites before Phase 8.2
@@ -23,9 +23,9 @@
 | 1 | Dependencies, Docker Compose test database, shared kernel (`OwnerScope`, ids, vocabularies), engine and unit of work, migration `0001` (`pm_memory_source`, `pm_memory_candidate`, `pm_atomic_memory`, `pm_atomic_memory_revision`, `pm_provenance`), repositories, tests | Merged (PR #8) |
 | 2 | Document Intelligence: `doc_document`, `doc_document_version`, `doc_extracted_representation`, `doc_chunk` (+ `simple` full-text index), `doc_chunk_location`, `doc_embedding` (metadata), `doc_processing_operation`; `pm_document_evidence_ref` and provenance citing it; migration `0002`; column-guard triggers; repositories and a document unit of work | Merged (PR #8) |
 | 3 | Entities and relationships: `pm_entity` (private only), `pm_entity_alias`, `pm_entity_mention`, `pm_entity_resolution` (append-only history), `pm_entity_relationship`, `pm_memory_relationship`, `pm_memory_entity`; migration `0003`; entity, mention and relationship repositories | Merged (PR #9) |
-| 4 | Episodes (`pm_episode`, `pm_episode_membership`, `pm_episode_event`), profiles (`pm_profile`, `pm_profile_revision`, `pm_profile_memory`, `pm_profile_refresh`), `pm_memory_category`, `pm_memory_embedding` (metadata); migration `0004`. No consolidation-result table (5.4.23; approved) | Committed `38411e1`; PR #10 open |
-| 5 | Source processing events, candidate evaluation history, correction requests, deletion operations and ledger (5.4.24–5.4.26, 5.4.28); migration `0005` | Implemented and tested; uncommitted |
-| — | 8.2 acceptance review against plan 8.2 §14 | Done 2026-11-11. A1–A2 fixed (uncommitted), A3 deferrals accepted; A4 (re-run on `main` after the merges) open ([review](PHASE-8-2-ACCEPTANCE-REVIEW.md) §6) |
+| 4 | Episodes (`pm_episode`, `pm_episode_membership`, `pm_episode_event`), profiles (`pm_profile`, `pm_profile_revision`, `pm_profile_memory`, `pm_profile_refresh`), `pm_memory_category`, `pm_memory_embedding` (metadata); migration `0004`. No consolidation-result table (5.4.23; approved) | Merged (PR #10) |
+| 5 | Source processing events, candidate evaluation history, correction requests, deletion operations and ledger (5.4.24–5.4.26, 5.4.28); migration `0005` | Merged (PR #11) |
+| — | 8.2 acceptance review against plan 8.2 §14; fixes: migration `0006` (episode version), race, commit-failure and migration-failure tests | Merged (PR #11); A4 passed on `main`: **8.2 `VERIFIED`** ([review](PHASE-8-2-ACCEPTANCE-REVIEW.md)) |
 
 ## Approved 8.1 decisions (implemented)
 
@@ -72,34 +72,23 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 *Overwrite this section at the end of every session that changes the repository.*
 
 - **Date:** 2026-11-11
-- **Objective:** Phase 8.2 step 5 (committed `42b35c3`, PR #11), then the 8.2 acceptance review the owner asked for.
-- **Acceptance review (latest work, uncommitted):** [PHASE-8-2-ACCEPTANCE-REVIEW.md](PHASE-8-2-ACCEPTANCE-REVIEW.md), run on `42b35c3` because PRs #10 and #11 were not merged yet. Verdict: **not yet `VERIFIED`**.
-  - Criteria 2–7, 9 and 11 are met; 1, 8 and 10 are partly met; 12 is met for the existing tests.
-  - Open items:
-    - A1: `pm_episode` edits have no version check (needs migration `0006`);
-    - A2: no tests for racing transactions, commit failure or migration failure;
-    - A3: deferring the object-storage failure tests to 8.3 and the database roles to deployment needs the owner's acceptance;
-    - A4: re-run the checks on `main`.
-  - `CLAUDE.md` "Current phase" was stale (it still said 8.1) and has been corrected.
-- **Review follow-up (uncommitted):** the owner said "Yes, fix A1–A2", which also accepted the A3 deferrals.
-  - A1: migration `0006_episode_version`, plus `EpisodeRepository.update(…, expected_version=)`.
-  - A2: new tests in `integration/test_concurrency_and_failures.py` (racing connections, failing migration) and a unit test for a failed commit.
-  - A3: the deferrals are recorded in `KNOWN_CONSTRAINTS.md`.
-  - Result: **412 passed** (300 unit, 112 integration), 96% coverage, 6 consecutive green runs; ruff and mypy clean (63 files); database stopped → 112 skipped.
-- **Step 5 work completed:**
-  - Vocabularies in the shared kernel: `ProcessingEventType`, `EvaluationOutcome` (with `allowed_statuses()`), `CorrectionStatus`, `DeletionRequestKind`, `DeletionOperationStatus` (with `finished`), `DeletionTargetKind`, `DeletionAction`, `DeletionTargetState` (with `can_move_to()`).
-  - `personal/domain/lifecycle.py`: `SourceProcessingEvent`, `CandidateEvaluation`, `CorrectionRequest`, `CorrectionTarget`, `DeletionOperation`, `DeletionTarget`.
-  - Ports and `infrastructure/persistence/personal/lifecycle_{models,repositories}.py`:
-    - processing (`transition`, `events`);
-    - evaluations (`record`, `history`);
-    - corrections (`open`, `get`, `targets`, `resolve`, `open_for_memory`, `purge`);
-    - deletions (`create` idempotent per key, `get`, `add_targets`, `targets`, `record_target`, `set_status`, `unfinished`, `operations_for`).
-  - Migration `0005_processing_deletion`: 6 `pm_` tables, `me_guard_columns` triggers on them, and new guards on `pm_memory_source` and `pm_memory_candidate`.
-- **Bug found by the tests and fixed:** Python `None` in a JSONB column is stored as JSON `null`, so purging a correction request kept a non-NULL value and the database check refused it. The purge now writes SQL `NULL` (`null()`); recorded in the coding standards.
-- **Decisions made:** the owner approved the step-5 vocabularies and designs (5.4 Phase 8.2 amendment §14) and stacking on the unmerged step-4 branch.
-- **Files changed:** step 5, see [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) §8.2 (committed in `42b35c3`). The review added `PHASE-8-2-ACCEPTANCE-REVIEW.md` and updated `CLAUDE.md`, `PROJECT_STATUS.md`, `IMPLEMENTATION_STATE.md` and this file, uncommitted on `feat/phase-8-2-deletion-corrections-history`.
-- **Implementation status:** 8.2 `IN_PROGRESS`; steps 1–3 merged, step 4 in PR #10, step 5 in PR #11; acceptance review done, items A1–A4 open.
-- **Tests and results (review run):** `uv sync --locked` ok; `uv run pytest --cov` → **406 passed** (296 unit, 110 integration against PostgreSQL 17 + pgvector), 96% coverage; `ruff check`, `ruff format --check` clean; `mypy` strict clean (62 files).
-- **Unresolved:** language requirement G6; object storage (8.3); embedding model (before 8.7); Decisions 6–8 and 12–15; ratio-label wording (issue 9); uv not on PATH on this machine; Docker Desktop on this machine can take several minutes to start.
-- **Next action:** with approval, commit the review and A1–A2 fixes to the step-5 branch (they join PR #11); merge PR #10, then PR #11; re-run the checks on `main` (A4) and, if they pass, mark 8.2 `VERIFIED`.
-- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, `PHASE-8-2-ACCEPTANCE-REVIEW.md`, `IMPLEMENTATION_STATE.md` §8.2, plan 8.2 §13–14, 7.1 §23.2, 7.2 §3, §7 and §17.
+- **Objective:** finish Phase 8.2: step 5, the acceptance review and its fixes, the merges, and verification on `main` (A4).
+- **Work completed:**
+  - Step 5 (`42b35c3`): processing events, candidate evaluations, correction requests, deletion operations and ledger; migration `0005`.
+  - Acceptance review ([PHASE-8-2-ACCEPTANCE-REVIEW.md](PHASE-8-2-ACCEPTANCE-REVIEW.md)) and fixes (`1b58b77`):
+    - A1: migration `0006_episode_version`, plus `EpisodeRepository.update(…, expected_version=)`;
+    - A2: tests for racing connections, a failed commit and a failing migration;
+    - A3: owner-accepted deferrals recorded in `KNOWN_CONSTRAINTS.md`;
+    - `CLAUDE.md` "Current phase" corrected.
+  - At the owner's request, merged PR #10 (`977c3b7`) and then PR #11 (`423b6fd`), and ran A4 on `main`.
+  - This branch (`docs/phase-8-2-verified`, from `main`) records the `VERIFIED` status; uncommitted.
+- **Bugs found by the tests and fixed this session:**
+  - JSONB `None` is stored as JSON `null`, so the correction purge now uses `null()`;
+  - a test depended on the order of two operations requested at the same instant;
+  - concurrent episode edits could overwrite each other (A1).
+- **Decisions made:** step-5 vocabularies and designs (5.4 amendment §14); the A3 deferrals (object-storage failure tests to 8.3, database roles to deployment).
+- **Implementation status:** 8.1 and 8.2 `VERIFIED` and merged; 8.3–8.12 `NOT_STARTED`.
+- **Tests and results (A4, `main` @ `423b6fd`):** `uv sync --locked` ok; `ruff check`, `ruff format --check` clean; `mypy` strict clean (63 files); `uv run pytest --cov` → **412 passed** (300 unit, 112 integration against PostgreSQL 17 + pgvector), 96% coverage, plus 3 further green runs; database stopped → 112 skipped.
+- **Unresolved:** language requirement G6; Decision 8 (object storage, needed by 8.3); embedding model (before 8.7); Decisions 6, 7 and 12–15; ratio-label wording (issue 9); uv not on PATH on this machine; Docker Desktop on this machine can take several minutes to start.
+- **Next action:** commit this status update (with approval); then the owner decides Decision 8 and whether to approve Phase 8.3.
+- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.3 ([03-ingestion-pipeline.md](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md)), the [decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) §4 (Decision 8), 7.1 §23.6 (outbox in 8.3), and `memory-engine/README.md`.
