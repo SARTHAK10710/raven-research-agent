@@ -4,14 +4,14 @@ Actual implementation progress, recorded only from verified repository state.
 
 Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` · `TESTING` · `VERIFIED` · `BLOCKED`. `VERIFIED` requires executed test evidence against the subphase's acceptance criteria; generated code is never verified by itself.
 
-**Baseline:** `main` @ `6efd72d` (PR #3 merge of Phase 8.1 commit `5a0d6e5`).
+**Baseline:** `main` @ `ab50c48` (PR #4) plus the PR #6 status commits; Phase 8.2 step 1 uncommitted on `feat/phase-8-2-persistence-foundation`.
 
 ## Summary
 
 | Subphase | Status | Commit |
 |---|---|---|
 | 8.1 Foundation and project setup | `VERIFIED` | `5a0d6e5`, merged in `6efd72d` (PR #3) |
-| 8.2 Database and persistence | `NOT_STARTED` | — |
+| 8.2 Database and persistence | `IN_PROGRESS` (step 1 tested) | — (uncommitted on `feat/phase-8-2-persistence-foundation`) |
 | 8.3 Ingestion pipeline | `NOT_STARTED` | — |
 | 8.4 Extraction and evaluation | `NOT_STARTED` | — |
 | 8.5 Entity and relationship management | `NOT_STARTED` | — |
@@ -49,7 +49,33 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 - On Windows, a default `git clone` fails checkout because several `docs/implementation-plans/Phase-08-memory-engine/` and `docs/technical-decisions/03-…` paths exceed 260 characters at deep locations. Workaround: `git config core.longpaths true` (or clone to a short path).
 - Log redaction matches key substrings, so any `extra` field containing `session` (for example a future `research_session_id`) or `token` is redacted. Revisit when such identifiers are logged.
 
-## 8.2–8.12
+## 8.2 — Database and persistence
+
+| Field | Value |
+|---|---|
+| Status | `IN_PROGRESS` — approved 2026-11-11. Step 1 (core Personal Memory persistence) implemented and tested; steps 2+ not started |
+| Files created | Root: `docker-compose.yml`. `memory-engine/`: `alembic.ini`, `migrations/{env.py,script.py.mako,versions/20261111_0001_personal_memory_core.py}`, `src/memory_engine/domain/{identifiers,vocabulary}.py`, `personal/{__init__,domain/__init__,domain/records,application/__init__,application/ports}.py`, `infrastructure/{__init__,persistence/__init__,persistence/base,persistence/database,persistence/unit_of_work,persistence/personal/__init__,persistence/personal/models,persistence/personal/repositories}.py`. Tests: `unit/test_{personal_records,persistence_definitions}.py`, `integration/{conftest,test_migrations,test_personal_repositories}.py` |
+| Files modified | Root `pyproject.toml` (mypy `explicit_package_bases`, marker text), `uv.lock`; `memory-engine/{pyproject.toml,.env.example,README.md}`; `config/settings.py` (pool settings); `exceptions/{__init__,base}.py` (`RecordNotFoundError`, `ConcurrencyConflictError`); tests `unit/test_{config,exceptions,domain_boundary}.py` |
+| Dependencies introduced | Runtime: `sqlalchemy` 2.1.8, `alembic` 1.20.1 (+ `mako` 1.4.3, `markupsafe` 3.0.4), `psycopg[binary]` 3.3.8, `tzdata` 2026.6. Dev: none |
+| Migrations | `0001_personal_memory_core`: 5 `pm_` tables, composite `(id, owner_id)` foreign keys with `RESTRICT`, vocabulary/score/temporal check constraints, append-only triggers on `pm_atomic_memory_revision` and `pm_provenance`. Tested upgrade → downgrade → upgrade |
+| Tests executed | `uv sync --locked`; `uv run pytest --cov` (with `docker compose up -d --wait postgres-test`); `uv run pytest -m integration` with the database stopped; `uv run ruff check .`; `uv run ruff format --check .`; `uv run mypy` |
+| Tests passed / failed | **162 passed, 0 failed** (136 unit, 26 integration), 98% line+branch coverage; database stopped → 26 skipped with message; Ruff clean; mypy strict clean (36 files) |
+| Commit | — (uncommitted on `feat/phase-8-2-persistence-foundation`) |
+
+**Plan 8.2 §14 acceptance criteria, after step 1:** met for the core Personal Memory records — 2 (personal memory persistence), 7 (ownership enforced in SQL and by composite foreign keys), 8 (transactions and optimistic concurrency tested), 9 (migrations execute and reverse), 10 (failure behavior: rollback, stale update, duplicate key, database unreachable). Not yet met: 3–6 and 11 (document identity, versions, object references, chunks, embedding separation, deletion dependencies) and 1/12 for the full model; these need step 2 and later steps.
+
+**Deviations and decisions (recorded):**
+- Memory Source processing states were undefined; the owner approved a vocabulary derived from 6.2 (5.4 amendment §11).
+- No `me_operation` table: no specification or consumer in step 1 (7.1 §23.6 implementation note).
+- `MemorySource.content_ref` is optional until object storage exists (8.3); `content_sha256` is stored when known.
+- Revisions, not a separate version column, carry optimistic concurrency for Atomic Memory (`revision_number` checked in a conditional `UPDATE`).
+
+**Known limitations:**
+- Entities, relationships, episodes, profiles, categories, embedding metadata and deletion records are not yet persisted (later 8.2 steps).
+- Integration tests need Docker Desktop running; without it they skip, so a green run without the database does not cover persistence.
+- The commit-failure path of the unit of work (`unit_of_work.py` lines 61–63) is not exercised by a test.
+
+## 8.3–8.12
 
 `NOT_STARTED`. No files, dependencies or tests.
 

@@ -5,8 +5,9 @@ Configuration comes from environment variables prefixed ``RAVEN_MEMORY__``
 file. No ``.env`` file is read unless one is passed to :func:`load_settings`.
 
 Secrets use :class:`pydantic.SecretStr` so they are masked in ``repr`` and
-``str``. Phase 8.1 validates database settings but does not connect to a
-database; the driver and connection code arrive in Phase 8.2.
+``str``. The database connection itself is built in
+``memory_engine.infrastructure.persistence`` (Phase 8.2, psycopg 3 with
+synchronous SQLAlchemy).
 """
 
 from enum import StrEnum
@@ -33,7 +34,10 @@ class Environment(StrEnum):
 
 
 class DatabaseSettings(BaseModel):
-    """PostgreSQL connection settings. Validated only; no connection in Phase 8.1."""
+    """PostgreSQL connection and pool settings (Phase 7.1 section 23.2).
+
+    Pool defaults are starting values, to be tuned by measurement (7.2 section 9).
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -44,6 +48,10 @@ class DatabaseSettings(BaseModel):
     password: SecretStr
     # Logical schema owned by the Memory Engine (Phase 7.2).
     schema_name: str = Field(default="memory", pattern=r"^[a-z_][a-z0-9_]*$")
+    pool_size: int = Field(default=5, ge=1, le=100)
+    max_overflow: int = Field(default=10, ge=0, le=100)
+    pool_recycle_seconds: int = Field(default=1800, ge=30)
+    connect_timeout_seconds: int = Field(default=10, ge=1, le=300)
 
     @field_validator("password")
     @classmethod

@@ -1,16 +1,16 @@
 # Project Status
 
-**Last verified update:** 2026-11-11, against `main` @ `6efd72d`. Phase 8.1 commit `5a0d6e5` (branch `feat/phase-8-1-foundation`) was pushed and merged into `main` through [PR #3](https://github.com/SARTHAK10710/raven-research-agent/pull/3) by the user on 2026-11-10 21:19 UTC.
+**Last verified update:** 2026-11-11, on branch `feat/phase-8-2-persistence-foundation` (from `docs/record-docker-and-pr4-merge`, which is `main` @ `ab50c48` plus the PR #6 status commits), with Phase 8.2 step 1 in the working tree, uncommitted. Phase 8.1 commit `5a0d6e5` is merged into `main` through [PR #3](https://github.com/SARTHAK10710/raven-research-agent/pull/3).
 
 ## Current position
 
 | Item | Value |
 |---|---|
 | Current phase | Phase 8 — Memory Engine Implementation |
-| Current subphase | 8.1 — Foundation and Project Setup |
-| Subphase status | 8.1 `VERIFIED` and merged (commit `5a0d6e5`, merge `6efd72d`). Re-verified 2026-11-11: pytest 71 passed, Ruff lint and format clean, `uv sync --locked` succeeded, mypy strict clean from a normal-length checkout (see [KNOWN_CONSTRAINTS.md](KNOWN_CONSTRAINTS.md)) |
-| Current active task | Phase 8.2 Decisions 1, 2, 4, 5, 9 and 10 **approved** 2026-11-11 and recorded. The vector-storage deferral to 8.7 is also approved. Docker verified for integration tests. Decision records merged (PR #4, `ab50c48`). Remaining before 8.2: approval to start ([decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md)). **Phase 8.2 has not started** |
-| Application code | Phase 8.1 foundation only: `memory-engine/src/memory_engine/` (config, exceptions, domain errors, structured logging) and `tests/memory_engine/`. **No memory functionality** (no ingestion, extraction, storage, retrieval or document processing) |
+| Current subphase | 8.2 — Database and Persistence (**approved 2026-11-11**) |
+| Subphase status | 8.2 `IN_PROGRESS`: **step 1 implemented and tested** (core Personal Memory persistence) on branch `feat/phase-8-2-persistence-foundation`, uncommitted. 8.1 remains `VERIFIED` and merged (`5a0d6e5`) |
+| Current active task | Owner review of 8.2 step 1; then 8.2 step 2 (Document Intelligence `doc_` tables and object references) |
+| Application code | 8.1 foundation plus 8.2 step 1: `pm_memory_source`, `pm_memory_candidate`, `pm_atomic_memory`, `pm_atomic_memory_revision`, `pm_provenance` (migration `0001`), owner-scoped repositories and a unit of work. **No ingestion, extraction, resolution, retrieval ranking, deletion workflow or document processing** |
 
 ## Documentation completion
 
@@ -31,16 +31,16 @@ Documentation recovery: four specifications that had been overwritten by amendme
 
 | Phase | Status |
 |---|---|
-| 8 — Memory Engine | 8.1 `VERIFIED` (foundation; merged into `main`); 8.2–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
+| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `IN_PROGRESS` (step 1 tested, uncommitted); 8.3–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
 | Research Engine | Not started (later phase) |
 | Agent Orchestrator | Not started (later phase) |
 | Shared Infrastructure | Not started |
 | User Interface / Entry Layer | **Not started.** Out of Phase 8 scope (Phase 8 Readme §11). **Design status:** the Entry Layer's responsibilities are defined at architecture level only (request reception and validation, authentication context, cancellation intake, response delivery; [phase-01](../architecture/phase-01-overall-architecture.md)). The API entry layer has a logical design: FastAPI, `/api/v1/` endpoint groups, and the API layer's responsibilities and exclusions ([7.6](../technical-decisions/06-api-security-and-internal-communication.md) §4–5; exact routes deferred). **No frontend or user-interface design specification exists**: no client type, framework, screens or interaction design has been documented |
 
-Installed: only the Phase 8.1 dependencies, locked in the root `uv.lock` (see [TECHNOLOGY_DECISIONS.md](TECHNOLOGY_DECISIONS.md#dependency-timing)). No database, broker or object storage has been provisioned, and no integration tests exist.
+Installed: Phase 8.1 dependencies plus the Phase 8.2 database dependencies (SQLAlchemy 2.1.8, Alembic 1.20.1, psycopg 3.3.8), locked in the root `uv.lock` (see [TECHNOLOGY_DECISIONS.md](TECHNOLOGY_DECISIONS.md#dependency-timing)). A development/test-only PostgreSQL + pgvector service is defined in `docker-compose.yml`; integration tests run against it. No broker or object storage has been provisioned.
 
 ## Pending work
 
-1. ~~Docker availability for integration tests~~ — verified 2026-11-11.
-2. ~~Merge PR #4~~ — merged 2026-11-11 (`ab50c48`).
-3. Explicit user approval to start Phase 8.2.
+1. Owner review of 8.2 step 1 (branch `feat/phase-8-2-persistence-foundation`), then commit and pull request.
+2. 8.2 step 2: Document Intelligence tables (`doc_*`), object references, `pm_document_evidence_ref`.
+3. Remaining 8.2 steps (entities, relationships, episodes, profiles, embedding metadata, deletion records) per plan 8.2, then 8.2 acceptance review.

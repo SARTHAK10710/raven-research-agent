@@ -3,8 +3,8 @@
 ## Current position
 
 - **Phase:** 8 — Memory Engine Implementation
-- **Subphase:** 8.1 — Foundation and Project Setup (`VERIFIED`; commit `5a0d6e5` merged into `main` via PR #3, merge `6efd72d`)
-- **Next approved action:** none. Phase 8.2 has **not started and is not approved**. Wait for the user.
+- **Subphase:** 8.2 — Database and Persistence: **approved 2026-11-11**, `IN_PROGRESS`. Step 1 (core Personal Memory persistence) implemented and tested, uncommitted on `feat/phase-8-2-persistence-foundation`. 8.1 `VERIFIED` and merged.
+- **Next approved action:** continue 8.2 with step 2 (Document Intelligence tables) after the owner reviews step 1. Do not start 8.3.
 - **Decision review:** [PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) analyses all 15 open decisions, with a deep review of the Phase 8.2 blockers.
 
 ## Prerequisites before Phase 8.2
@@ -14,7 +14,15 @@
 3. ~~User decides outbox timing (Decision 9)~~ — **APPROVED** 2026-11-11: outbox in 8.3 ([7.1 §23.6](../technical-decisions/01-baseline-technology-stack.md)).
 4. ~~Docker availability confirmed for PostgreSQL integration tests~~ — done 2026-11-11 (see `KNOWN_CONSTRAINTS.md`).
 5. ~~The checkpoint correction, the decision review and the recorded approvals are merged~~ — done: PR #4, merge `ab50c48`.
-6. User explicitly approves starting 8.2.
+6. ~~User explicitly approves starting 8.2~~ — **APPROVED** 2026-11-11.
+
+## Phase 8.2 steps
+
+| Step | Scope | Status |
+|---|---|---|
+| 1 | Dependencies, Docker Compose test database, shared kernel (`OwnerScope`, ids, vocabularies), engine and unit of work, migration `0001` (`pm_memory_source`, `pm_memory_candidate`, `pm_atomic_memory`, `pm_atomic_memory_revision`, `pm_provenance`), repositories, tests | Implemented and tested; uncommitted |
+| 2 | Document Intelligence: `doc_document`, `doc_document_version`, `doc_extracted_representation`, `doc_chunk`, `doc_chunk_location`, `doc_embedding` (metadata), `doc_processing_operation`; object references; `pm_document_evidence_ref` (7.1 §23.3) | Next |
+| 3+ | Entities, aliases, mentions, entity and memory relationships, Memory–Entity associations, episodes, profiles, categories, memory embedding metadata, deletion records (plan 8.2 §3.3) | Not started |
 
 ## Approved 8.1 decisions (implemented)
 
@@ -61,26 +69,19 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 *Overwrite this section at the end of every session that changes the repository.*
 
 - **Date:** 2026-11-11
-- **Objective:** Verify Phase 8.1 after merge, correct the checkpoint files, and review the 15 open decisions, with depth on the Phase 8.2 blockers.
+- **Objective:** Phase 8.2 (approved 2026-11-11), step 1: persistence foundation and core Personal Memory tables.
 - **Work completed:**
-  - Verified commit `5a0d6e5` (31 files, no forbidden artifacts) and its merge into `main` via PR #3 (`6efd72d`).
-  - Re-ran all checks.
-  - Investigated the Windows mypy long-path failure (environmental; passes from a normal-length checkout).
-  - Wrote the [decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md).
-  - Corrected `PROJECT_STATUS`, `IMPLEMENTATION_STATE`, `NEXT_STEPS`, `TECHNOLOGY_DECISIONS` and `KNOWN_CONSTRAINTS`.
-- **Files changed:** in this directory, 1 new file (the decision review) and updated context files; plus the approval records in `docs/technical-decisions/01-baseline-technology-stack.md`, `docs/data-models/phase-05-memory-engine-models.md`, `docs/data-models/Readme.md`, the Phase 8 Readme, plan 8.1 and plan 8.2, and `.claude/rules/coding-standards.md`. Uncommitted in the working tree of `feat/phase-8-1-foundation`, which is already merged, so landing these needs a new commit and pull request. No application code, dependencies or migrations changed.
-- **Implementation status:** 8.1 `VERIFIED` and merged; 8.2–8.12 `NOT_STARTED`. **Phase 8.2 has not started.**
-- **Tests and results:**
-  - `uv sync --locked` → succeeded
-  - `uv run pytest --cov` → 71 passed, 98% coverage
-  - `uv run ruff check .` → clean; `uv run ruff format --check .` → clean
-  - `uv run mypy` in this checkout → fails to load mypy's DLL (path length, reproduced)
-  - fresh clone at a 109-character root → mypy strict clean (16 files), 71 passed
-- **Decisions made:** the user **approved Decisions 1, 2, 4, 5 and 10** on 2026-11-11. They are recorded in 7.1 §23, the Phase 8.2 amendment of 5.4 (vocabularies and lifecycle states), the Phase 8 Readme §7.2, plan 8.2 §2.1 and a superseded-layout note in plan 8.1 §4.
-- **Also approved:** deferring vector storage to 8.7, recorded in 7.1 §23.5, plan 8.2 §2.1, plan 8.7 §2.1 and the Phase 8 Readme §7.2.
-- **Follow-up session (2026-11-11):** committed as PR #4 (`22cc9f1`). A later audit session merged PR #5 (status sync, long-path and redaction notes, ratio-label issue) into `main`; `main` was then merged into this branch, keeping this branch's text in conflicts and re-adding PR #5's notes. The owner then **approved Decision 9**: no outbox in 8.2; outbox table, publisher and Celery together in 8.3 (7.1 §23.6, plan 8.2 §2.1, Phase 8 Readme §7.2, coding standards; review §4 Decision 9 annotated). Open documentation issues 5 and 6 marked resolved by Decisions 5 and 1.
-- **Unresolved:** embedding model selection (before 8.7); language requirement (G6); uv not on PATH on this machine; Decisions 6–8 and 11–15 per the review; ratio-label wording (`KNOWN_CONSTRAINTS.md` issue 9).
-- **Docker:** Verified 2026-11-11: Docker Engine 29.9.3 (linux/amd64), Compose v5.5.1; a throwaway `pgvector/pgvector:pg17` container started, accepted connections (PostgreSQL 17.11), loaded `vector` 0.8.7 and ran a distance query, then was removed. Docker Desktop must be running.
-- **Merged:** PR #4 into `main` as `ab50c48`.
-- **Next action:** explicit owner approval to start Phase 8.2. All other prerequisites are met.
-- **Read next session:** `CLAUDE.md`, this directory's `PROJECT_STATUS.md`, `ARCHITECTURE_SUMMARY.md`, `KNOWN_CONSTRAINTS.md`, `NEXT_STEPS.md`, the decision review, then plan 8.2 and the documents listed above.
+  - Dependencies `sqlalchemy` 2.1.8, `alembic` 1.20.1, `psycopg[binary]` 3.3.8 (7.1 §23.2); `docker-compose.yml` with a dev/test-only `pgvector/pgvector:pg17` service on `127.0.0.1:55432`.
+  - Shared kernel: `domain/identifiers.py` (`OwnerScope`, `new_id`), `domain/vocabulary.py` (all approved vocabularies).
+  - `personal/domain/records.py` (frozen dataclasses with invariants) and `personal/application/ports.py` (repository protocols, unit of work).
+  - `infrastructure/persistence/`: engine (pooling, `READ COMMITTED`, `hide_parameters`), error translation, unit of work, `pm_` models and repositories.
+  - Alembic environment and migration `0001_personal_memory_core`: owner-scoped composite foreign keys with `RESTRICT`, vocabulary check constraints, append-only triggers on revisions and provenance.
+  - New errors `RecordNotFoundError`, `ConcurrencyConflictError`; pool settings in `DatabaseSettings`.
+- **Bug found by the tests and fixed:** Alembic applied the naming convention to the migration's explicit check-constraint names (doubled, one truncated with a hash). Fixed with `op.f()`; a new test compares deployed constraint names with the models.
+- **Decisions made:** the owner approved the Memory Source processing states (5.4 amendment §11). `me_operation` deferred until a consumer defines it (7.1 §23.6 note); step 1 creates no `me_` table.
+- **Files changed:** see [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) §8.2. Uncommitted on `feat/phase-8-2-persistence-foundation`.
+- **Implementation status:** 8.2 `IN_PROGRESS` (step 1 tested). 8.2 acceptance criteria 2, 7, 8, 9 and 10 are met for Personal Memory core records only; criteria 3–6 and 11 need step 2.
+- **Tests and results:** `uv sync --locked` ok; `uv run pytest --cov` → **162 passed** (136 unit, 26 integration against PostgreSQL 17 + pgvector), 98% coverage; with the database stopped, the 26 integration tests skip with a message; `ruff check`, `ruff format --check` clean; `mypy` strict clean (36 files).
+- **Unresolved:** embedding model (before 8.7); language requirement (G6); Decisions 6–8 and 11–15; ratio-label wording (issue 9); `content_ref` stays optional until object storage (8.3); uv not on PATH on this machine.
+- **Next action:** owner review and commit of step 1; then 8.2 step 2 (Document Intelligence tables).
+- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.2, 7.1 §23, the 5.4 Document Intelligence amendment (§3) and Phase 8.2 amendment, and `memory-engine/README.md`.

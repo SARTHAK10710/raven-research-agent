@@ -21,7 +21,13 @@ Phase 8.1 created the foundation code (`memory-engine/src/memory_engine/`: `conf
 - Package layout (**approved**, [7.1 §23.1](../../docs/technical-decisions/01-baseline-technology-stack.md)): `memory_engine.personal` and `memory_engine.documents`, each with `domain/` and `application/` and a public `api.py`; shared kernel `memory_engine.domain`; adapters in `memory_engine.infrastructure`; Orchestrator contracts in `memory_engine.interfaces`. Create packages only when they have content.
 - Import rules (enforced by tests): domain packages import only the standard library, the shared kernel and `exceptions`; application never imports `infrastructure`; `documents` never imports `personal`; `personal.application` may use `documents.api` only, for authorized document-to-memory extraction; `interfaces` imports only public facades and the shared kernel.
 - Persistence (**approved**, 7.1 §23.2–23.4): psycopg 3 with synchronous SQLAlchemy 2.0; one `Session` per unit of work; every repository method takes an `OwnerScope`; every owned table has `owner_id`; tables in the `memory` schema prefixed `pm_`, `doc_` or `me_`; no implicit `ON DELETE CASCADE` on user data; no vector columns, tables or indexes before Phase 8.7 (embedding metadata only until the model is selected, 7.1 §23.5); no outbox table before Phase 8.3 (7.1 §23.6).
-- Vocabularies and lifecycle states come only from the Phase 8.2 amendment of [5.4](../../docs/data-models/phase-05-memory-engine-models.md); do not invent new relationship types or states.
+- Vocabularies and lifecycle states come only from the Phase 8.2 amendment of [5.4](../../docs/data-models/phase-05-memory-engine-models.md); do not invent new relationship types or states. They live in `memory_engine.domain.vocabulary`.
+- Established in 8.2 step 1 (follow these patterns):
+  - Domain records are `@dataclass(frozen=True, slots=True, kw_only=True)` with invariants in `__post_init__`; JSON fields are copied into read-only mappings.
+  - Repositories return domain records, never ORM rows, and wrap database calls in `translate_database_errors("<fixed operation name>")`. Another owner's record behaves like a missing one (`None` or `RecordNotFoundError`).
+  - Child tables reference parents through composite `(id, owner_id)` foreign keys. Append-only tables get the `pm_reject_update` trigger.
+  - Migrations freeze vocabularies as literals (a unit test checks them against the enums) and name constraints with `op.f(...)`; otherwise Alembic applies the naming convention twice.
+  - Integration tests are marked `integration`, use the `connection`/`uow_factory` fixtures (rolled back per test) and synthetic data only.
 
 ## Naming
 

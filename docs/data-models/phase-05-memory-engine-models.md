@@ -1462,3 +1462,20 @@ A "progression" is `supersedes` with reason `temporal_change` plus continuous va
 ## 10. Resolution outcomes
 
 The resolution outcomes of Phase 6.3 remain unchanged: `create_new`, `merge`, `update_existing`, `link_existing`, `supersede`, `needs_review`, `reject`, `no_change`. They are processing decisions recorded in resolution audit, not stored relationships.
+
+## 11. Memory Source processing states
+
+**Approved 2026-11-11** (Phase 8.2 implementation). Decision 5.4.28 requires a Memory Source to maintain its current processing status but no document enumerated the values. They are derived from the ingestion outcomes (6.2.1 §3.7) and extraction outcomes (6.2.2) that describe a *stored* source, plus one in-progress state implied by the 6.2.1 pseudocode (`ALREADY_PROCESSING`).
+
+| Status | Meaning |
+|---|---|
+| `validated` | input accepted and preserved |
+| `queued` | waiting for asynchronous processing |
+| `processing` | extraction in progress |
+| `extracted` | extraction finished |
+| `partially_extracted` | some content extracted (6.2.2) |
+| `rejected` | rejected by validation or policy |
+| `parsing_failed` | content could not be normalized |
+| `processing_failed` | pipeline failed; retryable |
+
+`invalid_input`, `unsupported_input`, `access_denied` and `ownership_validation_failed` are request outcomes, not source states: no Memory Source is stored for them. Transitions and their events (Source Processing Event, Decision 5.4.28) are defined with the ingestion pipeline (plan 8.3).
