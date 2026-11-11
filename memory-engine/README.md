@@ -18,7 +18,9 @@ The two domains can share infrastructure (PostgreSQL, pgvector, object storage, 
 >
 > Phase 8.3 step 2 adds personal memory ingestion (`personal/application/ingestion.py`). Text and conversations are validated, normalized and stored, and registered idempotently as a `validated` Memory Source; remember and forget instructions are recorded.
 >
-> Not yet: queueing and handoff, document ingestion, extraction, parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking, and the deletion workflow.
+> Phase 8.3 step 3 adds document ingestion (`documents/application/ingestion.py`). PDF, DOCX and TXT uploads are checked by content, stored, and registered as a document or a new version, with an `extraction` operation waiting for the document pipeline. Nothing is parsed here.
+>
+> Not yet: queueing and handoff, extraction, parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking, and the deletion workflow.
 
 ## Boundaries
 

@@ -106,6 +106,8 @@ class IngestionSettings(BaseModel):
     max_text_bytes: int = Field(default=256 * 1024, ge=1, le=16 * MIB)
     max_conversation_messages: int = Field(default=1000, ge=1, le=100_000)
     max_conversation_bytes: int = Field(default=4 * MIB, ge=1, le=64 * MIB)
+    # Document uploads (8.3 step 3): checked and hashed in memory up to this size.
+    max_upload_bytes: int = Field(default=25 * MIB, ge=1, le=512 * MIB)
 
 
 class MemoryEngineSettings(BaseSettings):

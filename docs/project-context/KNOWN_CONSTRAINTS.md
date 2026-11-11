@@ -40,6 +40,11 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
   - nothing is queued, handed off or extracted until step 4 and 8.4;
   - forget instructions are recorded but delete nothing until 8.10;
   - input limits (256 KiB text; 1,000 messages / 4 MiB per conversation) are configurable defaults, because 7.6 §18 still defers the final limits.
+- Document ingestion (8.3 step 3):
+  - PDF, DOCX and TXT uploads are format-checked, stored and registered, with an `extraction` operation created; nothing is parsed (8.12) or handed off (step 4).
+  - **No malware scanning**: no tool is approved, and the owner accepted the deferral on 2026-11-11. Content is never executed, DOCX macro parts are refused, and the parser (8.12) must treat files as hostile.
+  - TXT must be UTF-8.
+  - Upload limit: 25 MiB by default (configurable).
 - Integration tests need both `postgres-test` and `object-storage-test` running (`docker compose up -d --wait postgres-test object-storage-test`).
 - Integration tests skip, rather than fail, when the Docker PostgreSQL service is not running. A green test run without Docker does not cover persistence; check that the integration tests were not skipped.
 - Memory Source `content_ref` is optional until object storage exists (Phase 8.3).

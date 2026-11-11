@@ -1379,6 +1379,30 @@ Deliberately not persisted: a version `superseded` state (derived from the docum
 - **Keyword search:** `doc_chunk.tsv` is a stored `tsvector` using the language-neutral `simple` text-search configuration, with a GIN index. The language requirement (gap G6) is still open; changing the configuration later is one migration that rebuilds the column.
 - **Embedding vectors:** none yet. Metadata only, unique per chunk, model, revision and preprocessing version; vector storage arrives in 8.7 (7.1 §23.5).
 
+## 15. Document ingestion rules (Phase 8.3 step 3)
+
+**Approved 2026-11-11.** Ingestion accepts and registers uploads; the document pipeline parses them (Decision 13).
+
+**Format and filename:**
+- **Format comes from the content:**
+  - PDF: header and `%%EOF` trailer;
+  - DOCX: a ZIP containing `word/document.xml`, checked from the file listing only; macro parts, encrypted entries and archives that expand excessively are refused;
+  - TXT: UTF-8 with no NUL bytes.
+- The filename extension and any declared media type must agree with the content.
+- Uploads are limited to 25 MiB by default (configurable; 7.6 §18 still defers the final value).
+- **Filenames** are kept only as display names (last path component, no control characters) and never appear in object keys.
+
+**Re-uploads:**
+- An upload without a document ID always creates a new document, even when its content matches another one (checksums never merge identities, plan 8.3 §8).
+- An upload naming a document creates its next version. It is refused if it is identical to the current version or if the media type changes.
+
+**On success:**
+- The original is stored first, then the document is `registered` and the version `stored`.
+- An `extraction` processing operation is created (`created`) for the pipeline. Nothing is marked processed.
+- The request's idempotency key is the operation's key (prefixed `upload:`). A retry returns the same registration, and a reused key with different content is refused.
+
+**Not done:** no malware scan, because no tool is approved. This deferral was accepted by the owner and is recorded in `KNOWN_CONSTRAINTS.md`.
+
 ---
 
 <!-- Phase 8.2 amendment, approved by the project owner on 2026-11-11 (Decision 4 of the Phase 8.2 architecture decision review). Appended; earlier text unchanged. -->

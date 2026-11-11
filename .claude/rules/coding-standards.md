@@ -48,6 +48,9 @@ Phase 8.1 created the foundation code (`memory-engine/src/memory_engine/`: `conf
   - Order of work: validate, check the idempotency key, upload to object storage, then write the database record. If the record fails, delete the uploads (best effort) and look the key up again, since a concurrent request may have won.
   - An idempotency key always comes with a fingerprint of the request (excluding receipt time). The same key with a different fingerprint raises `IdempotencyKeyReusedError`; never overwrite.
   - Rejections raise `IngestionRejectedError` with `details["outcome"]` and an UPPER_SNAKE_CASE `details["reason"]`; error messages never contain the input.
+- Established in 8.3 step 3 (document ingestion):
+  - The content decides a file's format; extensions and declared types are only cross-checked. Never parse, unzip or render a document during ingestion. DOCX is checked from its ZIP listing only.
+  - Filenames are display names only (`safe_filename`); never build a key or path from them.
 
 ## Naming
 

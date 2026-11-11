@@ -7,10 +7,10 @@
 | Item | Value |
 |---|---|
 | Current phase | Phase 8 — Memory Engine Implementation |
-| Current subphase | 8.3 — Ingestion Pipeline (**approved 2026-11-11**, `IN_PROGRESS`: step 1, object storage, merged (PR #16); step 2, personal memory ingestion, implemented and tested, uncommitted; steps in [NEXT_STEPS.md](NEXT_STEPS.md)) |
+| Current subphase | 8.3 — Ingestion Pipeline (**approved 2026-11-11**, `IN_PROGRESS`: steps 1–2 (object storage, personal memory ingestion) merged (PR #16, #17); step 3, document ingestion, implemented and tested, uncommitted; steps in [NEXT_STEPS.md](NEXT_STEPS.md)) |
 | Subphase status | 8.2 **`VERIFIED`** (2026-11-11) and merged: all five steps plus the acceptance-review fixes, with every plan 8.2 §14 criterion met on `main` @ `423b6fd` (two owner-accepted deferrals; [PHASE-8-2-ACCEPTANCE-REVIEW.md](PHASE-8-2-ACCEPTANCE-REVIEW.md)). 8.1 remains `VERIFIED` and merged |
-| Current active task | Owner review of 8.3 step 2 (text and conversation ingestion: validation, normalization, original and normalized content in object storage, idempotent Memory Source registration, remember/forget instructions); then step 3 (document ingestion) |
-| Application code | 8.1 foundation plus 8.2: Personal Memory core (`0001`), Document Intelligence and the evidence path (`0002`), entities and relationships (`0003`), episodes, profiles, categories and memory embedding metadata (`0004`), processing, evaluation, correction and deletion records (`0005`), episode version (`0006`); owner-scoped repositories and units of work. 8.3 step 1 (merged): an owner-scoped object-storage port with an in-memory fake and a boto3/S3 adapter. 8.3 step 2 (uncommitted): text and conversation ingestion into a `validated` Memory Source (`0007`). **No** queueing or handoff yet, document ingestion, extraction, resolution, consolidation, parsing, chunking, embedding generation, retrieval ranking or deletion workflow |
+| Current active task | Owner review of 8.3 step 3 (document ingestion: content-based format detection, size limit, original in object storage, document/version registration, `extraction` operation, re-upload policy); then step 4 (outbox and RabbitMQ handoff) |
+| Application code | 8.1 foundation plus 8.2: Personal Memory core (`0001`), Document Intelligence and the evidence path (`0002`), entities and relationships (`0003`), episodes, profiles, categories and memory embedding metadata (`0004`), processing, evaluation, correction and deletion records (`0005`), episode version (`0006`); owner-scoped repositories and units of work. 8.3 step 1 (merged): an owner-scoped object-storage port with an in-memory fake and a boto3/S3 adapter. 8.3 step 2 (merged): text and conversation ingestion into a `validated` Memory Source (`0007`). 8.3 step 3 (uncommitted): document uploads checked, stored and registered with an `extraction` operation. **No** queueing or handoff yet, extraction, resolution, consolidation, parsing, chunking, embedding generation, retrieval ranking or deletion workflow |
 
 ## Documentation completion
 
@@ -31,7 +31,7 @@ Documentation recovery: four specifications that had been overwritten by amendme
 
 | Phase | Status |
 |---|---|
-| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `VERIFIED` (merged); 8.3 `IN_PROGRESS` (step 1 merged; step 2 tested, uncommitted); 8.4–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
+| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `VERIFIED` (merged); 8.3 `IN_PROGRESS` (steps 1–2 merged; step 3 tested, uncommitted); 8.4–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
 | Research Engine | Not started (later phase) |
 | Agent Orchestrator | Not started (later phase) |
 | Shared Infrastructure | Not started |
