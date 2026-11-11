@@ -3,7 +3,7 @@
 ## Current position
 
 - **Phase:** 8 — Memory Engine Implementation
-- **Subphase:** 8.2 — Database and Persistence: **approved 2026-11-11**, `IN_PROGRESS`. Step 1 committed (`d2346b6`, PR #7). Step 2 (Document Intelligence persistence) implemented and tested, uncommitted on `feat/phase-8-2-document-persistence`. 8.1 `VERIFIED` and merged.
+- **Subphase:** 8.2 — Database and Persistence: **approved 2026-11-11**, `IN_PROGRESS`. Steps 1 (`d2346b6`) and 2 (`e7fc443`) committed on `feat/phase-8-2-document-persistence` and proposed for `main` together. Step 1 is not on `main` yet: PR #7 merged it into PR #6's branch after that branch was already merged. 8.1 `VERIFIED` and merged.
 - **Next approved action:** continue 8.2 with step 3 after the owner reviews step 2. Do not start 8.3.
 - **Decision review:** [PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) analyses all 15 open decisions, with a deep review of the Phase 8.2 blockers.
 
@@ -20,8 +20,8 @@
 
 | Step | Scope | Status |
 |---|---|---|
-| 1 | Dependencies, Docker Compose test database, shared kernel (`OwnerScope`, ids, vocabularies), engine and unit of work, migration `0001` (`pm_memory_source`, `pm_memory_candidate`, `pm_atomic_memory`, `pm_atomic_memory_revision`, `pm_provenance`), repositories, tests | Committed `d2346b6` (PR #7) |
-| 2 | Document Intelligence: `doc_document`, `doc_document_version`, `doc_extracted_representation`, `doc_chunk` (+ `simple` full-text index), `doc_chunk_location`, `doc_embedding` (metadata), `doc_processing_operation`; `pm_document_evidence_ref` and provenance citing it; migration `0002`; column-guard triggers; repositories and a document unit of work | Implemented and tested; uncommitted |
+| 1 | Dependencies, Docker Compose test database, shared kernel (`OwnerScope`, ids, vocabularies), engine and unit of work, migration `0001` (`pm_memory_source`, `pm_memory_candidate`, `pm_atomic_memory`, `pm_atomic_memory_revision`, `pm_provenance`), repositories, tests | Committed `d2346b6`; pending merge into `main` |
+| 2 | Document Intelligence: `doc_document`, `doc_document_version`, `doc_extracted_representation`, `doc_chunk` (+ `simple` full-text index), `doc_chunk_location`, `doc_embedding` (metadata), `doc_processing_operation`; `pm_document_evidence_ref` and provenance citing it; migration `0002`; column-guard triggers; repositories and a document unit of work | Committed `e7fc443`; pending merge into `main` |
 | 3+ | Entities, aliases, mentions, entity and memory relationships, Memory–Entity associations, episodes, profiles, categories, memory embedding metadata, deletion records (plan 8.2 §3.3) | Next |
 
 ## Approved 8.1 decisions (implemented)
@@ -78,9 +78,9 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
   - Migration `0002_document_intelligence`: 7 `doc_` tables, `pm_document_evidence_ref`, `pm_provenance.document_evidence_id`, `simple` full-text column and GIN index, `me_guard_columns` triggers (status-only updates; append-only content).
 - **Bugs found by the tests and fixed:** (1) the active-evidence check used `=`, which is NULL, and therefore passing, when a link is missing; it now uses `IS NOT DISTINCT FROM`. (2) Chunk locations came back in random-ID order; they now carry an `ordinal`.
 - **Decisions made:** the owner approved the document, version, extraction, embedding and operation vocabularies and the `simple` full-text configuration (5.4 Document Intelligence amendment §14). Implementation detail recorded in 7.1 §23.3: evidence keeps opaque `*_ref` copies alongside the foreign-key columns, so `RESTRICT` and "keep the identifiers" can both hold.
-- **Files changed:** see [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) §8.2. Uncommitted on `feat/phase-8-2-document-persistence` (stacked on step 1).
+- **Files changed:** see [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) §8.2. Committed as `e7fc443` on `feat/phase-8-2-document-persistence`, together with step 1 (`d2346b6`), in one pull request into `main`.
 - **Implementation status:** 8.2 `IN_PROGRESS`. Plan 8.2 §14 criteria 2–11 are now met for the records built so far; 1 and 12 wait for the remaining 8.2 models (step 3+).
 - **Tests and results:** `uv sync --locked` ok; `uv run pytest --cov` → **225 passed** (169 unit, 56 integration against PostgreSQL 17 + pgvector), 97% coverage; database stopped → 56 integration tests skipped with a message; `ruff check`, `ruff format --check` clean; `mypy` strict clean (47 files).
 - **Unresolved:** language requirement G6 (the `simple` configuration is a placeholder); object storage (8.3), so object keys are not yet backed by stored files; embedding model (before 8.7); Decisions 6–8 and 11–15; ratio-label wording (issue 9); uv not on PATH on this machine.
-- **Next action:** owner review and commit of step 2; then 8.2 step 3 (entities, relationships, episodes, profiles, categories, memory embedding metadata, deletion records).
+- **Next action:** owner review and merge of the steps 1–2 pull request into `main`; then 8.2 step 3 (entities, relationships, episodes, profiles, categories, memory embedding metadata, deletion records).
 - **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.2 §3.3 and §12, 7.1 §23, the 5.4 sections for entities, relationships, episodes and profiles plus the Phase 8.2 amendment, and `memory-engine/README.md`.

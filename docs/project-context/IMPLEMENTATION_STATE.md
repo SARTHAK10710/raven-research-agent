@@ -4,14 +4,14 @@ Actual implementation progress, recorded only from verified repository state.
 
 Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` · `TESTING` · `VERIFIED` · `BLOCKED`. `VERIFIED` requires executed test evidence against the subphase's acceptance criteria; generated code is never verified by itself.
 
-**Baseline:** `main` @ `ab50c48` (PR #4); PR #6 (status docs) and PR #7 (8.2 step 1, `d2346b6`) open and stacked; 8.2 step 2 uncommitted on `feat/phase-8-2-document-persistence`.
+**Baseline:** `main` @ `8c74d4f` (PR #6 merged). 8.2 step 1 (`d2346b6`) and step 2 (`e7fc443`) are on `feat/phase-8-2-document-persistence`, pending merge into `main`. PR #7 merged step 1 only into PR #6's already-merged branch, so it did not reach `main`.
 
 ## Summary
 
 | Subphase | Status | Commit |
 |---|---|---|
 | 8.1 Foundation and project setup | `VERIFIED` | `5a0d6e5`, merged in `6efd72d` (PR #3) |
-| 8.2 Database and persistence | `IN_PROGRESS` (steps 1–2 tested) | Step 1 `d2346b6` (PR #7); step 2 uncommitted on `feat/phase-8-2-document-persistence` |
+| 8.2 Database and persistence | `IN_PROGRESS` (steps 1–2 tested) | Step 1 `d2346b6`, step 2 `e7fc443`; pending merge into `main` |
 | 8.3 Ingestion pipeline | `NOT_STARTED` | — |
 | 8.4 Extraction and evaluation | `NOT_STARTED` | — |
 | 8.5 Entity and relationship management | `NOT_STARTED` | — |
@@ -64,7 +64,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 | Migrations | `0001_personal_memory_core`: 5 `pm_` tables, composite `(id, owner_id)` foreign keys with `RESTRICT`, vocabulary/score/temporal check constraints, append-only triggers on `pm_atomic_memory_revision` and `pm_provenance`. Tested upgrade → downgrade → upgrade |
 | Tests executed | `uv sync --locked`; `uv run pytest --cov` (with `docker compose up -d --wait postgres-test`); `uv run pytest -m integration` with the database stopped; `uv run ruff check .`; `uv run ruff format --check .`; `uv run mypy` |
 | Tests passed / failed | **162 passed, 0 failed** (136 unit, 26 integration), 98% line+branch coverage; database stopped → 26 skipped with message; Ruff clean; mypy strict clean (36 files) |
-| Commit | Step 1: `d2346b6` (PR #7, open, stacked on PR #6). Step 2: — (uncommitted on `feat/phase-8-2-document-persistence`) |
+| Commit | Step 1: `d2346b6` (reviewed in PR #7, which merged into a stale branch). Step 2: `e7fc443`. Both proposed for `main` in one pull request |
 
 **Plan 8.2 §14 acceptance criteria, after step 2** (met for the records built so far):
 - 2: personal memory persistence (step 1).
