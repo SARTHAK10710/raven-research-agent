@@ -2,7 +2,7 @@
 
 A summary of Phase 7 ([docs/technical-decisions](../technical-decisions/Readme.md)). The source documents are authoritative.
 
-**Installed in the repository:** only the Phase 8.1 dependencies, declared in `pyproject.toml` files and locked in the root `uv.lock` (Phase 8.1, merged into `main` in PR #3, commit `5a0d6e5`). "Approved" below means selected in the specifications, not installed. Each dependency is added only in the subphase that needs it.
+**Installed in the repository:** only the Phase 8.1 dependencies, declared in `pyproject.toml` files and locked in the root `uv.lock` (Phase 8.1, commit `5a0d6e5`, merged into `main` via PR #3). The Phase 8.2 driver decision is approved (below); the embedding model is still pending ([decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md), Decision 3). "Approved" below means selected in the specifications, not installed. Each dependency is added only in the subphase that needs it.
 
 ## Approved Phase 8.1 project setup decisions
 
@@ -16,13 +16,27 @@ Approved by the project owner on 2026-11-11. Recorded in [7.1 §22](../technical
 | Test location | Repository-root `tests/`, organized by engine and test type (for example `tests/memory_engine/unit/`) | **APPROVED** |
 | Configuration | Pydantic Settings (`pydantic-settings`), validated environment-based configuration | **APPROVED** |
 
+## Approved Phase 8.2 decisions
+
+Approved by the project owner on 2026-11-11. Recorded in [7.1 §23](../technical-decisions/01-baseline-technology-stack.md) and the Phase 8.2 amendment of [5.4](../data-models/phase-05-memory-engine-models.md). Phase 8.2 itself has **not started**.
+
+| # | Decision | Choice | Status |
+|---|---|---|---|
+| 1 | Package layout | Domain-first `personal/` and `documents/` (each `domain` + `application`), shared kernel `domain/`, `infrastructure/`, `interfaces/`; one-way `personal → documents.api` | **APPROVED** |
+| 2 | Database driver and access | psycopg 3 + synchronous SQLAlchemy 2.0; engine per process; short owner-scoped units of work | **APPROVED** |
+| 4 | Vocabularies | Entity relationships, memory relationships, revision change types, Atomic Memory lifecycle states, Memory–Entity associations | **APPROVED** |
+| 5 | Document record placement | `memory` schema; `pm_`/`doc_`/`me_` prefixes; no implicit cascades; guarded evidence references | **APPROVED** |
+| 10 | Owner identity | Caller-supplied `OwnerScope`; opaque `owner_id`; no Memory Engine user table | **APPROVED** |
+| 3 (timing only) | Vector storage timing | 8.2 creates embedding metadata only; vector tables and indexes in 8.7 after the model is selected (7.1 §23.5) | **APPROVED** |
+| 9 | Outbox and Celery timing | No outbox in 8.2; outbox table, publisher, RabbitMQ and Celery together in 8.3 (7.1 §23.6) | **APPROVED** |
+
 ## Dependency timing
 
 | When | Dependencies | Installed? |
 |---|---|---|
 | Phase 8.1 — runtime | `pydantic`, `pydantic-settings` | Yes — 2.14.3, 2.16.2 (locked) |
 | Phase 8.1 — development | `pytest`, `pytest-cov`, `ruff`, `mypy` | Yes — 9.2.0, 7.1.0, 0.17.4, 2.4.1 (locked) |
-| Phase 8.2 | `SQLAlchemy`, `Alembic`, PostgreSQL driver (choice pending, see below) | No |
+| Phase 8.2 | `SQLAlchemy` 2.x, `alembic`, `psycopg[binary]` (psycopg 3, approved 2026-11-11) | No |
 | When required | `HTTPX` (API/HTTP testing); OpenTelemetry API/SDK (instrumentation) | No |
 | Later milestones | NLP, embedding, messaging and storage libraries, in the subphase that needs them | No |
 
@@ -61,8 +75,7 @@ Approved by the project owner on 2026-11-11. Recorded in [7.1 §22](../technical
 
 | Decision | Status |
 |---|---|
-| PostgreSQL driver; sync vs async SQLAlchemy | Not specified. Needed by 8.2 |
-| Embedding model, dimension, metric, index type | Not chosen. Needed by 8.2 (vector columns) or 8.7 |
+| Embedding model, dimension, metric, index type | Not chosen. Needed before Phase 8.7 creates vector storage (vector columns deferred to 8.7, approved 2026-11-11) |
 
 Set during Phase 8.1 implementation (7.1 §22.2): Ruff rules `E, W, F, I, B, UP, SIM, S, N, RUF` (line length 100; `S101` allowed in tests); mypy `strict = true` with the `pydantic.mypy` plugin over `memory-engine/src` and `tests`; build backend `hatchling` (build time only, not a runtime or dev dependency).
 

@@ -37,6 +37,22 @@ Relevant data-model specifications include:
 
 If the existing specifications do not define a required document entity or relationship, identify the gap and propose an amendment before implementing it.
 
+### 2.1 Approved decisions for this plan
+
+Approved on 2026-11-11. Follow these; they take precedence over earlier open wording in this plan.
+
+| Decision | Source |
+|---|---|
+| Package layout (`personal/`, `documents/`, shared kernel, `infrastructure/persistence/`) | `01-baseline-technology-stack.md` §23.1 |
+| psycopg 3 + synchronous SQLAlchemy 2.0; pooling, transactions, testing | `01-baseline-technology-stack.md` §23.2 |
+| `memory` schema; `pm_` / `doc_` / `me_` prefixes; seven `doc_` tables; no implicit cascades; guarded evidence references | `01-baseline-technology-stack.md` §23.3 |
+| `OwnerScope` and opaque `owner_id` on every owned row | `01-baseline-technology-stack.md` §23.4 |
+| Relationship vocabularies, revision change types, Atomic Memory lifecycle states | `phase-05-memory-engine-models.md`, Phase 8.2 Amendment |
+| Embedding **metadata** only in this plan; no vector columns, tables or indexes. Vector storage is created in plan 8.7 after the embedding model is selected | `01-baseline-technology-stack.md` §23.5 |
+| No outbox table in this plan; operation and idempotency tables only. The outbox, its publisher and Celery arrive in plan 8.3 | `01-baseline-technology-stack.md` §23.6 |
+
+**Not yet decided:** the embedding model itself (needed before plan 8.7).
+
 ## 3. Persistence architecture
 
 ### 3.1 Database

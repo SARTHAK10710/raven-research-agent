@@ -141,6 +141,8 @@ raven-research-agent/              # repository root
 
 This is the initial proposed structure, not an instruction to create every module immediately. Tests are not placed in `memory-engine/tests/`.
 
+> **Superseded for later phases (approved 2026-11-11):** from Phase 8.2 onward, the package uses the domain-first layout in [`01-baseline-technology-stack.md`](../../technical-decisions/01-baseline-technology-stack.md) §23.1. The feature modules listed below become modules inside `memory_engine.personal.application`; Document Intelligence lives in `memory_engine.documents`. The Phase 8.1 foundation modules (`config`, `domain`, `exceptions`, `observability`) are unchanged.
+
 Only establish directories and modules necessary for the foundation.
 
 Empty placeholder modules must not be created merely to make the folder tree look complete.

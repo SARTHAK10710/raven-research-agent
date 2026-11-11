@@ -55,7 +55,7 @@ Phase 5 is documented across the following files.
 | Document | Description | Status |
 |---|---|---|
 | `phase-05-data-models-overview.md` | 5.1–5.3: Overall data architecture, data classification, access model, ownership boundaries, core entities, identifiers, relationships and provenance | Complete |
-| `phase-05-memory-engine-models.md` | 5.4: Memory Engine personal memory data models, followed by the Document Intelligence data model amendment | Complete |
+| `phase-05-memory-engine-models.md` | 5.4: Memory Engine personal memory data models, followed by the Document Intelligence data model amendment and the Phase 8.2 amendment (relationship vocabularies, Atomic Memory lifecycle states) | Complete |
 | `phase-05-research-engine-models.md` | 5.5: Research Engine data models | Complete |
 | `phase-05-orchestrator-models.md` | 5.6: Agent Orchestrator data models | Complete |
 | `phase-05-shared-infrastructure-models.md` | 5.7: Shared Infrastructure data models | Complete |
@@ -63,7 +63,7 @@ Phase 5 is documented across the following files.
 
 *The filenames above are the actual files in this directory. Subphases 5.1–5.3 are documented together in `phase-05-data-models-overview.md`.*
 
-*Two files carry amendments for Document Intelligence and RAG. Each keeps its original specification first and appends the amendment at the end; the amendment extends the original decisions and does not replace them.*
+*Two files carry amendments for Document Intelligence and RAG. Each keeps its original specification first and appends the amendment at the end; the amendment extends the original decisions and does not replace them. `phase-05-memory-engine-models.md` also carries the Phase 8.2 amendment approved on 2026-11-11.*
 
 ---
 

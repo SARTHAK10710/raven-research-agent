@@ -1,6 +1,6 @@
 # Phase 5.4 — Memory Engine Data Models
 
-> **Document history:** This file contains the original Phase 5.4 Memory Engine (personal memory) data model, restored from commit `94e25b5`, followed by the Phase 5 Document Intelligence Data Models amendment from commit `3fd622b`, appended at the end of this file. The amendment extends the original decisions; it does not replace them.
+> **Document history:** This file contains the original Phase 5.4 Memory Engine (personal memory) data model, restored from commit `94e25b5`, followed by the Phase 5 Document Intelligence Data Models amendment from commit `3fd622b`, appended at the end of this file. A second amendment, the Phase 8.2 Amendment on relationship vocabularies and Atomic Memory lifecycle states (approved 2026-11-11), follows it. The amendments extend the original decisions; they do not replace them.
 
 **Project:** Raven — AI Research Agent  
 **Phase:** 5 — Data Models & Database Design  
@@ -1352,3 +1352,113 @@ The document intelligence data model is ready for implementation when:
 12. All schema decisions are reconciled with the existing Phase 5 specification.
 
 **Final principle:** Documents represent source material. Personal memories represent validated information about the user. Raven must preserve this distinction throughout the data lifecycle.
+
+---
+
+<!-- Phase 8.2 amendment, approved by the project owner on 2026-11-11 (Decision 4 of the Phase 8.2 architecture decision review). Appended; earlier text unchanged. -->
+
+# Phase 8.2 Amendment — Relationship Vocabularies and Atomic Memory Lifecycle
+
+## 1. Purpose
+
+Reconcile the relationship and state vocabularies that differ across Decision 5.4.27, Phase 6 algorithms 6.3.7 and 6.3.8, retrieval 6.4.5 and plan 8.5 §7. It also defines the Atomic Memory lifecycle states, which no earlier document specified (Phase 6.2 §8.6 notes that candidate states "are not the final Atomic Memory lifecycle states"; Decision 5.3.6 delegates state definitions to each engine).
+
+This amendment extends Decisions 5.4.7, 5.4.15, 5.4.26 and 5.4.27. It does not remove any of their rules. Analysis and alternatives: [Phase 8.2 architecture decision review](../project-context/PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) §5.4.
+
+## 2. Naming conventions
+
+- Vocabulary values are lowercase `snake_case` strings, enforced by database check constraints.
+- A relationship reads **"source ‹type› target"** in active voice. Passive inverses (for example "superseded by") are never stored; they are derived at query time.
+- Symmetric types are flagged explicitly and stored once, with a canonical ordering (lower identifier as source), per Decision 5.4.15 rule 5.
+- Temporal meaning is carried by attributes (section 7), not by relationship names.
+
+## 3. Entity relationships (Entity → Entity)
+
+Typed, directed records per Decision 5.4.15. Each carries valid time, transaction time, confidence, provenance and scope. Rows are closed with `valid_to` and replaced, never overwritten.
+
+| Type | Meaning (source → target) | Symmetric |
+|---|---|---|
+| `works_at` | person → organization | No |
+| `member_of` | person or organization → group or organization | No |
+| `reports_to` | person → person | No |
+| `knows` | person ↔ person | Yes |
+| `part_of` | entity → containing entity | No |
+| `located_in` | entity → location | No |
+| `uses` | project, person or organization → technology or product | No |
+| `acquired_by` | organization → organization (identity event, Decision 5.4.14) | No |
+| `merged_into` | organization → organization (identity event) | No |
+| `renamed_to` | entity → successor identity, when identity changes rather than an alias (Decision 5.4.14) | No |
+| `related_to` | weak, unspecified association (last resort) | Yes |
+
+The catalogue is extended only by approval. Private relationships may reference shared entities, never the reverse (Decision 5.4.13).
+
+## 4. Memory relationships (Atomic Memory → Atomic Memory)
+
+Independent records per Decision 5.4.27. Both endpoints are Atomic Memories.
+
+| Type | Meaning (source → target) | Effect on target | Symmetric |
+|---|---|---|---|
+| `supports` | source is independent evidence for target | none | No |
+| `contradicts` | both cannot hold in the same context and time | both kept; may trigger `needs_review` | Yes |
+| `supersedes` | source replaces target as the current representation | target becomes `historical`; `valid_to` set | No |
+| `updates` | source refines target, which remains current | none | No |
+| `part_of` | source is a component of target | none | No |
+| `derived_from` | source (an inferred memory) was derived from target (its evidence) | none | No |
+| `depends_on` | source's validity is conditional on target (added from 6.3.8) | re-evaluate source when target changes | No |
+| `related_to` | weak association (last resort) | none | Yes |
+
+A `supersedes` relationship records a `reason`: `temporal_change` (a progression, such as moving city), `replacement`, or `correction` (when the erroneous fact was a separate memory).
+
+**Reconciliation with Phase 6 and plan 8.5:**
+- `ABOUT_ENTITY` (6.3.8, 6.4.5) is not a memory relationship. It is represented as a **Memory–Entity association** (section 5).
+- "Corrects" (plan 8.5 §7) is not a relationship. Correcting the same fact creates a new revision with change type `corrected` (Decision 5.4.26). A correction by a different memory is `supersedes` with reason `correction`.
+
+## 5. Memory–Entity associations
+
+Record which entities an Atomic Memory concerns (plan 8.5 §7, "entity-to-memory associations"), with a `role` of `subject`, `object`, `mentioned` or `context`. These are distinct from Entity Relationships (section 3) and Memory Relationships (section 4).
+
+## 6. Revision change types
+
+Each immutable Atomic Memory revision (Decision 5.4.7) records one change type. The 6.3.7 supersession types map as shown.
+
+| Value | Replaces 6.3.7 | Meaning |
+|---|---|---|
+| `created` | — | first revision |
+| `updated` | `UPDATED_BY` | attribute or context change (6.3.6) |
+| `corrected` | `CORRECTED_BY` | the prior content was wrong (Decision 5.4.26) |
+| `evidence_added` | — | duplicate or merge evidence attached (outcomes `merge` / `no_change`) |
+| `superseded` | `SUPERSEDED_BY` | the memory stopped being current because another memory `supersedes` it |
+| `expired` | `EXPIRED` | time-limited validity ended |
+| `retracted` | `RETRACTED` | the user withdrew the assertion |
+| `reclassified` | — | category or origin change (Decision 5.4.9) |
+
+## 7. Atomic Memory lifecycle status
+
+| Status | Meaning | Retrievable by default |
+|---|---|---|
+| `active` | the current accepted understanding | Yes |
+| `historical` | superseded or expired, retained for history | Only for historical or temporal queries |
+| `needs_review` | unresolved contradiction or insufficient evidence | No; flagged when requested |
+| `retracted` | withdrawn by the user | No |
+| `deletion_pending` | tombstoned; deletion propagation in progress | **Never** |
+| `deleted` | deletion complete; only a minimal tombstone remains | **Never** |
+
+This status is separate from candidate states (6.2 §8.6), retention classifications (6.5.3), deletion operation states (6.5.8) and embedding lifecycle states (Decision 5.4.20).
+
+## 8. Temporal attributes
+
+Per the bitemporal model (Decision 5.3.4; 6.3.7 §9.3), memories and relationships carry:
+- `valid_from` / `valid_to`: when the information was true in the world
+- `recorded_at` / `superseded_at`: when Raven recorded or replaced it
+- `observed_at`: when the source stated it
+
+A "progression" is `supersedes` with reason `temporal_change` plus continuous valid time.
+
+## 9. Evidence and derived knowledge
+
+- **Evidence** is recorded in Provenance Records (Decision 5.4.18) linking a memory to its source, candidate or document evidence, with a `role` of `origin`, `supporting`, `contradicting` or `correcting`. This is distinct from the memory-to-memory `supports` relationship.
+- **Derived knowledge** (episodes, semantic consolidation results, profiles) links to its source Atomic Memories through its own association records (Episode Membership, Profile–Memory Association, Consolidation Result sources). Derived records never become Atomic Memories.
+
+## 10. Resolution outcomes
+
+The resolution outcomes of Phase 6.3 remain unchanged: `create_new`, `merge`, `update_existing`, `link_existing`, `supersede`, `needs_review`, `reject`, `no_change`. They are processing decisions recorded in resolution audit, not stored relationships.
