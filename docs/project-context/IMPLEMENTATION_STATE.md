@@ -4,14 +4,14 @@ Actual implementation progress, recorded only from verified repository state.
 
 Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` · `TESTING` · `VERIFIED` · `BLOCKED`. `VERIFIED` requires executed test evidence against the subphase's acceptance criteria; generated code is never verified by itself.
 
-**Baseline:** `main` @ `b31a97e` (PR #9 merged 8.2 step 3; PR #8 merged steps 1–2). 8.2 step 4 is `38411e1` on `feat/phase-8-2-episodes-profiles` (PR #10, open). 8.2 step 5 is uncommitted on `feat/phase-8-2-deletion-corrections-history`, branched from step 4.
+**Baseline:** `main` @ `423b6fd` (PR #11 merged 8.2 step 5 and the acceptance-review fixes; PR #10 merged step 4 as `977c3b7`; PR #9 step 3; PR #8 steps 1–2).
 
 ## Summary
 
 | Subphase | Status | Commit |
 |---|---|---|
 | 8.1 Foundation and project setup | `VERIFIED` | `5a0d6e5`, merged in `6efd72d` (PR #3) |
-| 8.2 Database and persistence | `IN_PROGRESS` (steps 1–5 tested; acceptance review to do) | Steps 1–2 `d2346b6`, `e7fc443` (merged, PR #8); step 3 `7a62cd4` (merged, PR #9); step 4 `38411e1` (PR #10, open); step 5 uncommitted |
+| 8.2 Database and persistence | `VERIFIED` (2026-11-11) | Steps 1–2 `d2346b6`, `e7fc443` (PR #8); step 3 `7a62cd4` (PR #9); step 4 `38411e1` (PR #10, `977c3b7`); step 5 `42b35c3` and review fixes `1b58b77` (PR #11, `423b6fd`) |
 | 8.3 Ingestion pipeline | `NOT_STARTED` | — |
 | 8.4 Extraction and evaluation | `NOT_STARTED` | — |
 | 8.5 Entity and relationship management | `NOT_STARTED` | — |
@@ -53,7 +53,9 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 
 | Field | Value |
 |---|---|
-| Status | `IN_PROGRESS` — approved 2026-11-11. Steps 1–2 merged (PR #8), step 3 merged (PR #9), step 4 committed (PR #10, open). Step 5 (processing, evaluation, correction and deletion records) implemented and tested, uncommitted. Acceptance review against plan §14 not yet done |
+| Status | `VERIFIED` (2026-11-11) — approved 2026-11-11; all five steps and the acceptance-review fixes are merged. Every plan 8.2 §14 criterion is met with executed checks on `main` @ `423b6fd` (A4), with two owner-accepted deferrals ([acceptance review](PHASE-8-2-ACCEPTANCE-REVIEW.md)) |
+| Verification on `main` (A4) | `uv sync --locked` ok; `ruff check`, `ruff format --check` clean; `mypy` strict clean (63 files); `uv run pytest --cov` **412 passed** (300 unit, 112 integration against PostgreSQL 17 + pgvector), 96% coverage, plus 3 further green runs; database stopped → 112 skipped |
+| Files created (review fixes) | `migrations/versions/20261111_0006_episode_version.py`; `integration/test_concurrency_and_failures.py`; `docs/project-context/PHASE-8-2-ACCEPTANCE-REVIEW.md` |
 | Files created (step 5) | `migrations/versions/20261111_0005_processing_corrections_deletion.py`; `personal/domain/lifecycle.py`; `infrastructure/persistence/personal/{lifecycle_models,lifecycle_repositories}.py`. Tests: `unit/test_lifecycle_records.py`, `integration/test_lifecycle_repositories.py` |
 | Files modified (step 5) | `domain/vocabulary.py` (8 vocabularies); `personal/domain/__init__.py`; `personal/application/ports.py` (processing, evaluation, correction and deletion ports); `infrastructure/persistence/unit_of_work.py`; `migrations/env.py`; tests `unit/test_persistence_definitions.py`, `integration/test_migrations.py`. No new dependencies |
 | Migration (step 5) | `0005_processing_deletion`: `pm_source_processing_event` and `pm_candidate_evaluation` (append-only, `seq` ordering), `pm_correction_request`, `pm_correction_memory` (base and applied revision foreign keys), `pm_deletion_operation` (unique per owner and idempotency key), `pm_deletion_target` (ledger, no foreign key to targets); `me_guard_columns` triggers on all six and, new, on `pm_memory_source` and `pm_memory_candidate` |
@@ -76,7 +78,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 | Migrations | `0001_personal_memory_core`: 5 `pm_` tables, composite `(id, owner_id)` foreign keys with `RESTRICT`, vocabulary/score/temporal check constraints, append-only triggers on `pm_atomic_memory_revision` and `pm_provenance`. Tested upgrade → downgrade → upgrade |
 | Tests executed | `uv sync --locked`; `uv run pytest --cov` (with `docker compose up -d --wait postgres-test`); `uv run pytest -m integration` with the database stopped; `uv run ruff check .`; `uv run ruff format --check .`; `uv run mypy` |
 | Tests passed / failed | **162 passed, 0 failed** (136 unit, 26 integration), 98% line+branch coverage; database stopped → 26 skipped with message; Ruff clean; mypy strict clean (36 files) |
-| Commit | Step 1 `d2346b6` and step 2 `e7fc443`: merged into `main` through PR #8 (`0743e02`). Step 3 `7a62cd4`: merged through PR #9 (`b31a97e`). Step 4 `38411e1`: PR #10, open. Step 5: uncommitted |
+| Commit | Step 1 `d2346b6` and step 2 `e7fc443`: merged into `main` through PR #8 (`0743e02`). Step 3 `7a62cd4`: merged through PR #9 (`b31a97e`). Step 4 `38411e1`: PR #10 (`977c3b7`). Step 5 `42b35c3` and review fixes `1b58b77`: PR #11 (`423b6fd`) |
 
 **Plan 8.2 §14 acceptance criteria, after step 2** (met for the records built so far):
 - 2: personal memory persistence (step 1).
@@ -94,8 +96,8 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 - A1 fixed: migration `0006_episode_version` adds `pm_episode.version`, and `EpisodeRepository.update` takes `expected_version`.
 - A2 fixed: new tests for two racing connections, a failed commit and a failing migration (`integration/test_concurrency_and_failures.py`, plus a unit test).
 - A3 deferrals accepted by the owner (recorded in `KNOWN_CONSTRAINTS.md`).
-- After the fixes: **412 passed** (300 unit, 112 integration), 96% coverage, 6 runs green; mypy strict clean (63 files). The fixes are uncommitted.
-- **A4 open:** re-run the checks on `main` after the merges.
+- After the fixes: **412 passed** (300 unit, 112 integration), 96% coverage, 6 runs green; mypy strict clean (63 files). Committed as `1b58b77`.
+- **A4 done:** PRs #10 and #11 merged, and the checks re-run on `main` @ `423b6fd` with the same results. 8.2 is `VERIFIED`.
 
 **Step 5 decisions and findings (recorded):**
 - The owner approved the processing-event, evaluation, correction and deletion vocabularies and designs (5.4 Phase 8.2 amendment §14), and stacking step 5 on the unmerged step-4 branch.
