@@ -4,14 +4,14 @@ Actual implementation progress, recorded only from verified repository state.
 
 Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` · `TESTING` · `VERIFIED` · `BLOCKED`. `VERIFIED` requires executed test evidence against the subphase's acceptance criteria; generated code is never verified by itself.
 
-**Baseline:** `main` @ `0743e02` (PR #8 merged 8.2 steps 1–2). 8.2 step 3 is uncommitted on `feat/phase-8-2-entities-relationships`.
+**Baseline:** `main` @ `b31a97e` (PR #9 merged 8.2 step 3; PR #8 merged steps 1–2). 8.2 step 4 is uncommitted on `feat/phase-8-2-episodes-profiles`.
 
 ## Summary
 
 | Subphase | Status | Commit |
 |---|---|---|
 | 8.1 Foundation and project setup | `VERIFIED` | `5a0d6e5`, merged in `6efd72d` (PR #3) |
-| 8.2 Database and persistence | `IN_PROGRESS` (steps 1–3 tested; 4–5 to do) | Steps 1–2 `d2346b6`, `e7fc443` (merged, PR #8); step 3 uncommitted |
+| 8.2 Database and persistence | `IN_PROGRESS` (steps 1–4 tested; 5 to do) | Steps 1–2 `d2346b6`, `e7fc443` (merged, PR #8); step 3 `7a62cd4` (merged, PR #9); step 4 uncommitted |
 | 8.3 Ingestion pipeline | `NOT_STARTED` | — |
 | 8.4 Extraction and evaluation | `NOT_STARTED` | — |
 | 8.5 Entity and relationship management | `NOT_STARTED` | — |
@@ -53,7 +53,11 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 
 | Field | Value |
 |---|---|
-| Status | `IN_PROGRESS` — approved 2026-11-11. Steps 1–2 merged (PR #8). Step 3 (entities and relationships) implemented and tested, uncommitted. Steps 4–5 not started |
+| Status | `IN_PROGRESS` — approved 2026-11-11. Steps 1–2 merged (PR #8), step 3 merged (PR #9). Step 4 (episodes, profiles, categories, memory embedding metadata) implemented and tested, uncommitted. Step 5 not started |
+| Files created (step 4) | `migrations/versions/20261111_0004_episodes_profiles_categories.py`; `personal/domain/derived.py`; `infrastructure/persistence/personal/{derived_models,derived_repositories}.py`. Tests: `unit/test_derived_records.py`, `integration/test_derived_repositories.py` |
+| Files modified (step 4) | `domain/vocabulary.py` (8 vocabularies; `EmbeddingStatus` moved here); `documents/domain/vocabulary.py` (re-exports `EmbeddingStatus`); `personal/domain/__init__.py`; `personal/application/ports.py` (episode, profile, category, memory-embedding ports); `infrastructure/persistence/unit_of_work.py`; `migrations/env.py`; tests `unit/test_persistence_definitions.py`, `integration/test_migrations.py`. No new dependencies |
+| Migration (step 4) | `0004_episodes_profiles`: `pm_episode`, `pm_episode_membership`, `pm_episode_event`, `pm_profile`, `pm_profile_revision`, `pm_profile_memory`, `pm_profile_refresh` (`seq` ordering), `pm_memory_category`, `pm_memory_embedding` (metadata only, no vector column); partial unique indexes for current rows; a deferrable `pm_profile` → current-revision foreign key; `me_guard_columns` triggers on all nine |
+| Tests (step 4) | **340 passed, 0 failed** (252 unit, 88 integration), 96% coverage; database stopped → 88 skipped; Ruff clean; mypy strict clean (57 files) |
 | Files created (step 3) | `migrations/versions/20261111_0003_entities_and_relationships.py`; `personal/domain/entities.py`; `infrastructure/persistence/personal/{entity_models,entity_repositories}.py`. Tests: `unit/test_entity_records.py`, `integration/test_entity_repositories.py` |
 | Files modified (step 3) | `domain/vocabulary.py` (7 vocabularies); `personal/domain/__init__.py`; `personal/application/ports.py` (entity, mention, relationship ports); `infrastructure/persistence/{database,unit_of_work}.py` (shared `conditional_update`; new repositories); `persistence/documents/repositories.py` (uses the shared helper); `migrations/env.py`; tests `unit/test_persistence_definitions.py`, `integration/test_migrations.py`. No new dependencies |
 | Migration (step 3) | `0003_entities_and_relationships`: `pm_entity` (private only), `pm_entity_alias`, `pm_entity_mention`, `pm_entity_resolution` (append-only, `seq` ordering), `pm_entity_relationship`, `pm_memory_relationship` (partial unique indexes for current rows), `pm_memory_entity`; `me_guard_columns` triggers on all seven |
@@ -68,7 +72,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 | Migrations | `0001_personal_memory_core`: 5 `pm_` tables, composite `(id, owner_id)` foreign keys with `RESTRICT`, vocabulary/score/temporal check constraints, append-only triggers on `pm_atomic_memory_revision` and `pm_provenance`. Tested upgrade → downgrade → upgrade |
 | Tests executed | `uv sync --locked`; `uv run pytest --cov` (with `docker compose up -d --wait postgres-test`); `uv run pytest -m integration` with the database stopped; `uv run ruff check .`; `uv run ruff format --check .`; `uv run mypy` |
 | Tests passed / failed | **162 passed, 0 failed** (136 unit, 26 integration), 98% line+branch coverage; database stopped → 26 skipped with message; Ruff clean; mypy strict clean (36 files) |
-| Commit | Step 1 `d2346b6` and step 2 `e7fc443`: merged into `main` through PR #8 (`0743e02`). Step 3: uncommitted |
+| Commit | Step 1 `d2346b6` and step 2 `e7fc443`: merged into `main` through PR #8 (`0743e02`). Step 3 `7a62cd4`: merged through PR #9 (`b31a97e`). Step 4: uncommitted |
 
 **Plan 8.2 §14 acceptance criteria, after step 2** (met for the records built so far):
 - 2: personal memory persistence (step 1).
@@ -83,6 +87,12 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 - 11: deletion dependencies, including citing memories, are discoverable.
 
 Not yet: 1 and 12 for the full model (entities, relationships, episodes, profiles and the rest, step 3+). Object-storage failure tests (plan 8.2 §13) wait for object storage in 8.3.
+
+**Step 4 decisions and findings (recorded):**
+- The owner approved the episode, profile, refresh, category and embedding-purpose vocabularies, episode membership without a role, and no consolidation-result table until 8.9 defines one (5.4 Phase 8.2 amendment §13).
+- A profile and its current revision reference each other; the foreign key from `pm_profile` to the current revision is deferrable, and profile writes defer it, then check it immediately before returning.
+- Bug caught by the step 4 tests: `SET CONSTRAINTS ALL IMMEDIATE` lasts for the rest of the transaction, so a second profile created in the same unit of work failed. Fixed by deferring at the start of every profile write, with a test.
+- Criterion 1 now covers everything except the step 5 records (deletion operations, correction requests, candidate evaluation history, source processing events).
 
 **Step 3 decisions and findings (recorded):**
 - Decision 11 ⚑ approved: entities are private only (7.1 §23.7). Entity, mention and resolution vocabularies approved (5.4 Phase 8.2 amendment §12).
@@ -101,8 +111,9 @@ Not yet: 1 and 12 for the full model (entities, relationships, episodes, profile
 - Revisions, not a separate version column, carry optimistic concurrency for Atomic Memory (`revision_number` checked in a conditional `UPDATE`).
 
 **Known limitations:**
-- Episodes, profiles, categories, consolidation results, memory embedding metadata (step 4) and deletion, correction, evaluation and processing-history records (step 5) are not yet persisted.
+- Deletion, correction, evaluation and processing-history records (step 5) are not yet persisted. Consolidation results have no table until 8.9 defines a result type.
 - Entity persistence stores and protects decisions; it does not make them. Entity resolution itself (6.3.4) is Phase 8.5.
+- Likewise, episode, profile and category persistence records outcomes only: episode detection, profile generation and refresh logic (consolidation) are 8.9, and memory embedding vectors are 8.7.
 - Integration tests need Docker Desktop running; without it they skip, so a green run without the database does not cover persistence.
 - The commit-failure path of the unit of work is not exercised by a test.
 - Full-text search uses the language-neutral `simple` configuration until the language requirement (G6) is decided.

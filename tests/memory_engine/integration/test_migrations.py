@@ -11,10 +11,12 @@ from sqlalchemy import Connection, Engine, inspect, text
 
 from memory_engine.infrastructure.persistence.base import Base
 from memory_engine.infrastructure.persistence.documents import models as _document_models
+from memory_engine.infrastructure.persistence.personal import derived_models as _derived_models
 from memory_engine.infrastructure.persistence.personal import entity_models as _entity_models
 from memory_engine.infrastructure.persistence.personal import models
 
-del _document_models, _entity_models  # imported to register their tables on Base.metadata
+# Imported to register their tables on Base.metadata.
+del _derived_models, _document_models, _entity_models
 
 pytestmark = pytest.mark.integration
 
@@ -33,6 +35,15 @@ PM_TABLES = {
     "pm_entity_relationship",
     "pm_memory_relationship",
     "pm_memory_entity",
+    "pm_episode",
+    "pm_episode_membership",
+    "pm_episode_event",
+    "pm_profile",
+    "pm_profile_revision",
+    "pm_profile_memory",
+    "pm_profile_refresh",
+    "pm_memory_category",
+    "pm_memory_embedding",
     "doc_document",
     "doc_document_version",
     "doc_extracted_representation",
@@ -116,9 +127,11 @@ def test_downgrade_to_step_one_keeps_personal_memory_intact(
             )
         remaining = _tables(engine, CHECK_SCHEMA)
         assert not any(
-            name.startswith(("doc_", "pm_entity", "pm_memory_rel")) for name in remaining
+            name.startswith(("doc_", "pm_entity", "pm_memory_rel", "pm_episode", "pm_profile"))
+            for name in remaining
         )
-        assert "pm_memory_entity" not in remaining
+        for later in ("pm_memory_entity", "pm_memory_category", "pm_memory_embedding"):
+            assert later not in remaining
         assert "pm_document_evidence_ref" not in remaining
         assert "pm_provenance" in remaining
         provenance_columns = {
@@ -165,4 +178,13 @@ def test_append_only_trigger_function_installed(engine: Engine) -> None:
         "pm_entity_relationship_guard",
         "pm_memory_relationship_guard",
         "pm_memory_entity_guard",
+        "pm_episode_guard",
+        "pm_episode_membership_guard",
+        "pm_episode_event_guard",
+        "pm_profile_guard",
+        "pm_profile_revision_guard",
+        "pm_profile_memory_guard",
+        "pm_profile_refresh_guard",
+        "pm_memory_category_guard",
+        "pm_memory_embedding_guard",
     }

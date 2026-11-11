@@ -1531,3 +1531,39 @@ The resolution outcomes of Phase 6.3 remain unchanged: `create_new`, `merge`, `u
 - **Aliases** are unique per entity after normalization (trimmed, case-folded, whitespace collapsed). The same alias may belong to several entities: alias lookup returns candidates only and never establishes identity (5.4.14).
 - **Relationships** (section 3 for entities, section 4 for memories) are stored once in canonical order when symmetric. At most one *current* row exists per endpoint pair and type (a partial unique index on `superseded_at IS NULL`), and closing sets `valid_to`/`superseded_at` only. Persisting `supersedes` does not itself change the target memory; resolution (8.6) applies the effect in the same unit of work.
 - **Memory–Entity associations** (section 5) are append-only and unique per memory, entity and role.
+
+## 13. Episodes, profiles, categories and memory embeddings (Phase 8.2 step 4)
+
+**Approved 2026-11-11.** Decisions 5.4.16–5.4.23 and 5.4.29–5.4.32 define these records, but their states were either undefined or given only as examples (6.5.6 "Profile categories — Examples").
+
+| Vocabulary | Values | Source |
+|---|---|---|
+| Episode status | `active`, `needs_refresh`, `needs_review`, `deletion_pending`, `deleted` | 5.4.16 rule 8 ("may trigger review or refresh") |
+| Temporal precision | `exact`, `day`, `month`, `year`, `approximate`, `unknown` | 5.4.30 ("precision and uncertainty are preserved") |
+| Profile type | `user`, `preference`, `project`, `skill_knowledge`, `relationship_context`, `work_context` | 6.5.6 examples |
+| Profile status | `current`, `stale`, `refreshing`, `refresh_failed`, `needs_review`, `deletion_pending`, `deleted` | 5.4.32 |
+| Refresh trigger | `event`, `scheduled`, `on_demand` | 6.5.1 trigger categories |
+| Refresh outcome | `refreshed`, `no_change`, `partially_refreshed`, `failed`, `needs_review` | 5.4.32; 6.5.6 |
+| Memory category | `personal_preference`, `goal`, `decision`, `important_event`, `relationship`, `knowledge`, `project`, `commitment` | 5.4.9 taxonomy |
+| Embedding purpose | `primary`, `aspect` | 5.4.21 |
+| Embedding status | the 5.4.20 values (as in Document Intelligence §14) | 5.4.20 |
+
+The embedding status vocabulary is now defined once, in the shared kernel, and used by both memory and document embeddings; the two kinds stay in separate tables.
+
+**Persistence rules:**
+- **Unknown dates:** a time whose precision is `unknown` has no value, and a known precision requires one. This applies to episode start and end and to timeline events (5.4.30).
+- **Episodes:**
+  - membership has no role column, because 5.4.29 says membership "may" carry a role and no roles are defined;
+  - removing a member closes the row (`removed_at`), and at most one current membership exists per episode and memory;
+  - timeline corrections close the old event and add a new one, so the earlier understanding stays (5.4.30).
+- **Profiles:**
+  - content lives in append-only revisions, and the profile points at its current revision (5.4.32);
+  - each revision lists its supporting memories together with the memory *revision* used (5.4.31). The foreign key guarantees that version exists, which makes a profile reproducible (6.5.6).
+- **Refresh history** is append-only and ordered by `(recorded_at, seq)`:
+  - `refreshed` and `partially_refreshed` create the next revision, and the other outcomes create none;
+  - `failed` carries a safe error code;
+  - a partial or failed refresh never leaves a profile `current`, and only `refreshed` and `no_change` update `refreshed_at` (6.5.6).
+- **One live profile per kind:** at most one profile that isn't `deleted` per owner and type, or per owner, type and subject entity.
+- **Category assignments** record origin (explicit or inferred) and confidence. A change closes the old row (5.4.22), and at most one assignment per memory and category is current.
+- **Memory embeddings** are metadata only (vectors come in 8.7). Each belongs to one memory revision (5.4.19 rule 2), with at most one `primary` per memory revision, model, model revision and preprocessing version. An `aspect` embedding carries a label.
+- **No consolidation-result table.** 5.4.23 says established consolidation outputs reuse Episodes and Derived Profiles, and that independent records are created only for result types that don't fit. None is defined yet, so a record type is added when Phase 8.9 defines one (no placeholder tables).

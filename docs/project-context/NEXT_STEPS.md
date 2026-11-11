@@ -3,8 +3,8 @@
 ## Current position
 
 - **Phase:** 8 — Memory Engine Implementation
-- **Subphase:** 8.2 — Database and Persistence: **approved 2026-11-11**, `IN_PROGRESS`. Steps 1–2 merged into `main` (PR #8, `0743e02`). Step 3 (entities and relationships) implemented and tested, uncommitted on `feat/phase-8-2-entities-relationships` (branched from `main`). 8.1 `VERIFIED` and merged.
-- **Next approved action:** continue 8.2 with step 4 after the owner reviews step 3. Do not start 8.3.
+- **Subphase:** 8.2 — Database and Persistence: **approved 2026-11-11**, `IN_PROGRESS`. Steps 1–2 merged (PR #8), step 3 merged (PR #9, `b31a97e`). Step 4 (episodes, profiles, categories, memory embedding metadata) implemented and tested, uncommitted on `feat/phase-8-2-episodes-profiles` (branched from `main`). 8.1 `VERIFIED` and merged.
+- **Next approved action:** continue 8.2 with step 5 after the owner reviews step 4. Do not start 8.3.
 - **Decision review:** [PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) analyses all 15 open decisions, with a deep review of the Phase 8.2 blockers.
 
 ## Prerequisites before Phase 8.2
@@ -22,9 +22,9 @@
 |---|---|---|
 | 1 | Dependencies, Docker Compose test database, shared kernel (`OwnerScope`, ids, vocabularies), engine and unit of work, migration `0001` (`pm_memory_source`, `pm_memory_candidate`, `pm_atomic_memory`, `pm_atomic_memory_revision`, `pm_provenance`), repositories, tests | Merged (PR #8) |
 | 2 | Document Intelligence: `doc_document`, `doc_document_version`, `doc_extracted_representation`, `doc_chunk` (+ `simple` full-text index), `doc_chunk_location`, `doc_embedding` (metadata), `doc_processing_operation`; `pm_document_evidence_ref` and provenance citing it; migration `0002`; column-guard triggers; repositories and a document unit of work | Merged (PR #8) |
-| 3 | Entities and relationships: `pm_entity` (private only), `pm_entity_alias`, `pm_entity_mention`, `pm_entity_resolution` (append-only history), `pm_entity_relationship`, `pm_memory_relationship`, `pm_memory_entity`; migration `0003`; entity, mention and relationship repositories | Implemented and tested; uncommitted |
-| 4 | Episodes and episode membership/timeline, derived profiles and profile–memory associations, profile refresh history, category assignments, consolidation results, memory embedding metadata (5.4.16–5.4.23, 5.4.29–5.4.32) | Next |
-| 5 | Deletion operations, correction requests, candidate evaluation history, source processing events (5.4.24–5.4.26, 5.4.28) | Not started |
+| 3 | Entities and relationships: `pm_entity` (private only), `pm_entity_alias`, `pm_entity_mention`, `pm_entity_resolution` (append-only history), `pm_entity_relationship`, `pm_memory_relationship`, `pm_memory_entity`; migration `0003`; entity, mention and relationship repositories | Merged (PR #9) |
+| 4 | Episodes (`pm_episode`, `pm_episode_membership`, `pm_episode_event`), profiles (`pm_profile`, `pm_profile_revision`, `pm_profile_memory`, `pm_profile_refresh`), `pm_memory_category`, `pm_memory_embedding` (metadata); migration `0004`. No consolidation-result table (5.4.23; approved) | Implemented and tested; uncommitted |
+| 5 | Deletion operations, correction requests, candidate evaluation history, source processing events (5.4.24–5.4.26, 5.4.28) | Next |
 
 ## Approved 8.1 decisions (implemented)
 
@@ -71,19 +71,17 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 *Overwrite this section at the end of every session that changes the repository.*
 
 - **Date:** 2026-11-11
-- **Objective:** Phase 8.2 step 3: entities and relationships. Branched from `main` @ `0743e02` after PR #8 merged steps 1–2.
-- **Scope decision:** the remaining 8.2 models are split into step 3 (entities and relationships), step 4 (episodes, profiles, categories, consolidation, memory embedding metadata) and step 5 (deletion, correction, evaluation and processing-history records).
+- **Objective:** Phase 8.2 step 4: episodes, profiles, categories and memory embedding metadata. Branched from `main` @ `b31a97e` after PR #9 merged step 3.
 - **Work completed:**
-  - Vocabularies (`domain/vocabulary.py`): `EntityScope`, `EntityType`, `EntityStatus`, `MentionResolutionStatus`, `EntityResolutionOutcome`, `EntityRelationshipType`, `MemoryEntityRole`.
-  - `personal/domain/entities.py`: `Entity`, `EntityAlias`, `EntityMention`, `EntityResolutionRecord`, `EntityRelationship`, `MemoryRelationship`, `MemoryEntityAssociation`, `ordered_pair`.
-  - Ports and `infrastructure/persistence/personal/entity_{models,repositories}.py`: entities and aliases (candidate lookup), mention resolution with append-only history, merges, relationships (add, close, list current/history), memory–entity associations.
-  - `conditional_update` moved to `database.py` and shared by both domains.
-  - Migration `0003_entities_and_relationships`: 7 `pm_` tables, `me_guard_columns` triggers, and partial unique indexes for current relationships.
-- **Bugs found by the tests and fixed:** (1) `previous_entity_id IS DISTINCT FROM entity_id` is false when both are NULL, which rejected valid unresolved and review records; it is now guarded with `previous_entity_id IS NULL OR …`. (2) Resolution history order was unstable inside one transaction (`now()` is fixed per transaction); an identity column `seq` now orders it.
-- **Decisions made:** the owner approved Decision 11 ⚑ (private entities only; a `scope` column with `shared` rejected by a check; 7.1 §23.7) and the entity, mention and resolution vocabularies (5.4 Phase 8.2 amendment §12).
-- **Files changed:** see [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) §8.2. Uncommitted on `feat/phase-8-2-entities-relationships`.
-- **Implementation status:** 8.2 `IN_PROGRESS`; steps 1–2 merged, step 3 tested.
-- **Tests and results:** `uv sync --locked` ok; `uv run pytest --cov` → **288 passed** (217 unit, 71 integration against PostgreSQL 17 + pgvector), 97% coverage; `ruff check`, `ruff format --check` clean; `mypy` strict clean (52 files).
+  - Vocabularies in the shared kernel: `EpisodeStatus`, `TemporalPrecision`, `ProfileType`, `ProfileStatus`, `RefreshTrigger`, `RefreshOutcome` (with `resulting_status()`), `MemoryCategory`, `EmbeddingPurpose`. `EmbeddingStatus` moved there from Document Intelligence, which re-exports it.
+  - `personal/domain/derived.py`: `Episode`, `EpisodeMembership`, `EpisodeEvent`, `Profile`, `ProfileRevision`, `ProfileSupport`, `ProfileRefresh`, `CategoryAssignment`, `MemoryEmbedding`.
+  - Ports and `infrastructure/persistence/personal/derived_{models,repositories}.py`: episodes (members, timeline with corrections), profiles (create, revisions, `apply_refresh`, history, `profiles_supported_by`), categories (assign, close, current/history, `memories_in`), memory embedding metadata.
+  - Migration `0004_episodes_profiles`: 9 `pm_` tables, `me_guard_columns` triggers, partial unique indexes, and a deferrable profile ↔ current-revision foreign key.
+- **Bug found by the tests and fixed:** `SET CONSTRAINTS ALL IMMEDIATE` lasts for the whole transaction, so a second profile created in the same unit of work failed. Each profile write now defers first and checks immediately at the end.
+- **Decisions made:** the owner approved the step-4 vocabularies, no membership role, and no consolidation-result table until 8.9 defines a type (5.4 Phase 8.2 amendment §13).
+- **Files changed:** see [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) §8.2. Uncommitted on `feat/phase-8-2-episodes-profiles`.
+- **Implementation status:** 8.2 `IN_PROGRESS`; steps 1–3 merged, step 4 tested, step 5 remains.
+- **Tests and results:** `uv sync --locked` ok; `uv run pytest --cov` → **340 passed** (252 unit, 88 integration against PostgreSQL 17 + pgvector), 96% coverage; database stopped → 88 skipped with a message; `ruff check`, `ruff format --check` clean; `mypy` strict clean (57 files).
 - **Unresolved:** language requirement G6; object storage (8.3); embedding model (before 8.7); Decisions 6–8 and 12–15; ratio-label wording (issue 9); uv not on PATH on this machine.
-- **Next action:** owner review, commit and pull request for step 3; then 8.2 step 4.
-- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.2, 7.1 §23, 5.4 Decisions 5.4.16–5.4.23 and 5.4.29–5.4.32 plus the Phase 8.2 amendment, and `memory-engine/README.md`.
+- **Next action:** owner review, commit and pull request for step 4; then 8.2 step 5 (deletion, correction, evaluation and processing-history records), then the 8.2 acceptance review.
+- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.2 §12–14, 7.1 §23, 5.4 Decisions 5.4.24–5.4.26 and 5.4.28, 5.10 (deletion and lifecycle), 6.5.8–6.5.9, and `memory-engine/README.md`.
