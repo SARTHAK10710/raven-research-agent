@@ -45,7 +45,7 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
   - **No malware scanning**: no tool is approved, and the owner accepted the deferral on 2026-11-11. Content is never executed, DOCX macro parts are refused, and the parser (8.12) must treat files as hostile.
   - TXT must be UTF-8.
   - Upload limit: 25 MiB by default (configurable).
-- Reliable handoff (8.3 step 4, uncommitted):
+- Reliable handoff (8.3 step 4, merged in PR #19):
   - registrations write a `me_outbox` row in the same transaction; a relay (`OutboxRelay`) publishes it to RabbitMQ through Celery and only then moves the record to `queued`;
   - **no consumer exists yet**: messages wait on `memory.personal.extraction` and `memory.document.processing` until 8.4 and 8.12 register their tasks, and nothing deploys or schedules the relay process yet (7.8);
   - forget instructions get no handoff and stay `validated` until 8.10;
