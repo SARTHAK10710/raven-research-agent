@@ -3,13 +3,13 @@
 ## Current position
 
 - **Phase:** 8 — Memory Engine Implementation
-- **Subphase:** 8.1 — Foundation and Project Setup (`VERIFIED`, uncommitted on `feat/phase-8-1-foundation`)
+- **Subphase:** 8.1 — Foundation and Project Setup (`VERIFIED`, merged into `main` via PR #3)
 - **Next approved action:** none. Phase 8.2 is **not yet approved**. Wait for the user.
 
 ## Prerequisites before Phase 8.2
 
-1. User reviews and commits Phase 8.1 (then push and merge into `main`).
-2. The decisions below that are marked "8.2" are settled.
+1. ~~User reviews and commits Phase 8.1~~ — done: committed `5a0d6e5`, merged in PR #3.
+2. The decisions below that are marked "8.2" are settled (1, 2, 4, 5; 3 only if vector columns land in 8.2; 9 for the outbox table).
 3. User explicitly approves starting 8.2.
 
 ## Approved 8.1 decisions (implemented)
@@ -57,12 +57,12 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 *Overwrite this section at the end of every session that changes the repository.*
 
 - **Date:** 2026-11-11
-- **Objective:** Implement Phase 8.1 Foundation and Project Setup.
-- **Work completed:** uv workspace (root `pyproject.toml`, `uv.lock`, `.python-version`, `.gitignore`); `memory-engine` member package with config (Pydantic Settings), error hierarchy, domain errors, structured JSON logging with correlation context and redaction; 71 foundation tests in `tests/memory_engine/unit/`; `memory-engine/README.md`; context files updated.
-- **Files changed:** 24 new files (listed in [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md)) plus updates to `PROJECT_STATUS.md`, `IMPLEMENTATION_STATE.md`, `NEXT_STEPS.md`, `TECHNOLOGY_DECISIONS.md`, `KNOWN_CONSTRAINTS.md`, `.claude/rules/coding-standards.md` and `CLAUDE.md`. Uncommitted on `feat/phase-8-1-foundation`.
-- **Implementation status:** 8.1 `VERIFIED`; 8.2–8.12 `NOT_STARTED`.
-- **Tests and results:** `uv run pytest --cov` → 71 passed, 98% coverage; `uv run ruff check .` and `uv run ruff format --check .` → clean; `uv run mypy` (strict) → no issues in 16 files (run from a short-path environment, see limitations); `uv sync --locked` → succeeded.
-- **Decisions made:** Ruff rule set E, W, F, I, B, UP, SIM, S, N, RUF (S101 allowed in tests); mypy strict with the Pydantic plugin over `memory-engine/src` and `tests`; hatchling build backend; JSON-only log format; `RAVEN_MEMORY__` environment prefix.
+- **Objective:** Repository audit after the Phase 8.1 merge; bring status documentation in line with `main`.
+- **Work completed:** full read of the project-context files, rules, Phase 8.1 code and tests; re-ran every quality check on a fresh clone of `main` @ `6efd72d`; corrected status text that still described 8.1 as uncommitted or said no code exists. No code, dependency or architecture changes.
+- **Files changed:** `CLAUDE.md`, `README.md`, `docs/project-context/{PROJECT_STATUS,IMPLEMENTATION_STATE,NEXT_STEPS,TECHNOLOGY_DECISIONS,KNOWN_CONSTRAINTS}.md`. Uncommitted on `docs/sync-status-after-pr3`.
+- **Implementation status:** 8.1 `VERIFIED` and merged (`5a0d6e5`, PR #3); 8.2–8.12 `NOT_STARTED`. Research Engine, Orchestrator and Shared Infrastructure have no code.
+- **Tests and results:** `uv sync --locked` → ok; `uv run pytest --cov` → 71 passed, 98% coverage; `uv run ruff check .` / `ruff format --check .` → clean; `uv run mypy` → no issues in 16 files.
+- **Decisions made:** none. New open documentation issue 8 (ratio label wording) recorded in `KNOWN_CONSTRAINTS.md`.
 - **Unresolved:** the Open decisions table above; uv is not on PATH on this machine.
-- **Next action:** user review and commit of 8.1; then settle decisions 1–5 and approve 8.2.
+- **Next action:** settle decisions 1, 2, 4, 5 (and 9 for the outbox table), then approve 8.2.
 - **Read next session:** `CLAUDE.md`, this directory's `PROJECT_STATUS.md`, `ARCHITECTURE_SUMMARY.md`, `KNOWN_CONSTRAINTS.md`, `NEXT_STEPS.md`, then plan 8.2 and the documents listed above.

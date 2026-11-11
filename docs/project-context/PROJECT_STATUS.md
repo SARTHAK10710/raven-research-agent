@@ -1,6 +1,6 @@
 # Project Status
 
-**Last verified update:** 2026-11-11, against branch `feat/phase-8-1-foundation` (based on `main` @ `2c35fb3`) with the Phase 8.1 foundation in the working tree, **not yet committed**.
+**Last verified update:** 2026-11-11, against `main` @ `6efd72d` (PR #3 merge). Phase 8.1 is committed (`5a0d6e5`) and merged. Checks re-run on a fresh clone: pytest 71 passed (98% coverage), Ruff lint and format clean, mypy strict clean, `uv sync --locked` succeeded.
 
 ## Current position
 
@@ -8,8 +8,8 @@
 |---|---|
 | Current phase | Phase 8 — Memory Engine Implementation |
 | Current subphase | 8.1 — Foundation and Project Setup |
-| Subphase status | `VERIFIED` — all plan 8.1 acceptance criteria met with executed checks (pytest 71 passed, Ruff lint and format clean, mypy strict clean, `uv sync --locked` reproducible). Uncommitted; awaiting user review |
-| Current active task | User review and commit of Phase 8.1; then settle the decisions that block Phase 8.2 (see [NEXT_STEPS.md](NEXT_STEPS.md)) |
+| Subphase status | `VERIFIED` — all plan 8.1 acceptance criteria met with executed checks (pytest 71 passed, Ruff lint and format clean, mypy strict clean, `uv sync --locked` reproducible). Committed `5a0d6e5`, merged into `main` via PR #3 (`6efd72d`) |
+| Current active task | Settle the open decisions that block Phase 8.2, then explicit approval to start 8.2 (see [NEXT_STEPS.md](NEXT_STEPS.md)) |
 | Application code | Phase 8.1 foundation only: `memory-engine/src/memory_engine/` (config, exceptions, domain errors, structured logging) and `tests/memory_engine/`. **No memory functionality** (no ingestion, extraction, storage, retrieval or document processing) |
 
 ## Documentation completion
@@ -31,7 +31,7 @@ Documentation recovery: four specifications that had been overwritten by amendme
 
 | Phase | Status |
 |---|---|
-| 8 — Memory Engine | 8.1 `VERIFIED` (foundation; uncommitted); 8.2–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
+| 8 — Memory Engine | 8.1 `VERIFIED` (foundation; merged, PR #3); 8.2–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
 | Research Engine | Not started (later phase) |
 | Agent Orchestrator | Not started (later phase) |
 | Shared Infrastructure | Not started |
@@ -41,6 +41,5 @@ Installed: only the Phase 8.1 dependencies, locked in the root `uv.lock` (see [T
 
 ## Pending work
 
-1. User review and commit of Phase 8.1 on `feat/phase-8-1-foundation`.
-2. Decisions that block Phase 8.2 (see [NEXT_STEPS.md](NEXT_STEPS.md)).
-3. Explicit user approval to start Phase 8.2.
+1. Decisions that block Phase 8.2 (open decisions 1, 2, 4, 5 and 9 in [NEXT_STEPS.md](NEXT_STEPS.md)).
+2. Explicit user approval to start Phase 8.2.

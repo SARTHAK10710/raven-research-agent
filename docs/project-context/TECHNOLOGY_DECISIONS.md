@@ -2,7 +2,7 @@
 
 A summary of Phase 7 ([docs/technical-decisions](../technical-decisions/Readme.md)). The source documents are authoritative.
 
-**Installed in the repository:** only the Phase 8.1 dependencies, declared in `pyproject.toml` files and locked in the root `uv.lock` (Phase 8.1, uncommitted on `feat/phase-8-1-foundation`). "Approved" below means selected in the specifications, not installed. Each dependency is added only in the subphase that needs it.
+**Installed in the repository:** only the Phase 8.1 dependencies, declared in `pyproject.toml` files and locked in the root `uv.lock` (Phase 8.1, merged into `main` in PR #3, commit `5a0d6e5`). "Approved" below means selected in the specifications, not installed. Each dependency is added only in the subphase that needs it.
 
 ## Approved Phase 8.1 project setup decisions
 
