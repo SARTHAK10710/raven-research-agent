@@ -63,5 +63,5 @@ These are documentation changes, tracked here so they are not mistaken for imple
 | Project-context system (`CLAUDE.md`, `.claude/rules/`, `docs/project-context/`) | Merged into `main` (PR #1) | `83e174e`, merged in `f6abef0` |
 | Record approved 8.1 setup decisions in 7.1 §22, 7.7, technical-decisions Readme, Phase 8 Readme and plan 8.1 | Merged into `main` (PR #1) | `83e174e`, merged in `f6abef0` |
 | Record PR #1 merge in status files | Merged into `main` (PR #2) | `de7ed06`, merged in `2c35fb3` |
-| Phase 8.1 checkpoint correction, [Phase 8.2 architecture decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md), and the approved Decisions 1, 2, 4, 5, 10 recorded in 7.1 §23, the 5.4 Phase 8.2 amendment and plans 8.1/8.2 | Open PR #4 | `docs/phase-8-2-decisions` (`22cc9f1`, plus a merge of `main` and the Decision 9 update) |
+| Phase 8.1 checkpoint correction, [Phase 8.2 architecture decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md), and the approved Decisions 1, 2, 4, 5, 10 recorded in 7.1 §23, the 5.4 Phase 8.2 amendment and plans 8.1/8.2 | Merged into `main` (PR #4) | `22cc9f1` and `38a338e`, merged in `ab50c48` |
 | Sync status files with the PR #3 merge; record audit findings (long-path clone, log redaction, ratio-label wording) | Merged into `main` (PR #5) | `c9544af` |

@@ -13,7 +13,7 @@
 2. ~~User decides whether vector columns move to 8.7~~ — **APPROVED** 2026-11-11: 8.2 stores embedding metadata only; vector storage in 8.7 ([7.1 §23.5](../technical-decisions/01-baseline-technology-stack.md)).
 3. ~~User decides outbox timing (Decision 9)~~ — **APPROVED** 2026-11-11: outbox in 8.3 ([7.1 §23.6](../technical-decisions/01-baseline-technology-stack.md)).
 4. ~~Docker availability confirmed for PostgreSQL integration tests~~ — done 2026-11-11 (see `KNOWN_CONSTRAINTS.md`).
-5. The checkpoint correction, the decision review and the recorded approvals are merged (PR #4).
+5. ~~The checkpoint correction, the decision review and the recorded approvals are merged~~ — done: PR #4, merge `ab50c48`.
 6. User explicitly approves starting 8.2.
 
 ## Approved 8.1 decisions (implemented)
@@ -81,5 +81,6 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 - **Follow-up session (2026-11-11):** committed as PR #4 (`22cc9f1`). A later audit session merged PR #5 (status sync, long-path and redaction notes, ratio-label issue) into `main`; `main` was then merged into this branch, keeping this branch's text in conflicts and re-adding PR #5's notes. The owner then **approved Decision 9**: no outbox in 8.2; outbox table, publisher and Celery together in 8.3 (7.1 §23.6, plan 8.2 §2.1, Phase 8 Readme §7.2, coding standards; review §4 Decision 9 annotated). Open documentation issues 5 and 6 marked resolved by Decisions 5 and 1.
 - **Unresolved:** embedding model selection (before 8.7); language requirement (G6); uv not on PATH on this machine; Decisions 6–8 and 11–15 per the review; ratio-label wording (`KNOWN_CONSTRAINTS.md` issue 9).
 - **Docker:** Verified 2026-11-11: Docker Engine 29.9.3 (linux/amd64), Compose v5.5.1; a throwaway `pgvector/pgvector:pg17` container started, accepted connections (PostgreSQL 17.11), loaded `vector` 0.8.7 and ran a distance query, then was removed. Docker Desktop must be running.
-- **Next action:** merge PR #4; then approval to start 8.2.
+- **Merged:** PR #4 into `main` as `ab50c48`.
+- **Next action:** explicit owner approval to start Phase 8.2. All other prerequisites are met.
 - **Read next session:** `CLAUDE.md`, this directory's `PROJECT_STATUS.md`, `ARCHITECTURE_SUMMARY.md`, `KNOWN_CONSTRAINTS.md`, `NEXT_STEPS.md`, the decision review, then plan 8.2 and the documents listed above.
