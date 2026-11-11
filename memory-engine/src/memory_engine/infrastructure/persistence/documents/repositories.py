@@ -702,6 +702,18 @@ class SqlAlchemyProcessingOperationRepository:
             )
         return None if row is None else _operation(row)
 
+    def find_by_idempotency_key(self, scope: OwnerScope, key: str) -> ProcessingOperation | None:
+        with translate_database_errors("find processing operation by idempotency key"):
+            row = self._session.scalar(
+                select(ProcessingOperationRow)
+                .where(
+                    ProcessingOperationRow.owner_id == scope.owner_id,
+                    ProcessingOperationRow.idempotency_key == key,
+                )
+                .execution_options(populate_existing=True)
+            )
+        return None if row is None else _operation(row)
+
     def transition(
         self,
         scope: OwnerScope,

@@ -12,7 +12,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 |---|---|---|
 | 8.1 Foundation and project setup | `VERIFIED` | `5a0d6e5`, merged in `6efd72d` (PR #3) |
 | 8.2 Database and persistence | `VERIFIED` (2026-11-11) | Steps 1–2 `d2346b6`, `e7fc443` (PR #8); step 3 `7a62cd4` (PR #9); step 4 `38411e1` (PR #10, `977c3b7`); step 5 `42b35c3` and review fixes `1b58b77` (PR #11, `423b6fd`) |
-| 8.3 Ingestion pipeline | `IN_PROGRESS` (steps 1–2 tested; 3–5 to do) | Step 1 `206bc2f` (PR #16, `3d01cbe`); step 2 uncommitted |
+| 8.3 Ingestion pipeline | `IN_PROGRESS` (steps 1–3 tested; 4–5 to do) | Step 1 `206bc2f` (PR #16); step 2 `894da0f` (PR #17, `1e93dbd`); step 3 uncommitted |
 | 8.4 Extraction and evaluation | `NOT_STARTED` | — |
 | 8.5 Entity and relationship management | `NOT_STARTED` | — |
 | 8.6 Memory resolution | `NOT_STARTED` | — |
@@ -143,7 +143,12 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 
 | Field | Value |
 |---|---|
-| Status | `IN_PROGRESS`: approved 2026-11-11. Step 1 (object storage) merged (PR #16). **Step 2 (personal memory ingestion) implemented and tested, uncommitted** on `feat/phase-8-3-personal-ingestion`. Steps 3–5 not started ([NEXT_STEPS.md](NEXT_STEPS.md)) |
+| Status | `IN_PROGRESS`: approved 2026-11-11. Step 1 (object storage) merged (PR #16); step 2 (personal memory ingestion) merged (PR #17). **Step 3 (document ingestion) implemented and tested, uncommitted** on `feat/phase-8-3-document-ingestion`. Steps 4–5 not started ([NEXT_STEPS.md](NEXT_STEPS.md)) |
+| Step 3 decisions (owner, 2026-11-11) | Standard-library format detection; 25 MiB upload limit (configurable); no malware scan (deferral recorded); re-upload: no document ID → new document, document ID → next version (identical content refused) |
+| Files created (step 3) | `documents/application/{formats,ingestion}.py`. Tests: `unit/test_document_formats.py`, `integration/test_document_ingestion.py` |
+| Files modified (step 3) | `documents/application/ports.py` and `persistence/documents/repositories.py` (`find_by_idempotency_key` for operations); `config/settings.py` (`max_upload_bytes`). No migration; no new dependencies |
+| Tests (step 3) | **540 passed, 0 failed** (394 unit, 146 integration), 97% coverage, 3 green runs; services stopped → 145 skipped; Ruff clean; mypy strict clean (76 files) |
+| Commit (step 2) | `894da0f`, merged through PR #17 (`1e93dbd`) |
 | Step 2 decisions (owner, 2026-11-11) | Extend `pm_memory_source` (no ingestion-operation table); forget instructions recorded and never extracted until 8.10; limits 256 KiB text, 1,000 messages / 4 MiB per conversation (configurable); request contract as application dataclasses (Pydantic contract later, with `memory_engine.interfaces`) |
 | Files created (step 2) | `personal/application/ingestion.py` (request types, `prepare`, `normalize_text`, `PersonalIngestionService`); `migrations/versions/20261111_0007_memory_source_ingestion.py`. Tests: `unit/test_ingestion_preparation.py`, `integration/test_personal_ingestion.py` |
 | Files modified (step 2) | `domain/vocabulary.py` (`InstructionType`, `IngestionPriority`); `personal/domain/records.py` (`MemorySource` ingestion fields); `personal/application/ports.py` (`find_by_idempotency_key`); `persistence/personal/{models,repositories}.py`; `exceptions/{__init__,base}.py` (`IngestionRejectedError`, `IdempotencyKeyReusedError`); `config/{__init__,settings}.py` (`IngestionSettings`); `unit/test_persistence_definitions.py`. No new dependencies |
@@ -157,7 +162,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 | Dependencies (step 1) | `boto3` 1.44.0 and its transitive packages (see [TECHNOLOGY_DECISIONS.md](TECHNOLOGY_DECISIONS.md#dependency-timing)) |
 | Commit (step 1) | `206bc2f`, merged through PR #16 (`3d01cbe`) |
 | Tests (step 1) | **453 passed, 0 failed** (333 unit, 120 integration against PostgreSQL 17 + pgvector and SeaweedFS 4.51), 97% coverage, 3 green runs; services stopped → 119 skipped (the unreachable-store test needs no service and passes); Ruff clean; mypy strict clean (69 files) |
-| Open for later steps | Queue names and topology (deferred, 7.4 §22); file-size limit for documents (deferred, 7.6 §18); malware scanning (no approved tool); re-upload policy |
+| Open for later steps | Queue names and routing keys (deferred, 7.4 §22); the handoff message contract; RabbitMQ image; publishing approach (step 4) |
 
 ## 8.4–8.12
 

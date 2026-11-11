@@ -120,6 +120,10 @@ class ProcessingOperationRepository(Protocol):
 
     def get(self, scope: OwnerScope, operation_id: uuid.UUID) -> ProcessingOperation | None: ...
 
+    def find_by_idempotency_key(self, scope: OwnerScope, key: str) -> ProcessingOperation | None:
+        """The operation an earlier request with this key recorded, if any."""
+        ...
+
     def transition(
         self,
         scope: OwnerScope,
