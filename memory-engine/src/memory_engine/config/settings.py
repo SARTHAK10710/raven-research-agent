@@ -95,6 +95,19 @@ class ObjectStorageSettings(BaseModel):
         return value
 
 
+class IngestionSettings(BaseModel):
+    """Input size limits (plan 8.3 section 5.1). Owner-approved defaults, 2026-11-11.
+
+    The values are configurable because 7.6 section 18 defers the final limits.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    max_text_bytes: int = Field(default=256 * 1024, ge=1, le=16 * MIB)
+    max_conversation_messages: int = Field(default=1000, ge=1, le=100_000)
+    max_conversation_bytes: int = Field(default=4 * MIB, ge=1, le=64 * MIB)
+
+
 class MemoryEngineSettings(BaseSettings):
     """Top-level Memory Engine configuration."""
 
@@ -112,6 +125,7 @@ class MemoryEngineSettings(BaseSettings):
     log_level: LogLevel = "INFO"
     database: DatabaseSettings
     object_storage: ObjectStorageSettings
+    ingestion: IngestionSettings = IngestionSettings()
 
 
 def load_settings(env_file: str | Path | None = None) -> MemoryEngineSettings:

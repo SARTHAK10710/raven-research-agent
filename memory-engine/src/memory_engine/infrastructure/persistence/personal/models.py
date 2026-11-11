@@ -32,6 +32,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -40,6 +41,8 @@ from memory_engine.domain.vocabulary import (
     CandidateOrigin,
     CandidateStatus,
     DocumentEvidenceStatus,
+    IngestionPriority,
+    InstructionType,
     MemoryLifecycleStatus,
     MemoryOrigin,
     ProvenanceOriginKind,
@@ -58,6 +61,11 @@ CONTENT_MATCHES_LIFECYCLE = (
     "(lifecycle_status = 'deleted' AND content IS NULL)"
     " OR (lifecycle_status <> 'deleted' AND content IS NOT NULL AND length(btrim(content)) > 0)"
 )
+
+# Ingestion (0007): a key always comes with its request fingerprint, and explicit
+# remember/forget instructions are always high priority (6.2.1 steps 8-9).
+IDEMPOTENCY_PAIR = "(idempotency_key IS NULL) = (request_sha256 IS NULL)"
+INSTRUCTION_PRIORITY = "instruction_type = 'normal' OR priority = 'high'"
 
 PROVENANCE_REFERENCES_EVIDENCE = (
     "source_id IS NOT NULL OR candidate_id IS NOT NULL OR document_evidence_id IS NOT NULL"
@@ -97,6 +105,16 @@ class MemorySourceRow(Base):
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     content_ref: Mapped[str | None] = mapped_column(Text)
     content_sha256: Mapped[str | None] = mapped_column(String(64))
+    # Ingestion (0007, Phase 8.3 step 2).
+    instruction_type: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default="normal"
+    )
+    priority: Mapped[str] = mapped_column(String(16), nullable=False, server_default="normal")
+    idempotency_key: Mapped[str | None] = mapped_column(String(200))
+    request_sha256: Mapped[str | None] = mapped_column(String(64))
+    source_ref: Mapped[str | None] = mapped_column(String(500))
+    source_timestamp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    normalized_ref: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
@@ -107,7 +125,24 @@ class MemorySourceRow(Base):
         in_vocabulary("source_type", SourceType, name="source_type"),
         in_vocabulary("processing_status", SourceProcessingStatus, name="processing_status"),
         CheckConstraint("content_sha256 ~ '^[0-9a-f]{64}$'", name="content_sha256"),
+        in_vocabulary("instruction_type", InstructionType, name="instruction_type"),
+        in_vocabulary("priority", IngestionPriority, name="priority"),
+        CheckConstraint(IDEMPOTENCY_PAIR, name="idempotency_pair"),
+        CheckConstraint("request_sha256 ~ '^[0-9a-f]{64}$'", name="request_sha256"),
+        CheckConstraint(
+            "idempotency_key IS NULL OR length(btrim(idempotency_key)) > 0",
+            name="idempotency_key",
+        ),
+        CheckConstraint("source_ref IS NULL OR length(btrim(source_ref)) > 0", name="source_ref"),
+        CheckConstraint(INSTRUCTION_PRIORITY, name="instruction_priority"),
         Index(None, "owner_id", "received_at"),
+        Index(
+            "uq_pm_memory_source_idempotency",
+            "owner_id",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
+        ),
     )
 
 

@@ -39,6 +39,24 @@ class SourceProcessingStatus(StrEnum):
     PROCESSING_FAILED = "processing_failed"
 
 
+class InstructionType(StrEnum):
+    """Explicit memory instruction carried by an input (6.2.1 step 8; plan 8.3 section 5.4)."""
+
+    NORMAL = "normal"
+    REMEMBER = "remember"
+    FORGET = "forget"
+
+
+class IngestionPriority(StrEnum):
+    """Initial scheduling priority of an input (6.2.1 step 9).
+
+    A scheduling signal only, never the memory's importance score.
+    """
+
+    NORMAL = "normal"
+    HIGH = "high"
+
+
 class CandidateStatus(StrEnum):
     """Memory Candidate lifecycle states (6.2 section 8.6)."""
 
