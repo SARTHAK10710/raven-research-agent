@@ -33,7 +33,7 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
 
 - **Only the Phase 8.1 foundation is implemented** (configuration, errors, logging, domain boundary, unit tests). No memory or document functionality, database, broker or storage exists.
 - On Windows, a repository at a very long path cannot load mypy's compiled DLLs from `.venv` ("filename or extension is too long"), even with long paths enabled, because the DLL loader does not honour that setting. Verified 2026-11-11: it fails at a 180-character repository root (extension paths 256–263 characters) and passes from a 109-character root. Keep the repository root short (under about 100 characters), especially before adding deep ML dependencies such as PyTorch; otherwise point `UV_PROJECT_ENVIRONMENT` at a shorter path.
-- Docker availability for PostgreSQL integration tests (Phase 8.2) has not been verified on the development machine.
+- Docker for PostgreSQL integration tests (Phase 8.2): Verified 2026-11-11: Docker Engine 29.9.3 (linux/amd64), Compose v5.5.1; a throwaway `pgvector/pgvector:pg17` container started, accepted connections (PostgreSQL 17.11), loaded `vector` 0.8.7 and ran a distance query, then was removed. Docker Desktop must be running.
 - OCR is not supported; scanned PDFs cannot be assumed processable.
 - Advanced PDF layout and table extraction are not covered by the baseline.
 - No CI pipeline exists, so the quality gates run only by hand.
