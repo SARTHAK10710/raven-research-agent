@@ -4,7 +4,7 @@
 
 - **Phase:** 8 — Memory Engine Implementation
 - **Subphase:** 8.3 — Ingestion Pipeline ([plan](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md)): **`VERIFIED` 2026-11-12**: all five steps merged (PRs #16–#19, #21; `main` @ `1851f53`) ([PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md)). 8.1 and 8.2 `VERIFIED` and merged.
-- **Next approved action:** none. Phase 8.4 needs the owner's approval before it starts.
+- **Next approved action:** 8.4 step 1 (extraction worker), starting with its open questions. 8.4 was approved on 2026-11-12.
 - **Decision review:** [PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) analyses all 15 open decisions, with a deep review of the Phase 8.2 blockers.
 
 ## Prerequisites before Phase 8.2
@@ -39,6 +39,19 @@ Ordered so each step builds on the previous one. All of them are persistence-bac
 | 4 | **Reliable handoff:** the `me_outbox` table written in the same transaction as each registration, a publisher, RabbitMQ in `docker-compose.yml`, Celery wiring; handoff messages to the document pipeline (8.12) and to extraction (8.4); recovery of failed publishing (7.1 §23.6; 7.4) | **Settled 2026-11-12** (7.1 §24.3): exchange `raven.memory`, two queues, no DLQ yet; 7.4 §7 envelope v1; Celery `send_task` with confirms; `queued` after the broker confirms; no handoff for forget; bounded retries then `failed`; `rabbitmq:4.3.7-alpine`; `celery`, `kombu`. **Merged (PR #19)** |
 | 5 | **Observability and acceptance:** ingestion events and metrics (plan 8.3 §11), the remaining plan §12 tests, and an acceptance review against plan 8.3 §13 | **Settled 2026-11-12** (7.1 §24.4): metrics port with no-op default, OpenTelemetry later; owner id in logs only; unauthorized as scope mismatch (D1). **Merged (PR #21)**; 8.3 `VERIFIED`; review: [PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md) |
 
+## Phase 8.4 steps (approved 2026-11-12, personal path)
+
+Approved with 8.4 ([7.1 §25](../technical-decisions/01-baseline-technology-stack.md)). The document-derived path follows plan 8.12 (Decision 7).
+
+| Step | Scope | Open questions to settle at the start of the step |
+|---|---|---|
+| 1 | **Extraction worker:** the Celery consumer for `memory.personal.extraction` (envelope validation, idempotency, Memory Source `queued` → `processing` → outcome), the English-language check, the spaCy dependency, the synthetic dataset scaffold | Task retry and failure policy (Celery retries vs a reprocessing record); which source states mark failure, deferral and completion; language detection method; how the spaCy model is installed (direct wheel); dataset schema |
+| 2 | **Relevance gate** (6.2.2): `PROCESS` / `DEFER` / `REJECT` with reason codes; protection rules | Initial dimensions and weights (uncalibrated defaults); where a deferral is recorded; reason-code vocabulary |
+| 3 | **Atomic fact extraction** (6.2.3): segmentation, speaker attribution, statement classification, negation, conditions, time and quantities | Fact representation inside the candidate (subject, predicate, object); pattern coverage; coreference scope |
+| 4 | **Evaluation and classification** (6.2.4–6.2.5): independent importance and confidence; explicit, inferred or unresolved | Initial scoring rules and thresholds; method versioning |
+| 5 | **Candidate generation** (6.2.6): validation, persistence with provenance and evaluation history, category assignment, handoff to resolution (8.6) | Where candidate categories live (no candidate category column exists); the resolution handoff (a new outbox kind and queue, or polling) |
+| 6 | **Observability and acceptance:** extraction events and metrics, dataset evaluation, the acceptance review against plan 8.4 §16 (personal path) | Quality thresholds for the dataset evaluation |
+
 ## Approved 8.1 decisions (implemented)
 
 All **APPROVED** on 2026-11-11 and recorded in [7.1 §22](../technical-decisions/01-baseline-technology-stack.md); implemented in Phase 8.1:
@@ -63,14 +76,14 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 | 4 | ⚑ Canonical vocabularies: memory relationship types (5.4.27 vs 6.3.8), supersession types (6.3.7), resolution outcomes (6.3) | 8.2, 8.6 | **APPROVED** 2026-11-11: four vocabularies plus Atomic Memory lifecycle states (5.4, Phase 8.2 Amendment) |
 | 5 | Placement of Document Intelligence records (shared `memory` schema vs separate schema) | 8.2 | **APPROVED** 2026-11-11: `memory` schema, `pm_`/`doc_`/`me_` prefixes (7.1 §23.3) |
 | 6 | ⚑ Document-to-memory authorization model (consent record, scope, expiry) | 8.4 document path, 8.12 | Per-request authorization record tied to user, document version and scope |
-| 7 | ⚑ Sequence: run 8.12 before 8.11; 8.4's document-derived path after 8.12 | Plan order | Approve the reorder |
+| 7 | ⚑ Sequence: run 8.12 before 8.11; 8.4's document-derived path after 8.12 | Plan order | **APPROVED** 2026-11-12: personal path of 8.4 now, document path after 8.12, 8.11 last (7.1 §25.1) |
 | 8 | ⚑ Local S3-compatible object storage for development and tests (new infrastructure) | 8.3 | **APPROVED** 2026-11-11: storage port, in-memory fake for unit tests, SeaweedFS in Docker Compose for integration tests and development, boto3 client; implemented in 8.3 (7.1 §24.1) |
 | 9 | When to introduce Celery/RabbitMQ and the transactional outbox | 8.3 | **APPROVED** 2026-11-11: no outbox in 8.2; outbox table, publisher and Celery together in 8.3 (7.1 §23.6). Differs from the review's recommendation |
 | 10 | Owner identity before an identity provider is chosen | 8.2 | **APPROVED** 2026-11-11: caller-supplied `OwnerScope`, opaque `owner_id` (7.1 §23.4) |
 | 11 | ⚑ Shared public entities (5.4.13): population and privacy | 8.5 | **APPROVED** 2026-11-11: private only; `scope` column present, `shared` rejected by a check until a curation process is approved (7.1 §23.7) |
 | 12 | Derived-profile ownership (Phase 2 component 3 vs Phase 6 / plan 8.9) | 8.9 | Consolidation (8.9) |
 | 13 | Document parsing appears in both 6.2.1 and the document pipeline | 8.3, 8.12 | **APPROVED** 2026-11-11: the document pipeline owns parsing; ingestion validates, stores, registers and hands off (7.1 §24.2; 6.2 amendment) |
-| 14 | spaCy pipeline; scoring thresholds and weights; evaluation datasets | 8.4–8.11 | Synthetic versioned datasets built with each subphase |
+| 14 | spaCy pipeline; scoring thresholds and weights; evaluation datasets | 8.4–8.11 | **APPROVED** 2026-11-12: spaCy 3.8 + `en_core_web_sm` 3.8.0, English first; datasets per capability. Thresholds and weights still to calibrate (7.1 §25.3) |
 | 15 | ⚑ Approve pypdf and python-docx | 8.12 | Evaluate at 8.12 start |
 
 ## Required documentation for 8.2
@@ -89,6 +102,7 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
   - Step 4, reliable handoff: `me_outbox`, RabbitMQ `broker-test`, Celery publisher and outbox relay (PR #19, `db13113`; status sync PR #20, `4af8a92`).
   - Step 5, observability and the acceptance review: the `Metrics` port, `observe_ingestion`, relay handoff metrics and backlog gauges, the remaining plan §12 tests, and [PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md) ([PR #21](https://github.com/SARTHAK10710/raven-research-agent/pull/21), `1851f53`).
   - This docs change records 8.3 as `VERIFIED`.
+  - Phase 8.4 approved (personal path) with Decision 7, G6 (English first) and Decision 14 (spaCy + `en_core_web_sm`), and its six steps recorded (7.1 §25; branch `docs/phase-8-4-approval`).
 - **Decisions made (owner, 2026-11-12):**
   - step 4 is in 7.1 §24.3;
   - step 5 is in 7.1 §24.4;
@@ -101,5 +115,5 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
   - no encryption at rest in the development store; no malware scanning; test broker without TLS;
   - G6; Decision 6; embedding model; Decisions 7, 12, 14 and 15; ratio-label wording;
   - on this machine: uv not on PATH, Docker Desktop can take minutes to start, the SeaweedFS image once needed a re-pull, and Python defaults to cp1252 (script doc edits with UTF-8).
-- **Next action:** the owner decides whether to approve Phase 8.4 (memory extraction). Do not start it without approval; settle its open questions first, as for 8.3.
-- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, `PHASE-8-3-ACCEPTANCE-REVIEW.md`, and for 8.4 its plan in `docs/implementation-plans/Phase-08-memory-engine/` plus the decision review entries for Decisions 6, 7 and 14.
+- **Next action:** 8.4 was approved on 2026-11-12 (personal path; see 7.1 §25). Start step 1 (extraction worker) with its open questions.
+- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.4 with its 2026-11-12 amendment, 7.1 §25, algorithm 6.2 (`docs/algorithms/memory/01-memory-ingestion-extraction.md`) §4–§8, 7.5 §3.1, `domain/handoff.py`, `personal/domain/records.py` (`MemoryCandidate`) and `personal/domain/lifecycle.py` (`CandidateEvaluation`).

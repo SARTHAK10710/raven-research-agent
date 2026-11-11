@@ -777,3 +777,39 @@ This decision covers development and tests only. It does not choose the producti
 - **Events:** one structured `ingestion.<outcome>` event per request and one `handoff.<outcome>` event per relay attempt, with record ids, the message, task and correlation ids, codes and durations. Never content, filenames or caller-supplied idempotency keys.
 - **Owner in logs:** events carry `user_scope`, the opaque owner id. Log retention stays deferred (7.7 §20).
 - **"Unauthorized request" (plan 8.3 §12.1):** covered as an owner-scope mismatch. Authentication tests move to the Entry layer, which Phase 8 does not include (deferral D1 in the [8.3 acceptance review](../project-context/PHASE-8-3-ACCEPTANCE-REVIEW.md)).
+
+---
+
+## 25. Approved Phase 8.4 Decisions
+
+Approved by the project owner on 2026-11-12, when Phase 8.4 (Extraction and Evaluation) was approved.
+
+### 25.1 Decision 7 — Plan order and the scope of 8.4 ⚑
+
+- **8.4 now covers the personal-memory path only.** It consumes the `memory.personal.extraction` handoff (§24.3) and runs 6.2.2–6.2.6 on Memory Sources.
+- **The document-derived path of 8.4 stays disabled** until plan 8.12 has produced parsed, chunked documents. It is completed after 8.12, together with Decision 6 (the document-to-memory authorization model), which is settled at that point.
+- **Plan order:** 8.1 → … → 8.10 (personal) → 8.12 → the 8.4 document path and 8.10 document deletion → 8.11 last. This replaces the order in the Phase 8 Readme §6, which plan 8.11 and plan 8.4 §4.2 contradicted (8.11 tests documents end to end, and 8.4 consumes 8.12's outputs).
+- **Rejected:** building the document path now against stubbed 8.12 outputs (tests would rest on invented data).
+
+### 25.2 Gap G6 — Language scope: English first
+
+- Extraction rules and the NLP model handle **English**. Non-English sources are detected and **deferred** with a reason code; they are never silently dropped and never run through English rules.
+- Multilingual support needs a separate approval. It also bears on the embedding model (Decision 3, before 8.7) and on document keyword search, which stays on the language-neutral `simple` configuration.
+
+### 25.3 Decision 14 — Conventional NLP stack
+
+- **spaCy 3.8** (MIT) with the **`en_core_web_sm` 3.8.0** model (MIT, CPU only), pinned as a direct wheel in `uv.lock`. Deterministic rules run on top of its sentence split, part-of-speech tags, dependency parse and named entities (7.5 §3.1; 6.2.3 §5.4).
+- Both are new runtime dependencies. They are approved here and added in the 8.4 step that first needs them, with their licence and version checked again at that time.
+- Generative models remain prohibited. Model outputs are signals; validation and state transitions stay deterministic (6.2 §2.4).
+- **Datasets:** versioned synthetic datasets under `tests/memory_engine/quality/data/`, one per capability, created with the step that first needs them (decision review, Decision 14). Thresholds and weights start as configurable, uncalibrated defaults and are recorded as such.
+
+### 25.4 Phase 8.4 steps (personal path)
+
+1. **Extraction worker:** the Celery consumer for `memory.personal.extraction` (envelope validation, idempotency, Memory Source status transitions), the language check, the NLP dependency and the synthetic dataset scaffold.
+2. **Relevance gate** (6.2.2).
+3. **Atomic fact extraction** and statement classification (6.2.3).
+4. **Evaluation** (6.2.4) and **explicit/inferred classification** (6.2.5).
+5. **Candidate generation and validation** (6.2.6): persistence with provenance and evaluation history, category assignment, and the handoff to resolution (8.6).
+6. **Observability, dataset evaluation and the acceptance review** (plan 8.4 §15–§16, personal path).
+
+Each step settles its own open questions with the owner at its start.

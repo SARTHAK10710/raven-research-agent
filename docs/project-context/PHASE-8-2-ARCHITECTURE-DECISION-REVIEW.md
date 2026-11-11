@@ -181,6 +181,7 @@ All criteria are met.
 | If delayed | No effect until 8.4 |
 | Recommendation | **Reorder**: … 8.10 (personal) → 8.12 → complete the 8.4 document path and 8.10 document deletion → 8.11 last |
 | Approval | **Yes**. It changes the documented plan order |
+| **Outcome (2026-11-12)** | **Approved as recommended** when 8.4 was approved: 8.4 builds the personal path now; its document path and the 8.10 document deletion follow 8.12; 8.11 runs last. Recorded in [7.1 §25.1](../technical-decisions/01-baseline-technology-stack.md) and the Phase 8 Readme §6 |
 
 ### Decision 8 — Local S3-compatible object storage for development and tests ⚑
 
@@ -275,6 +276,7 @@ All criteria are met.
 | If delayed | Blocks 8.4 and later quality gates |
 | Recommendation | Versioned synthetic datasets under `tests/memory_engine/quality/data/`, one per capability, created with the subphase that first needs them. The retrieval set comes first, because Decision 3 needs it. spaCy model choice at 8.4 |
 | Approval | spaCy model: **yes**, at 8.4. Datasets: no |
+| **Outcome (2026-11-12)** | **spaCy 3.8 with `en_core_web_sm` 3.8.0**, English first (gap G6). Datasets per capability under `tests/memory_engine/quality/data/`. Recorded in [7.1 §25.2–§25.3](../technical-decisions/01-baseline-technology-stack.md) |
 
 ### Decision 15 — Approve pypdf and python-docx ⚑
 

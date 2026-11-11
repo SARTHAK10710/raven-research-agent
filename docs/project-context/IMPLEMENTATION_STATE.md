@@ -13,7 +13,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 | 8.1 Foundation and project setup | `VERIFIED` | `5a0d6e5`, merged in `6efd72d` (PR #3) |
 | 8.2 Database and persistence | `VERIFIED` (2026-11-11) | Steps 1–2 `d2346b6`, `e7fc443` (PR #8); step 3 `7a62cd4` (PR #9); step 4 `38411e1` (PR #10, `977c3b7`); step 5 `42b35c3` and review fixes `1b58b77` (PR #11, `423b6fd`) |
 | 8.3 Ingestion pipeline | **`VERIFIED`** (2026-11-12) | Step 1 `206bc2f` (PR #16); step 2 `894da0f` (PR #17, `1e93dbd`); step 3 `15d752f` (PR #18, `d51039b`); step 4 `2fed5cb` (PR #19, `db13113`); step 5 `d08ae20` (PR #21, `1851f53`) |
-| 8.4 Extraction and evaluation | `NOT_STARTED` | — |
+| 8.4 Extraction and evaluation | `IN_PROGRESS` (approved 2026-11-12; personal path; no code yet) | — |
 | 8.5 Entity and relationship management | `NOT_STARTED` | — |
 | 8.6 Memory resolution | `NOT_STARTED` | — |
 | 8.7 Memory storage and indexing | `NOT_STARTED` | — |
@@ -179,7 +179,15 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 | Commit (step 5) | `d08ae20`, merged through PR #21 (`1851f53`) |
 | Open for later steps | None in 8.3. Phase 8.4 needs separate approval |
 
-## 8.4–8.12
+## 8.4 — Extraction and evaluation
+
+| Field | Value |
+|---|---|
+| Status | `IN_PROGRESS`: approved 2026-11-12. No code yet; step 1 starts with its open questions ([NEXT_STEPS.md](NEXT_STEPS.md)) |
+| Approval decisions (owner, 2026-11-12; [7.1 §25](../technical-decisions/01-baseline-technology-stack.md)) | Decision 7: personal path now, document path after 8.12 (with Decision 6), 8.11 last. G6: English first. Decision 14: spaCy 3.8 + `en_core_web_sm` 3.8.0. Six steps |
+| Out of scope for now | The document-derived path (plan 8.4 §4.2, §10–§11), its tests and acceptance criteria 7, 8 and 10. Resolution (8.6), entities (8.5) and deletion (8.10) remain their own plans |
+
+## 8.5–8.12
 
 `NOT_STARTED`. No files, dependencies or tests.
 

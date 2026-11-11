@@ -202,6 +202,8 @@ The implementation plans should be executed in dependency order.
 
 Some tasks may require iterative integration, but later plans must not be considered complete merely because their code has been created.
 
+**Amended order (Decision 7, approved 2026-11-12; [7.1 §25.1](../../technical-decisions/01-baseline-technology-stack.md)):** 1 → 10 as listed, with plan 4 covering the personal-memory path only; then 12 (document intelligence and RAG); then the document-derived path of plan 4 and the document part of plan 10; then 11 (integration and testing) last.
+
 Each plan must pass its own acceptance criteria before the phase is considered complete.
 
 ## 7. Source-code placement

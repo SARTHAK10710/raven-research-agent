@@ -41,6 +41,16 @@ Approved by the project owner on 2026-11-11 (Decisions 8 and 13) and 2026-11-12 
 | 8.3 step 4 ⚑ | Reliable handoff (7.1 §24.3) | `me_outbox` in the registration transaction; exchange `raven.memory`, queues `memory.document.processing` / `memory.personal.extraction`; 7.4 §7 envelope v1 (ids and object keys only); Celery `send_task` with publisher confirms; `queued` only after the broker confirms; forget instructions get no handoff; bounded retries (10 attempts, 2 s doubling to 5 min, jitter) then `failed` until an explicit retry; test broker `rabbitmq:4.3.7-alpine` (MPL-2.0); `celery` and `kombu` added | **APPROVED** 2026-11-12 |
 | 8.3 step 5 | Ingestion observability (7.1 §24.4) | Metrics port (no-op default, in-memory for tests, OpenTelemetry adapter when monitoring is deployed); no new dependency; bounded labels; owner id in logs only; authentication tests deferred to the Entry layer | **APPROVED** 2026-11-12 |
 
+## Approved Phase 8.4 decisions
+
+Approved by the project owner on 2026-11-12, with Phase 8.4. Recorded in [7.1 §25](../technical-decisions/01-baseline-technology-stack.md). Not implemented yet.
+
+| # | Decision | Choice | Status |
+|---|---|---|---|
+| 7 ⚑ | Plan order; scope of 8.4 | 8.4 builds the personal path now; its document path and the 8.10 document deletion follow 8.12; 8.11 last | **APPROVED** |
+| G6 | Language scope | English first; non-English sources deferred with a reason code; multilingual needs separate approval | **APPROVED** |
+| 14 | Conventional NLP stack | spaCy 3.8 + `en_core_web_sm` 3.8.0 (MIT, CPU), deterministic rules on top; synthetic datasets per capability | **APPROVED** (dependencies added in the step that needs them) |
+
 ## Dependency timing
 
 | When | Dependencies | Installed? |
@@ -51,7 +61,8 @@ Approved by the project owner on 2026-11-11 (Decisions 8 and 13) and 2026-11-12 
 | Phase 8.3 (approved 2026-11-11, Decision 8) | `boto3` (object-storage client); SeaweedFS container for integration tests and local development | Yes (8.3 step 1, merged in PR #16): `boto3` 1.44.0 (Apache-2.0). Transitive: `botocore` 1.44.0, `s3transfer` 0.19.3 (Apache-2.0), `jmespath` 1.1.0, `urllib3` 2.8.0, `six` 1.17.0 (MIT), `python-dateutil` 2.9.0.post0 (Apache-2.0/BSD). Image `chrislusf/seaweedfs:4.51` (Apache-2.0) in `docker-compose.yml`. No stubs package: mypy treats boto3 as untyped, confined to the S3 adapter |
 | Phase 8.3 step 4 (approved 2026-11-12, 7.1 §24.3) | `celery` (worker framework and publisher), `kombu` (declared: tests consume with it); RabbitMQ container for integration tests and local development | Yes (8.3 step 4, merged in PR #19): `celery` 5.7.0, `kombu` 5.7.0 (BSD-3-Clause). Transitive: `amqp` 5.4.2, `billiard` 4.3.2, `vine` 5.1.0 (BSD-3-Clause), `click` 8.5.1, `click-didyoumean` 0.3.1, `click-plugins` 1.1.1.2, `click-repl` 0.4.1 (BSD/MIT), `prompt-toolkit` 3.0.53, `wcwidth` 0.9.4, `tzlocal` 5.4.5 (BSD/MIT). Image `rabbitmq:4.3.7-alpine` (MPL-2.0). Untyped for mypy; confined to `infrastructure/messaging` (boundary test) |
 | When required | `HTTPX` (API/HTTP testing); OpenTelemetry API/SDK (instrumentation) | No |
-| Later milestones | NLP, embedding, messaging and storage libraries, in the subphase that needs them | No |
+| Phase 8.4 (approved 2026-11-12, 7.1 §25.3) | `spacy` 3.8, `en_core_web_sm` 3.8.0 (direct wheel) | No: added in the 8.4 step that first needs them, after a licence and version re-check |
+| Later milestones | Embedding and other libraries, in the subphase that needs them | No |
 
 ## Approved baseline
 
