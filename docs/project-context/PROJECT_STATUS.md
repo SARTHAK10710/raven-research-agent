@@ -9,7 +9,7 @@
 | Current phase | Phase 8 — Memory Engine Implementation |
 | Current subphase | 8.1 — Foundation and Project Setup |
 | Subphase status | 8.1 `VERIFIED` and merged (commit `5a0d6e5`, merge `6efd72d`). Re-verified 2026-11-11: pytest 71 passed, Ruff lint and format clean, `uv sync --locked` succeeded, mypy strict clean from a normal-length checkout (see [KNOWN_CONSTRAINTS.md](KNOWN_CONSTRAINTS.md)) |
-| Current active task | Phase 8.2 Decisions 1, 2, 4, 5, 9 and 10 **approved** 2026-11-11 and recorded. The vector-storage deferral to 8.7 is also approved. Remaining before 8.2: Docker confirmation, merging PR #4, and approval to start ([decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md)). **Phase 8.2 has not started** |
+| Current active task | Phase 8.2 Decisions 1, 2, 4, 5, 9 and 10 **approved** 2026-11-11 and recorded. The vector-storage deferral to 8.7 is also approved. Docker verified for integration tests. Decision records merged (PR #4, `ab50c48`). Remaining before 8.2: approval to start ([decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md)). **Phase 8.2 has not started** |
 | Application code | Phase 8.1 foundation only: `memory-engine/src/memory_engine/` (config, exceptions, domain errors, structured logging) and `tests/memory_engine/`. **No memory functionality** (no ingestion, extraction, storage, retrieval or document processing) |
 
 ## Documentation completion
@@ -41,6 +41,6 @@ Installed: only the Phase 8.1 dependencies, locked in the root `uv.lock` (see [T
 
 ## Pending work
 
-1. Docker availability for integration tests.
-2. Merge PR #4 (checkpoint correction, decision review and recorded approvals).
+1. ~~Docker availability for integration tests~~ — verified 2026-11-11.
+2. ~~Merge PR #4~~ — merged 2026-11-11 (`ab50c48`).
 3. Explicit user approval to start Phase 8.2.
