@@ -14,7 +14,9 @@ The two domains can share infrastructure (PostgreSQL, pgvector, object storage, 
 > - episodes with membership and a correctable event timeline, profiles with immutable revisions, supporting memories and refresh history, memory categories, and memory embedding metadata (no vectors);
 > - source processing events, candidate evaluation history, correction requests, and deletion operations with a content-free ledger.
 >
-> This is persistence only: no ingestion, parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking or deletion workflow exists yet.
+> Phase 8.3 step 1 adds owner-scoped object storage: a port in `memory_engine.domain.object_storage`, an in-memory fake, and a boto3 adapter for S3-compatible stores (SeaweedFS in development and tests).
+>
+> This is storage only: no ingestion, parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking or deletion workflow exists yet.
 
 ## Boundaries
 
@@ -100,12 +102,16 @@ uv run mypy
 
 `uv sync` creates `.venv/` at the repository root and installs this package in editable mode together with the development tools. To activate the environment manually, use `.venv\Scripts\activate` on Windows or `source .venv/bin/activate` elsewhere.
 
-### Integration tests (real PostgreSQL)
+### Integration tests (real PostgreSQL and object storage)
 
-Integration tests are marked `integration` and run against PostgreSQL with pgvector from the repository's `docker-compose.yml` (development and testing only; Docker Desktop must be running). Without the database they are skipped with a message, not failed.
+Integration tests are marked `integration`. They run against two services from the repository's `docker-compose.yml`, both for development and testing only (Docker Desktop must be running):
+- PostgreSQL with pgvector (`postgres-test`);
+- SeaweedFS as the S3-compatible store (`object-storage-test`).
+
+Without a service, its tests are skipped with a message, not failed.
 
 ```bash
-docker compose up -d --wait postgres-test
+docker compose up -d --wait postgres-test object-storage-test
 ```
 
 ```bash

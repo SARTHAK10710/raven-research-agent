@@ -14,6 +14,7 @@ from memory_engine.config import ENV_PREFIX
 from memory_engine.observability import LOGGER_NAMESPACE
 
 SYNTHETIC_PASSWORD = "synthetic-test-password-7f3a"  # noqa: S105 - test-only value
+SYNTHETIC_SECRET_KEY = "synthetic-object-store-secret-9c1e"  # noqa: S105 - test-only value
 
 VALID_ENV: dict[str, str] = {
     f"{ENV_PREFIX}ENVIRONMENT": "testing",
@@ -21,6 +22,10 @@ VALID_ENV: dict[str, str] = {
     f"{ENV_PREFIX}DATABASE__NAME": "raven_test",
     f"{ENV_PREFIX}DATABASE__USER": "raven_memory_role",
     f"{ENV_PREFIX}DATABASE__PASSWORD": SYNTHETIC_PASSWORD,
+    f"{ENV_PREFIX}OBJECT_STORAGE__ENDPOINT_URL": "http://objects.test.invalid:8333",
+    f"{ENV_PREFIX}OBJECT_STORAGE__BUCKET": "raven-memory",
+    f"{ENV_PREFIX}OBJECT_STORAGE__ACCESS_KEY_ID": "synthetic-access-key",
+    f"{ENV_PREFIX}OBJECT_STORAGE__SECRET_ACCESS_KEY": SYNTHETIC_SECRET_KEY,
 }
 
 
@@ -43,6 +48,11 @@ def valid_env(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
 @pytest.fixture
 def synthetic_password() -> str:
     return SYNTHETIC_PASSWORD
+
+
+@pytest.fixture
+def synthetic_secret_key() -> str:
+    return SYNTHETIC_SECRET_KEY
 
 
 @pytest.fixture(autouse=True)

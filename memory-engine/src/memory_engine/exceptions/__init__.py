@@ -12,6 +12,8 @@ from memory_engine.exceptions.base import (
     DeletionInProgressError,
     InfrastructureError,
     MemoryEngineError,
+    ObjectIntegrityError,
+    ObjectStorageError,
     PersistenceError,
     RecordNotFoundError,
 )
@@ -24,6 +26,8 @@ __all__ = [
     "DeletionInProgressError",
     "InfrastructureError",
     "MemoryEngineError",
+    "ObjectIntegrityError",
+    "ObjectStorageError",
     "PersistenceError",
     "RecordNotFoundError",
 ]

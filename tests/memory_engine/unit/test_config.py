@@ -30,6 +30,12 @@ def test_valid_configuration_loads(valid_env: dict[str, str]) -> None:
     assert settings.database.max_overflow == 10
     assert settings.database.pool_recycle_seconds == 1800
     assert settings.database.connect_timeout_seconds == 10
+    storage = settings.object_storage
+    assert storage.endpoint_url == "http://objects.test.invalid:8333"
+    assert (storage.bucket, storage.region) == ("raven-memory", "us-east-1")
+    assert storage.multipart_threshold_bytes == storage.multipart_chunk_bytes == 8 * 1024 * 1024
+    assert (storage.connect_timeout_seconds, storage.read_timeout_seconds) == (5, 30)
+    assert storage.max_attempts == 3
 
 
 def test_optional_values_can_be_overridden(
@@ -57,7 +63,11 @@ def test_missing_configuration_fails_clearly() -> None:
     with pytest.raises(ConfigurationError) as caught:
         load_settings()
 
-    assert caught.value.details == {"database": "missing", "environment": "missing"}
+    assert caught.value.details == {
+        "database": "missing",
+        "environment": "missing",
+        "object_storage": "missing",
+    }
     assert "environment (missing)" in caught.value.message
 
 
@@ -91,6 +101,18 @@ def test_missing_nested_value_names_the_field(
         ("DATABASE__MAX_OVERFLOW", "-1", "database.max_overflow"),
         ("DATABASE__POOL_RECYCLE_SECONDS", "5", "database.pool_recycle_seconds"),
         ("DATABASE__CONNECT_TIMEOUT_SECONDS", "0", "database.connect_timeout_seconds"),
+        ("OBJECT_STORAGE__ENDPOINT_URL", "objects.test.invalid", "object_storage.endpoint_url"),
+        ("OBJECT_STORAGE__ENDPOINT_URL", "ftp://x", "object_storage.endpoint_url"),
+        ("OBJECT_STORAGE__BUCKET", "Raven_Memory", "object_storage.bucket"),
+        ("OBJECT_STORAGE__BUCKET", "ab", "object_storage.bucket"),
+        ("OBJECT_STORAGE__SECRET_ACCESS_KEY", "", "object_storage.secret_access_key"),
+        ("OBJECT_STORAGE__ACCESS_KEY_ID", "", "object_storage.access_key_id"),
+        (
+            "OBJECT_STORAGE__MULTIPART_THRESHOLD_BYTES",
+            "1048576",
+            "object_storage.multipart_threshold_bytes",
+        ),
+        ("OBJECT_STORAGE__MAX_ATTEMPTS", "0", "object_storage.max_attempts"),
     ],
 )
 def test_invalid_values_are_rejected(
@@ -117,6 +139,20 @@ def test_password_is_masked_in_settings(valid_env: dict[str, str], synthetic_pas
     assert synthetic_password not in repr(settings)
     assert synthetic_password not in str(settings.database)
     assert settings.database.password.get_secret_value() == synthetic_password
+
+
+def test_object_storage_secret_is_masked_and_required(
+    valid_env: dict[str, str], monkeypatch: pytest.MonkeyPatch, synthetic_secret_key: str
+) -> None:
+    settings = load_settings()
+    assert synthetic_secret_key not in repr(settings)
+    assert settings.object_storage.secret_access_key.get_secret_value() == synthetic_secret_key
+
+    monkeypatch.delenv(f"{ENV_PREFIX}OBJECT_STORAGE__BUCKET")
+    with pytest.raises(ConfigurationError) as caught:
+        load_settings()
+    assert "object_storage.bucket" in caught.value.details
+    assert synthetic_secret_key not in f"{caught.value} {caught.value.details!r}"
 
 
 def test_configuration_errors_never_expose_secrets(

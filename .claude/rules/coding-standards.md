@@ -40,6 +40,10 @@ Phase 8.1 created the foundation code (`memory-engine/src/memory_engine/`: `conf
   - A repository method that replaces content (not just a status) is conditional on a version or revision number, never on the status alone; otherwise two writers that read the same state both succeed (acceptance review A1).
   - Conflict tests on the shared rolled-back connection are sequential. To test a real race, use separate connections from `engine` and remove the committed rows afterwards (`test_concurrency_and_failures.py`).
   - Only `pm_document_evidence_ref` may reference `doc_` tables; `documents/` and its infrastructure never import Personal Memory code (tested).
+- Established in 8.3 step 1 (object storage):
+  - Application code uses the `ObjectStorage` port from `memory_engine.domain.object_storage`; only `memory_engine.infrastructure.object_storage` imports boto3. Unit tests use `InMemoryObjectStorage`.
+  - Object keys are opaque and owner-partitioned (`<area>/<owner_id>/…`, never a filename). Every port call takes the `OwnerScope` and refuses a key of another owner before any I/O.
+  - Compute the SHA-256 and size before storing and pass them to `put`; the adapter verifies both and deletes a mismatched object. Never report content as stored when `put` raised.
 
 ## Naming
 

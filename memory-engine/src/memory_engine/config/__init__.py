@@ -6,6 +6,7 @@ from memory_engine.config.settings import (
     Environment,
     LogLevel,
     MemoryEngineSettings,
+    ObjectStorageSettings,
     load_settings,
 )
 
@@ -15,5 +16,6 @@ __all__ = [
     "Environment",
     "LogLevel",
     "MemoryEngineSettings",
+    "ObjectStorageSettings",
     "load_settings",
 ]

@@ -714,9 +714,13 @@ Approved on 2026-11-11.
 
 This decision covers development and tests only. It does not choose the production object-storage provider, which stays deferred (§8; 7.8 §21), and it does not change the approved S3-compatible approach (§8; 7.2 §10).
 
-- **Storage port.** Object storage sits behind a Memory Engine port in `memory_engine.infrastructure` (§23.1). Application code depends only on the port.
+- **Storage port.** Object storage sits behind a Memory Engine port, and application code depends only on the port. *Corrected 2026-11-11 (8.3 step 1, owner-approved):* the port lives in the shared kernel, `memory_engine.domain.object_storage`, because application code may not import `infrastructure` (§23.1) and both domains use it. The adapters live in `memory_engine.infrastructure.object_storage`. The earlier text placed the port in `infrastructure`.
+- **Layout (8.3 step 1, owner-approved):**
+  - one bucket for the Memory Engine (for example `raven-memory`), provisioned outside the application, which never creates buckets;
+  - keys are owner-partitioned (`documents/{owner}/…`, `memory-sources/{owner}/…`), and every call checks the key's owner segment against the caller's `OwnerScope`;
+  - the settings `RAVEN_MEMORY__OBJECT_STORAGE__*` are required.
 - **Unit tests** use an in-memory fake that implements the port. No container or disk is needed.
-- **Integration tests and local development** use **SeaweedFS** (Apache-2.0) as an S3-compatible service in `docker-compose.yml`, beside `postgres-test`. It runs as a single container serving the S3 API, bound to `127.0.0.1`, with development-only credentials and synthetic data only (7.8 §4, §7.2). The image tag is pinned to an exact version, and its licence is re-checked, when 8.3 adds the service.
+- **Integration tests and local development** use **SeaweedFS** (Apache-2.0) as an S3-compatible service in `docker-compose.yml`, beside `postgres-test`. It runs as a single container serving the S3 API, bound to `127.0.0.1`, with development-only credentials and synthetic data only (7.8 §4, §7.2). The image tag is pinned to an exact version, and its licence is re-checked, when 8.3 adds the service. *(Done in 8.3 step 1: `chrislusf/seaweedfs:4.51`, released 2026-10-25, Apache-2.0, checked 2026-11-11.)*
 - **Python client:** **boto3** (Apache-2.0), synchronous like the rest of the stack (§23.2), and pointed at any S3-compatible endpoint by configuration. It is added as a dependency in 8.3, not earlier (§22.1 dependency timing).
 - **Rejected:**
   - a cloud bucket for development: cost, and data leaving the machine;
