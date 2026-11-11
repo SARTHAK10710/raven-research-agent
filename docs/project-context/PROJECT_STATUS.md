@@ -1,15 +1,15 @@
 # Project Status
 
-**Last verified update:** 2026-11-12, `main` @ `db13113`: 8.3 steps 1–4 merged through PRs #16–#18 and [PR #19](https://github.com/SARTHAK10710/raven-research-agent/pull/19) (step 4 commit `2fed5cb`). Earlier: 2026-11-11, `main` @ `423b6fd`. All of Phase 8.2 is on `main` through [PR #8](https://github.com/SARTHAK10710/raven-research-agent/pull/8), [PR #9](https://github.com/SARTHAK10710/raven-research-agent/pull/9), [PR #10](https://github.com/SARTHAK10710/raven-research-agent/pull/10) (`977c3b7`) and [PR #11](https://github.com/SARTHAK10710/raven-research-agent/pull/11) (`423b6fd`); Phase 8.1 through [PR #3](https://github.com/SARTHAK10710/raven-research-agent/pull/3).
+**Last verified update:** 2026-11-12, branch `feat/phase-8-3-observability-acceptance` (step 5, uncommitted) from `main` @ `4af8a92`: 8.3 steps 1–4 merged through PRs #16–#19, status sync in PR #20. Earlier: 2026-11-11, `main` @ `423b6fd`. All of Phase 8.2 is on `main` through [PR #8](https://github.com/SARTHAK10710/raven-research-agent/pull/8), [PR #9](https://github.com/SARTHAK10710/raven-research-agent/pull/9), [PR #10](https://github.com/SARTHAK10710/raven-research-agent/pull/10) (`977c3b7`) and [PR #11](https://github.com/SARTHAK10710/raven-research-agent/pull/11) (`423b6fd`); Phase 8.1 through [PR #3](https://github.com/SARTHAK10710/raven-research-agent/pull/3).
 
 ## Current position
 
 | Item | Value |
 |---|---|
 | Current phase | Phase 8 — Memory Engine Implementation |
-| Current subphase | 8.3 — Ingestion Pipeline (**approved 2026-11-11**, `IN_PROGRESS`: steps 1–3 (object storage, personal memory ingestion, document ingestion) merged (PRs #16–#18); step 4, reliable handoff, merged (PR #19, `db13113`); steps in [NEXT_STEPS.md](NEXT_STEPS.md)) |
+| Current subphase | 8.3 — Ingestion Pipeline (**approved 2026-11-11**, `IN_PROGRESS`: steps 1–3 (object storage, personal memory ingestion, document ingestion) merged (PRs #16–#18); step 4, reliable handoff, merged (PR #19, `db13113`); step 5, observability and the acceptance review, implemented and tested, uncommitted: every plan §13 criterion met, one owner-accepted deferral ([PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md)); steps in [NEXT_STEPS.md](NEXT_STEPS.md)) |
 | Subphase status | 8.2 **`VERIFIED`** (2026-11-11) and merged: all five steps plus the acceptance-review fixes, with every plan 8.2 §14 criterion met on `main` @ `423b6fd` (two owner-accepted deferrals; [PHASE-8-2-ACCEPTANCE-REVIEW.md](PHASE-8-2-ACCEPTANCE-REVIEW.md)). 8.1 remains `VERIFIED` and merged |
-| Current active task | 8.3 step 5 (observability and the acceptance review against plan 8.3 §13), when the owner starts it |
+| Current active task | Owner review of 8.3 step 5; then merge it and re-run the checks on `main` to mark 8.3 `VERIFIED` (acceptance review R1–R2) |
 | Application code | 8.1 foundation plus 8.2: Personal Memory core (`0001`), Document Intelligence and the evidence path (`0002`), entities and relationships (`0003`), episodes, profiles, categories and memory embedding metadata (`0004`), processing, evaluation, correction and deletion records (`0005`), episode version (`0006`); owner-scoped repositories and units of work. 8.3 step 1 (merged): an owner-scoped object-storage port with an in-memory fake and a boto3/S3 adapter. 8.3 step 2 (merged): text and conversation ingestion into a `validated` Memory Source (`0007`). 8.3 step 3 (merged): document uploads checked, stored and registered with an `extraction` operation. 8.3 step 4 (merged): a transactional outbox (`me_outbox`, `0008`) written with each registration, and a relay that publishes to RabbitMQ through Celery and only then marks the source or operation `queued`; forget instructions get no handoff. **No** consumer, extraction, resolution, consolidation, parsing, chunking, embedding generation, retrieval ranking or deletion workflow |
 
 ## Documentation completion
@@ -31,7 +31,7 @@ Documentation recovery: four specifications that had been overwritten by amendme
 
 | Phase | Status |
 |---|---|
-| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `VERIFIED` (merged); 8.3 `IN_PROGRESS` (steps 1–4 merged; step 5 to do); 8.4–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
+| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `VERIFIED` (merged); 8.3 `IN_PROGRESS` (steps 1–4 merged; step 5 tested, uncommitted; acceptance review: all §13 criteria met); 8.4–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
 | Research Engine | Not started (later phase) |
 | Agent Orchestrator | Not started (later phase) |
 | Shared Infrastructure | Not started |

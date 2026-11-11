@@ -39,6 +39,7 @@ Approved by the project owner on 2026-11-11 (Decisions 8 and 13) and 2026-11-12 
 | 8 ⚑ | Local object storage (development and tests) | Storage port; in-memory fake for unit tests; **SeaweedFS** (Apache-2.0) in Docker Compose for integration tests and local development; **boto3** client. Production provider still deferred | **APPROVED** |
 | 13 ⚑ | Document parsing ownership | The document pipeline (8.12) parses PDF/DOCX/TXT; ingestion (8.3) validates, stores, registers and hands off; memory ingestion parses messages and conversations only (6.2 amendment) | **APPROVED** |
 | 8.3 step 4 ⚑ | Reliable handoff (7.1 §24.3) | `me_outbox` in the registration transaction; exchange `raven.memory`, queues `memory.document.processing` / `memory.personal.extraction`; 7.4 §7 envelope v1 (ids and object keys only); Celery `send_task` with publisher confirms; `queued` only after the broker confirms; forget instructions get no handoff; bounded retries (10 attempts, 2 s doubling to 5 min, jitter) then `failed` until an explicit retry; test broker `rabbitmq:4.3.7-alpine` (MPL-2.0); `celery` and `kombu` added | **APPROVED** 2026-11-12 |
+| 8.3 step 5 | Ingestion observability (7.1 §24.4) | Metrics port (no-op default, in-memory for tests, OpenTelemetry adapter when monitoring is deployed); no new dependency; bounded labels; owner id in logs only; authentication tests deferred to the Entry layer | **APPROVED** 2026-11-12 |
 
 ## Dependency timing
 

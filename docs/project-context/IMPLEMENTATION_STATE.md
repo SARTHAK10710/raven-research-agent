@@ -12,7 +12,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 |---|---|---|
 | 8.1 Foundation and project setup | `VERIFIED` | `5a0d6e5`, merged in `6efd72d` (PR #3) |
 | 8.2 Database and persistence | `VERIFIED` (2026-11-11) | Steps 1–2 `d2346b6`, `e7fc443` (PR #8); step 3 `7a62cd4` (PR #9); step 4 `38411e1` (PR #10, `977c3b7`); step 5 `42b35c3` and review fixes `1b58b77` (PR #11, `423b6fd`) |
-| 8.3 Ingestion pipeline | `IN_PROGRESS` (steps 1–4 merged; 5 to do) | Step 1 `206bc2f` (PR #16); step 2 `894da0f` (PR #17, `1e93dbd`); step 3 `15d752f` (PR #18, `d51039b`); step 4 `2fed5cb` (PR #19, `db13113`) |
+| 8.3 Ingestion pipeline | `IN_PROGRESS` (steps 1–4 merged; 5 tested, uncommitted) | Step 1 `206bc2f` (PR #16); step 2 `894da0f` (PR #17, `1e93dbd`); step 3 `15d752f` (PR #18, `d51039b`); step 4 `2fed5cb` (PR #19, `db13113`) |
 | 8.4 Extraction and evaluation | `NOT_STARTED` | — |
 | 8.5 Entity and relationship management | `NOT_STARTED` | — |
 | 8.6 Memory resolution | `NOT_STARTED` | — |
@@ -143,7 +143,11 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 
 | Field | Value |
 |---|---|
-| Status | `IN_PROGRESS`: approved 2026-11-11. Steps 1–4 merged (PRs #16–#19; `main` @ `db13113`). Step 5 not started ([NEXT_STEPS.md](NEXT_STEPS.md)) |
+| Status | `IN_PROGRESS`: approved 2026-11-11. Steps 1–4 merged (PRs #16–#19; status sync PR #20; `main` @ `4af8a92`). **Step 5 (observability and acceptance) implemented and tested, uncommitted** on `feat/phase-8-3-observability-acceptance`. Acceptance review: every plan §13 criterion met, deferral D1 owner-accepted; `VERIFIED` after merge and a re-run on `main` ([PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md)) |
+| Step 5 decisions (owner, 2026-11-12; [7.1 §24.4](../technical-decisions/01-baseline-technology-stack.md)) | Metrics port with a no-op default and an in-memory test recorder, OpenTelemetry adapter later, no new dependency; bounded labels; owner id in logs as `user_scope`; "unauthorized request" covered as a scope mismatch, authentication tests deferred to the Entry layer (D1) |
+| Files created (step 5) | `observability/{metrics,ingestion}.py`; `docs/project-context/PHASE-8-3-ACCEPTANCE-REVIEW.md`. Tests: `unit/test_observability_metrics.py`, `integration/test_ingestion_observability.py`, `integration/test_ingestion_acceptance.py` |
+| Files modified (step 5) | `observability/__init__.py`; `personal/application/ingestion.py` and `documents/application/ingestion.py` (wrapped in `observe_ingestion`, optional `metrics`); `infrastructure/messaging/relay.py` (handoff metrics, backlog gauges, `event_type` and correlation ids on events); `infrastructure/persistence/outbox.py` (`backlog`); docs: 7.1 §24.4 and the project-context files. No migration; no new dependencies |
+| Tests (step 5) | **652 passed, 0 failed** (473 unit, 179 integration), 97% coverage, 3 green runs; services stopped: 474 passed, 178 skipped; Ruff clean; mypy strict clean (91 files) |
 | Step 4 decisions (owner, 2026-11-12; [7.1 §24.3](../technical-decisions/01-baseline-technology-stack.md)) | Exchange `raven.memory`, queues `memory.document.processing` / `memory.personal.extraction` with keys `document.extraction.requested` / `personal.extraction.requested`, no DLQ yet; 7.4 §7 envelope v1, ids and object keys only; Celery `send_task` with publisher confirms; `queued` only after the broker confirms; forget gets no handoff; 10 attempts, 2 s doubling to 5 min with jitter, then `failed` until `retry_failed`; `rabbitmq:4.3.7-alpine`; `celery` and `kombu` added |
 | Step 4 implementation choices (merged with PR #19) | Relay as its own loop (`OutboxRelay.run_forever`), not a Celery beat task (that would need a third queue); one message per transaction with `FOR UPDATE SKIP LOCKED`; a batch stops at the first publish failure; a subject no longer waiting (for example a cancelled operation) makes the row `failed` with `SUBJECT_NOT_PENDING`; no foreign key from `me_outbox` to its subject; published rows kept (cleanup deferred) |
 | Files created (step 4) | `domain/handoff.py` (envelope, `OutboxMessage`, `OutboxWriter` port, vocabularies); `infrastructure/persistence/outbox.py`; `infrastructure/messaging/{__init__,topology,celery_app,publisher,relay}.py`; `migrations/versions/20261112_0008_outbox.py`. Tests: `unit/test_handoff.py`, `integration/test_outbox_relay.py`, `integration/test_broker_handoff.py` |
@@ -172,7 +176,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 | Dependencies (step 1) | `boto3` 1.44.0 and its transitive packages (see [TECHNOLOGY_DECISIONS.md](TECHNOLOGY_DECISIONS.md#dependency-timing)) |
 | Commit (step 1) | `206bc2f`, merged through PR #16 (`3d01cbe`) |
 | Tests (step 1) | **453 passed, 0 failed** (333 unit, 120 integration against PostgreSQL 17 + pgvector and SeaweedFS 4.51), 97% coverage, 3 green runs; services stopped → 119 skipped (the unreachable-store test needs no service and passes); Ruff clean; mypy strict clean (69 files) |
-| Open for later steps | Step 5: ingestion events and metrics (plan 8.3 §11), the remaining plan §12 tests, and the acceptance review against plan 8.3 §13 |
+| Open for later steps | Merge step 5 and re-run the checks on `main` (review R1–R2), then mark 8.3 `VERIFIED`. 8.4 needs separate approval |
 
 ## 8.4–8.12
 

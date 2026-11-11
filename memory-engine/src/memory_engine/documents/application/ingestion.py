@@ -61,6 +61,8 @@ from memory_engine.exceptions import (
     PersistenceError,
     RecordNotFoundError,
 )
+from memory_engine.observability.ingestion import IngestionObservation, observe_ingestion
+from memory_engine.observability.metrics import DOCUMENT_REGISTRATIONS, NO_METRICS, Metrics
 
 _KEY_PREFIX = "upload:"
 _MAX_KEY = 200 - len(_KEY_PREFIX)
@@ -133,6 +135,19 @@ def extraction_handoff(
     )
 
 
+def _describe(observation: IngestionObservation, result: DocumentIngestionResult) -> None:
+    observation.fields.update(
+        {
+            "document_id": str(result.document_id),
+            "version_id": str(result.version_id),
+            "version_number": str(result.version_number),
+            "operation_id": str(result.operation_id),
+            "media_type": result.media_type.value,
+            "version_status": result.version_status.value,
+        }
+    )
+
+
 class DocumentIngestionService:
     def __init__(
         self,
@@ -141,13 +156,28 @@ class DocumentIngestionService:
         *,
         max_upload_bytes: int,
         clock: Callable[[], datetime] = _utc_now,
+        metrics: Metrics = NO_METRICS,
     ) -> None:
         self._uow_factory = uow_factory
         self._storage = storage
         self._max_upload_bytes = max_upload_bytes
         self._now = clock
+        self._metrics = metrics
 
     def ingest(self, scope: OwnerScope, upload: DocumentUpload) -> DocumentIngestionResult:
+        """Ingest one upload; every outcome emits an event and metrics (plan 8.3 section 11)."""
+        with observe_ingestion(
+            self._metrics, input_type="document", owner_id=scope.owner_id
+        ) as observation:
+            result = self._ingest(scope, upload)
+            observation.outcome = "accepted" if result.created else "replayed"
+            if result.created:
+                kind = "document" if result.version_number == 1 else "version"
+                self._metrics.increment(DOCUMENT_REGISTRATIONS, {"kind": kind})
+            _describe(observation, result)
+            return result
+
+    def _ingest(self, scope: OwnerScope, upload: DocumentUpload) -> DocumentIngestionResult:
         if not scope.owns(upload.owner_id):
             raise OwnershipError("upload belongs to a different owner scope")
         checked = self._check(upload)

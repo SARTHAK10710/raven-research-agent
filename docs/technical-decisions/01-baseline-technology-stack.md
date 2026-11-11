@@ -767,3 +767,13 @@ This decision covers development and tests only. It does not choose the producti
   - `me_outbox` has no foreign key to its subject, which lives in either domain (only the evidence path may cross them). Plan 8.10 deletion must remove a subject's outbox rows.
   - If the subject no longer waits for handoff (for example, a cancelled operation), the row becomes `failed` with `SUBJECT_NOT_PENDING` and nothing is published.
   - Published rows are kept; an outbox cleanup policy is still deferred (7.4 §22).
+
+### 24.4 Phase 8.3 step 5 — Ingestion observability
+
+**Status:** Approved by the project owner on 2026-11-12, at the start of 8.3 step 5. Applies 7.7 §4–§7 and §18 to plan 8.3 §11 without deploying monitoring (7.7 §20 and 7.8 still defer backends and deployment).
+
+- **Metrics port, no new dependency:** application code records counters, durations and gauges through `memory_engine.observability.metrics.Metrics`. The default recorder is a no-op; an in-memory recorder serves tests. An OpenTelemetry adapter implementing the same port is added when monitoring is deployed (7.7 §19: OpenTelemetry and Prometheus remain the selected technologies).
+- **Bounded labels:** only `input`, `outcome`, `reason` and `kind`, with values that are short lowercase words or UPPER_SNAKE_CASE codes. Identifiers can never become labels (7.7 §7.7).
+- **Events:** one structured `ingestion.<outcome>` event per request and one `handoff.<outcome>` event per relay attempt, with record ids, the message, task and correlation ids, codes and durations. Never content, filenames or caller-supplied idempotency keys.
+- **Owner in logs:** events carry `user_scope`, the opaque owner id. Log retention stays deferred (7.7 §20).
+- **"Unauthorized request" (plan 8.3 §12.1):** covered as an owner-scope mismatch. Authentication tests move to the Entry layer, which Phase 8 does not include (deferral D1 in the [8.3 acceptance review](../project-context/PHASE-8-3-ACCEPTANCE-REVIEW.md)).
