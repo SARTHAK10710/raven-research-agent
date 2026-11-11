@@ -85,3 +85,23 @@ class PersistenceError(InfrastructureError):
     """Persisting or reading authoritative state failed."""
 
     code: ClassVar[str] = "PERSISTENCE_ERROR"
+
+
+class ObjectStorageError(InfrastructureError):
+    """Object storage is unavailable or an object operation failed (7.2 section 18).
+
+    Nothing is guaranteed to be stored when this is raised; callers keep the
+    operation in a retryable state rather than reporting success.
+    """
+
+    code: ClassVar[str] = "OBJECT_STORAGE_ERROR"
+
+
+class ObjectIntegrityError(ObjectStorageError):
+    """Stored bytes do not match the expected size or SHA-256 (7.2 section 10).
+
+    The object is removed before this is raised, so corrupt content is never
+    left behind under a valid key.
+    """
+
+    code: ClassVar[str] = "OBJECT_INTEGRITY_ERROR"

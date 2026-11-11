@@ -12,7 +12,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 |---|---|---|
 | 8.1 Foundation and project setup | `VERIFIED` | `5a0d6e5`, merged in `6efd72d` (PR #3) |
 | 8.2 Database and persistence | `VERIFIED` (2026-11-11) | Steps 1–2 `d2346b6`, `e7fc443` (PR #8); step 3 `7a62cd4` (PR #9); step 4 `38411e1` (PR #10, `977c3b7`); step 5 `42b35c3` and review fixes `1b58b77` (PR #11, `423b6fd`) |
-| 8.3 Ingestion pipeline | `INSPECTION` (approved 2026-11-11; no code yet) | — |
+| 8.3 Ingestion pipeline | `IN_PROGRESS` (step 1 tested; steps 2–5 to do) | Step 1 uncommitted |
 | 8.4 Extraction and evaluation | `NOT_STARTED` | — |
 | 8.5 Entity and relationship management | `NOT_STARTED` | — |
 | 8.6 Memory resolution | `NOT_STARTED` | — |
@@ -143,10 +143,14 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 
 | Field | Value |
 |---|---|
-| Status | `INSPECTION`: approved by the owner on 2026-11-11. Plan 8.3 read; five steps proposed in [NEXT_STEPS.md](NEXT_STEPS.md) (object storage, personal memory ingestion, document ingestion, outbox and RabbitMQ handoff, observability and acceptance) |
+| Status | `IN_PROGRESS`: approved 2026-11-11. **Step 1 (object storage) implemented and tested, uncommitted** on `feat/phase-8-3-object-storage`. Steps 2–5 not started ([NEXT_STEPS.md](NEXT_STEPS.md)) |
 | Prerequisites | Decision 8 (local object storage) and Decision 13 (parsing ownership) approved ([7.1 §24](../technical-decisions/01-baseline-technology-stack.md)); outbox, RabbitMQ and Celery scheduled for 8.3 (7.1 §23.6) |
-| Open before implementation | Queue names and topology (deferred, 7.4 §22); file-size limits (deferred, 7.6 §18); malware scanning (no approved tool); ingestion-operation storage; forget handling until 8.10. Each is settled at the start of its step |
-| Files, dependencies, tests | None yet |
+| Step 1 decisions (owner, 2026-11-11) | Port in the shared kernel (corrects 7.1 §24.1); image `chrislusf/seaweedfs:4.51`; one engine bucket with owner-partitioned keys and owner checks on every call, never created by the application; object-storage settings required |
+| Files created (step 1) | `domain/object_storage.py` (port, key rules, `StoredObject`); `infrastructure/object_storage/{__init__,memory,s3}.py`; `docker/seaweedfs/s3.json` (test-only keys). Tests: `unit/test_object_storage.py`, `integration/test_object_storage_s3.py` |
+| Files modified (step 1) | `exceptions/{__init__,base}.py` (`ObjectStorageError`, `ObjectIntegrityError`); `config/{__init__,settings}.py` (`ObjectStorageSettings`, required); `memory-engine/{pyproject.toml,.env.example}`; root `pyproject.toml` (mypy override for boto3, marker text), `uv.lock`, `docker-compose.yml` (`object-storage-test`); tests `conftest.py`, `unit/test_config.py` |
+| Dependencies (step 1) | `boto3` 1.44.0 and its transitive packages (see [TECHNOLOGY_DECISIONS.md](TECHNOLOGY_DECISIONS.md#dependency-timing)) |
+| Tests (step 1) | **453 passed, 0 failed** (333 unit, 120 integration against PostgreSQL 17 + pgvector and SeaweedFS 4.51), 97% coverage, 3 green runs; services stopped → 119 skipped (the unreachable-store test needs no service and passes); Ruff clean; mypy strict clean (69 files) |
+| Open for later steps | Queue names and topology (deferred, 7.4 §22); file-size limits (deferred, 7.6 §18); malware scanning (no approved tool); ingestion-operation storage; forget handling until 8.10 |
 
 ## 8.4–8.12
 

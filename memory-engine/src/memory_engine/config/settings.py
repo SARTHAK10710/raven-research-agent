@@ -7,7 +7,8 @@ file. No ``.env`` file is read unless one is passed to :func:`load_settings`.
 Secrets use :class:`pydantic.SecretStr` so they are masked in ``repr`` and
 ``str``. The database connection itself is built in
 ``memory_engine.infrastructure.persistence`` (Phase 8.2, psycopg 3 with
-synchronous SQLAlchemy).
+synchronous SQLAlchemy); the object-storage client in
+``memory_engine.infrastructure.object_storage`` (Phase 8.3, boto3).
 """
 
 from enum import StrEnum
@@ -61,6 +62,39 @@ class DatabaseSettings(BaseModel):
         return value
 
 
+MIB = 1024 * 1024
+
+
+class ObjectStorageSettings(BaseModel):
+    """S3-compatible object storage (7.1 sections 8 and 24.1).
+
+    One bucket per engine; keys are owner-partitioned. The bucket is provisioned
+    outside the application, which never creates buckets.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    endpoint_url: str = Field(pattern=r"^https?://[^\s/]+(/[^\s]*)?$")
+    region: str = Field(default="us-east-1", min_length=1)
+    # S3 bucket naming rules: 3-63 characters, lowercase letters, digits, dots, hyphens.
+    bucket: str = Field(pattern=r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$")
+    access_key_id: str = Field(min_length=1)
+    secret_access_key: SecretStr
+    # S3 parts must be at least 5 MiB, except the last.
+    multipart_threshold_bytes: int = Field(default=8 * MIB, ge=5 * MIB)
+    multipart_chunk_bytes: int = Field(default=8 * MIB, ge=5 * MIB)
+    connect_timeout_seconds: int = Field(default=5, ge=1, le=120)
+    read_timeout_seconds: int = Field(default=30, ge=1, le=600)
+    max_attempts: int = Field(default=3, ge=1, le=10)
+
+    @field_validator("secret_access_key")
+    @classmethod
+    def _secret_not_empty(cls, value: SecretStr) -> SecretStr:
+        if not value.get_secret_value():
+            raise ValueError("must not be empty")
+        return value
+
+
 class MemoryEngineSettings(BaseSettings):
     """Top-level Memory Engine configuration."""
 
@@ -77,6 +111,7 @@ class MemoryEngineSettings(BaseSettings):
     app_name: str = Field(default="raven-memory-engine", min_length=1)
     log_level: LogLevel = "INFO"
     database: DatabaseSettings
+    object_storage: ObjectStorageSettings
 
 
 def load_settings(env_file: str | Path | None = None) -> MemoryEngineSettings:

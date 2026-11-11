@@ -1,0 +1,14 @@
+{
+  "identities": [
+    {
+      "name": "raven_test",
+      "credentials": [
+        {
+          "accessKey": "raven_test_access",
+          "secretKey": "raven_test_only_secret"
+        }
+      ],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

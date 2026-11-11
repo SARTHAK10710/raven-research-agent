@@ -7,8 +7,10 @@ requires-python = ">=3.12"
 # Runtime dependencies (docs/technical-decisions/01-baseline-technology-stack.md sections 22.1
 # and 23.2): Phase 8.1 pydantic and pydantic-settings; Phase 8.2 SQLAlchemy 2.x (synchronous),
 # Alembic and psycopg 3. psycopg is LGPL-3.0, to be reviewed before production (23.2).
+# Phase 8.3: boto3 (Apache-2.0), the S3 client approved in section 24.1 (Decision 8).
 dependencies = [
     "alembic>=1.13,<2",
+    "boto3>=1.40,<2",
     "psycopg[binary]>=3.2,<4",
     "pydantic>=2.10,<3",
     "pydantic-settings>=2.6,<3",

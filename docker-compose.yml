@@ -1,14 +1,16 @@
 # Raven local infrastructure for DEVELOPMENT AND TESTING ONLY.
 #
 # Approved in docs/technical-decisions/01-baseline-technology-stack.md section 23.2
-# (integration tests against real PostgreSQL with pgvector via Docker Compose).
+# (integration tests against real PostgreSQL with pgvector via Docker Compose) and
+# section 24.1 (SeaweedFS as the S3-compatible object store for tests and development).
 # Never use this file, or its default credentials, for staging or production.
 #
-#   docker compose up -d postgres-test
+#   docker compose up -d --wait postgres-test object-storage-test
 #   uv run pytest -m integration
 #
 # The password below is a throwaway local default, not a secret. Override it with
 # RAVEN_TEST_DB_PASSWORD and pass the same value to the tests via RAVEN_TEST_DATABASE_URL.
+# The object-store keys in docker/seaweedfs/s3.json are likewise test-only values.
 
 services:
   postgres-test:
@@ -26,6 +28,33 @@ services:
       - /var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U raven_test -d raven_memory_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  object-storage-test:
+    # SeaweedFS (Apache-2.0), pinned; licence and version checked 2026-11-11 (7.1 section 24.1).
+    image: chrislusf/seaweedfs:4.51
+    container_name: raven-object-storage-test
+    # One container runs master, volume, filer and the S3 gateway. Small volumes keep
+    # the in-memory test store light.
+    command:
+      - server
+      - -dir=/data
+      - -s3
+      - -s3.port=8333
+      - -s3.config=/etc/seaweedfs/s3.json
+      - -master.volumeSizeLimitMB=64
+    ports:
+      # Non-default host port so nothing else on 8333 is touched.
+      - "127.0.0.1:58333:8333"
+    volumes:
+      - ./docker/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    tmpfs:
+      # Test data is disposable: nothing persists across container restarts.
+      - /data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/healthz"]
       interval: 2s
       timeout: 3s
       retries: 30
