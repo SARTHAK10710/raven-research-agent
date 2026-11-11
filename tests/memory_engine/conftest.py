@@ -15,6 +15,7 @@ from memory_engine.observability import LOGGER_NAMESPACE
 
 SYNTHETIC_PASSWORD = "synthetic-test-password-7f3a"  # noqa: S105 - test-only value
 SYNTHETIC_SECRET_KEY = "synthetic-object-store-secret-9c1e"  # noqa: S105 - test-only value
+SYNTHETIC_BROKER_PASSWORD = "synthetic-broker-password-4b2d"  # noqa: S105 - test-only value
 
 VALID_ENV: dict[str, str] = {
     f"{ENV_PREFIX}ENVIRONMENT": "testing",
@@ -26,6 +27,10 @@ VALID_ENV: dict[str, str] = {
     f"{ENV_PREFIX}OBJECT_STORAGE__BUCKET": "raven-memory",
     f"{ENV_PREFIX}OBJECT_STORAGE__ACCESS_KEY_ID": "synthetic-access-key",
     f"{ENV_PREFIX}OBJECT_STORAGE__SECRET_ACCESS_KEY": SYNTHETIC_SECRET_KEY,
+    f"{ENV_PREFIX}BROKER__HOST": "broker.test.invalid",
+    f"{ENV_PREFIX}BROKER__VIRTUAL_HOST": "raven_test",
+    f"{ENV_PREFIX}BROKER__USER": "raven_memory_publisher",
+    f"{ENV_PREFIX}BROKER__PASSWORD": SYNTHETIC_BROKER_PASSWORD,
 }
 
 
@@ -53,6 +58,11 @@ def synthetic_password() -> str:
 @pytest.fixture
 def synthetic_secret_key() -> str:
     return SYNTHETIC_SECRET_KEY
+
+
+@pytest.fixture
+def synthetic_broker_password() -> str:
+    return SYNTHETIC_BROKER_PASSWORD
 
 
 @pytest.fixture(autouse=True)

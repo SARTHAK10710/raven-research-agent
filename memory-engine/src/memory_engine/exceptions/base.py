@@ -113,6 +113,16 @@ class ObjectStorageError(InfrastructureError):
     code: ClassVar[str] = "OBJECT_STORAGE_ERROR"
 
 
+class MessagePublishError(InfrastructureError):
+    """The broker did not confirm a message (7.4 sections 9 and 12.1).
+
+    The message may or may not have arrived; the outbox keeps it pending and
+    publishes it again, so consumers must tolerate duplicates.
+    """
+
+    code: ClassVar[str] = "MESSAGE_PUBLISH_ERROR"
+
+
 class ObjectIntegrityError(ObjectStorageError):
     """Stored bytes do not match the expected size or SHA-256 (7.2 section 10).
 

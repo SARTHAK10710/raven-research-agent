@@ -31,6 +31,7 @@ from memory_engine.documents.domain.vocabulary import (
     OperationStatus,
     VersionProcessingStatus,
 )
+from memory_engine.domain.handoff import OutboxWriter
 from memory_engine.domain.identifiers import OwnerScope
 
 
@@ -147,6 +148,9 @@ class DocumentUnitOfWork(Protocol):
 
     @property
     def operations(self) -> ProcessingOperationRepository: ...
+
+    @property
+    def outbox(self) -> OutboxWriter: ...
 
 
 class DocumentUnitOfWorkFactory(Protocol):

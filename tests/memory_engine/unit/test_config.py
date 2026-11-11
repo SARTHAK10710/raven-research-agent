@@ -67,6 +67,7 @@ def test_missing_configuration_fails_clearly() -> None:
         "database": "missing",
         "environment": "missing",
         "object_storage": "missing",
+        "broker": "missing",
     }
     assert "environment (missing)" in caught.value.message
 

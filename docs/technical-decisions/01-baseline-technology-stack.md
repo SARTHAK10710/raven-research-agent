@@ -749,3 +749,21 @@ This decision covers development and tests only. It does not choose the producti
 - **Rejected:**
   - parsing in both places: duplicate code, twice the attack surface for malformed files, and extractions that can disagree;
   - memory ingestion owning parsing: it would put document processing inside Personal Memory, against the domain separation in §23.1.
+
+### 24.3 Phase 8.3 step 4 — Reliable handoff: outbox, RabbitMQ and Celery ⚑ (new infrastructure and dependencies)
+
+**Status:** Approved by the project owner on 2026-11-12, at the start of 8.3 step 4. Settles the step-4 open questions and part of the 7.4 §22 deferrals (queue names and routing keys) for the ingestion handoff only.
+
+- **Topology:** one durable direct exchange `raven.memory`; queue `memory.document.processing` (routing key `document.extraction.requested`, task `memory.document.extraction`) for the document pipeline (8.12) and queue `memory.personal.extraction` (routing key `personal.extraction.requested`, task `memory.personal.extraction`) for extraction (8.4). No dead-letter queue yet: dead-letter routing and retention are settled with the consumers (7.4 §13, §22).
+- **Message contract:** the 7.4 §7 task envelope as JSON, `schema_version` "1", `message_type` "command"; the payload holds identifiers and object keys only, never content. Additive changes keep the version; any other change bumps it; consumers reject unknown versions. The contract lives in the shared kernel (`memory_engine.domain.handoff`).
+- **Publishing:** Celery `send_task`, the envelope as the single argument and the outbox id as the Celery task id, with publisher confirms. Celery does not retry; the outbox does.
+- **When a record becomes `queued`:** only after the broker confirms. Registration writes the record and its `me_outbox` row in one transaction (Memory Source `validated`, extraction operation `created`); the relay publishes and, in one transaction, marks the row published and moves the record to `queued` (with a `pm_source_processing_event` for a Memory Source).
+- **Forget instructions:** no outbox row and no message; the source stays `validated` until plan 8.10 handles it.
+- **Retries:** bounded. Each failure counts an attempt and records an error code; the next try follows exponential backoff with jitter (2 s doubling, capped at 5 min); after 10 attempts the row becomes `failed` and is retried only through an explicit `retry_failed`. All values are configurable, because 7.4 §22 defers them.
+- **Broker for development and tests:** `rabbitmq:4.3.7-alpine` (MPL-2.0, checked 2026-11-12) as `broker-test` in `docker-compose.yml`, on 127.0.0.1 only, tmpfs, test-only credentials, no management plugin. Production broker hosting, TLS and credentials stay deferred (7.8).
+- **New runtime dependencies:** `celery>=5.7,<6` and `kombu>=5.7,<6` (BSD-3-Clause; kombu declared because tests use it directly). Both untyped for mypy, and confined to `memory_engine.infrastructure.messaging` (a boundary test enforces it).
+- **Implementation choices (8.3 step 4, reported to the owner):**
+  - The relay runs as its own loop (`OutboxRelay.run_forever`), one message per transaction, claiming rows with `FOR UPDATE SKIP LOCKED`; not as a Celery beat task, which would need a third queue. It stops a batch at the first publish failure.
+  - `me_outbox` has no foreign key to its subject, which lives in either domain (only the evidence path may cross them). Plan 8.10 deletion must remove a subject's outbox rows.
+  - If the subject no longer waits for handoff (for example, a cancelled operation), the row becomes `failed` with `SUBJECT_NOT_PENDING` and nothing is published.
+  - Published rows are kept; an outbox cleanup policy is still deferred (7.4 §22).

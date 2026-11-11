@@ -14,6 +14,7 @@ from contextlib import AbstractContextManager
 from datetime import datetime
 from typing import Protocol
 
+from memory_engine.domain.handoff import OutboxWriter
 from memory_engine.domain.identifiers import OwnerScope
 from memory_engine.domain.vocabulary import (
     CorrectionStatus,
@@ -515,6 +516,9 @@ class PersonalUnitOfWork(Protocol):
 
     @property
     def sources(self) -> MemorySourceRepository: ...
+
+    @property
+    def outbox(self) -> OutboxWriter: ...
 
     @property
     def candidates(self) -> MemoryCandidateRepository: ...

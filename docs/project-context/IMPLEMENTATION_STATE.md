@@ -12,7 +12,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 |---|---|---|
 | 8.1 Foundation and project setup | `VERIFIED` | `5a0d6e5`, merged in `6efd72d` (PR #3) |
 | 8.2 Database and persistence | `VERIFIED` (2026-11-11) | Steps 1–2 `d2346b6`, `e7fc443` (PR #8); step 3 `7a62cd4` (PR #9); step 4 `38411e1` (PR #10, `977c3b7`); step 5 `42b35c3` and review fixes `1b58b77` (PR #11, `423b6fd`) |
-| 8.3 Ingestion pipeline | `IN_PROGRESS` (steps 1–3 tested; 4–5 to do) | Step 1 `206bc2f` (PR #16); step 2 `894da0f` (PR #17, `1e93dbd`); step 3 uncommitted |
+| 8.3 Ingestion pipeline | `IN_PROGRESS` (steps 1–4 tested; 5 to do) | Step 1 `206bc2f` (PR #16); step 2 `894da0f` (PR #17, `1e93dbd`); step 3 `15d752f` (PR #18, `d51039b`); step 4 uncommitted |
 | 8.4 Extraction and evaluation | `NOT_STARTED` | — |
 | 8.5 Entity and relationship management | `NOT_STARTED` | — |
 | 8.6 Memory resolution | `NOT_STARTED` | — |
@@ -143,7 +143,16 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 
 | Field | Value |
 |---|---|
-| Status | `IN_PROGRESS`: approved 2026-11-11. Step 1 (object storage) merged (PR #16); step 2 (personal memory ingestion) merged (PR #17). **Step 3 (document ingestion) implemented and tested, uncommitted** on `feat/phase-8-3-document-ingestion`. Steps 4–5 not started ([NEXT_STEPS.md](NEXT_STEPS.md)) |
+| Status | `IN_PROGRESS`: approved 2026-11-11. Steps 1–3 merged (PRs #16–#18; `main` @ `d51039b`). **Step 4 (reliable handoff) implemented and tested, uncommitted** on `feat/phase-8-3-reliable-handoff`. Step 5 not started ([NEXT_STEPS.md](NEXT_STEPS.md)) |
+| Step 4 decisions (owner, 2026-11-12; [7.1 §24.3](../technical-decisions/01-baseline-technology-stack.md)) | Exchange `raven.memory`, queues `memory.document.processing` / `memory.personal.extraction` with keys `document.extraction.requested` / `personal.extraction.requested`, no DLQ yet; 7.4 §7 envelope v1, ids and object keys only; Celery `send_task` with publisher confirms; `queued` only after the broker confirms; forget gets no handoff; 10 attempts, 2 s doubling to 5 min with jitter, then `failed` until `retry_failed`; `rabbitmq:4.3.7-alpine`; `celery` and `kombu` added |
+| Step 4 implementation choices (for owner review) | Relay as its own loop (`OutboxRelay.run_forever`), not a Celery beat task (that would need a third queue); one message per transaction with `FOR UPDATE SKIP LOCKED`; a batch stops at the first publish failure; a subject no longer waiting (for example a cancelled operation) makes the row `failed` with `SUBJECT_NOT_PENDING`; no foreign key from `me_outbox` to its subject; published rows kept (cleanup deferred) |
+| Files created (step 4) | `domain/handoff.py` (envelope, `OutboxMessage`, `OutboxWriter` port, vocabularies); `infrastructure/persistence/outbox.py`; `infrastructure/messaging/{__init__,topology,celery_app,publisher,relay}.py`; `migrations/versions/20261112_0008_outbox.py`. Tests: `unit/test_handoff.py`, `integration/test_outbox_relay.py`, `integration/test_broker_handoff.py` |
+| Files modified (step 4) | `personal/application/{ingestion,ports}.py` and `documents/application/{ingestion,ports}.py` (outbox row in the registration transaction); `persistence/unit_of_work.py` (`outbox`); `exceptions/{__init__,base}.py` (`MessagePublishError`); `config/{__init__,settings}.py` (`BrokerSettings` required, `OutboxSettings`); `memory-engine/{pyproject.toml,.env.example,README.md}`; root `pyproject.toml` (mypy override, marker), `uv.lock`, `docker-compose.yml` (`broker-test`); tests `conftest.py`, `unit/{test_config,test_domain_boundary,test_persistence_definitions}.py`, `integration/test_migrations.py`; docs: 7.1 §24.3 and the project-context files |
+| Migration (step 4) | `0008_outbox`: table `me_outbox` (unique owner/kind/subject, 5 check constraints, partial index `ix_me_outbox_due`, `me_guard_columns` trigger leaving only the publication state mutable) |
+| Dependencies (step 4) | `celery` 5.7.0, `kombu` 5.7.0 and their transitive packages (see [TECHNOLOGY_DECISIONS.md](TECHNOLOGY_DECISIONS.md#dependency-timing)) |
+| Tests (step 4) | **613 passed, 0 failed** (446 unit, 167 integration against PostgreSQL, SeaweedFS and RabbitMQ), 97% coverage (new messaging and outbox modules 99–100%), 3 green runs; broker stopped → its 2 tests skipped; Ruff clean; mypy strict clean (86 files) |
+| What step 4 does not do | No consumer tasks (8.4, 8.12); no deployed or scheduled relay process; no dead-letter queue or outbox cleanup; no handoff for forget instructions (8.10); no events or metrics beyond the relay's structured log lines (step 5) |
+| Commit (step 3) | `15d752f`, merged through PR #18 (`d51039b`) |
 | Step 3 decisions (owner, 2026-11-11) | Standard-library format detection; 25 MiB upload limit (configurable); no malware scan (deferral recorded); re-upload: no document ID → new document, document ID → next version (identical content refused) |
 | Files created (step 3) | `documents/application/{formats,ingestion}.py`. Tests: `unit/test_document_formats.py`, `integration/test_document_ingestion.py` |
 | Files modified (step 3) | `documents/application/ports.py` and `persistence/documents/repositories.py` (`find_by_idempotency_key` for operations); `config/settings.py` (`max_upload_bytes`). No migration; no new dependencies |
@@ -162,7 +171,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 | Dependencies (step 1) | `boto3` 1.44.0 and its transitive packages (see [TECHNOLOGY_DECISIONS.md](TECHNOLOGY_DECISIONS.md#dependency-timing)) |
 | Commit (step 1) | `206bc2f`, merged through PR #16 (`3d01cbe`) |
 | Tests (step 1) | **453 passed, 0 failed** (333 unit, 120 integration against PostgreSQL 17 + pgvector and SeaweedFS 4.51), 97% coverage, 3 green runs; services stopped → 119 skipped (the unreachable-store test needs no service and passes); Ruff clean; mypy strict clean (69 files) |
-| Open for later steps | Queue names and routing keys (deferred, 7.4 §22); the handoff message contract; RabbitMQ image; publishing approach (step 4) |
+| Open for later steps | Step 5: ingestion events and metrics (plan 8.3 §11), the remaining plan §12 tests, and the acceptance review against plan 8.3 §13 |
 
 ## 8.4–8.12
 

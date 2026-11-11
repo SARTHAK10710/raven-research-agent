@@ -6,7 +6,7 @@ Primary instruction and navigation file for Claude Code sessions in this reposit
 
 Raven is an independent AI research agent that builds persistent, evidence-grounded knowledge. It has **three primary engines** — Memory Engine, Research Engine, Agent Orchestrator — supported by Shared Infrastructure, deployed initially as a **modular monolith with independent background workers**. The Memory Engine holds two separate logical domains: **Personal Memory** and **Document Intelligence**.
 
-This repository holds the architecture, data-model, algorithm and technology specifications (Phases 1–7), the Phase 8 Memory Engine implementation plans, and — from Phase 8 onward — the implementation itself. **Only the Memory Engine foundation (8.1) and its PostgreSQL persistence layer (8.2) exist**; there is no ingestion, extraction, retrieval, document processing, research or orchestration functionality yet.
+This repository holds the architecture, data-model, algorithm and technology specifications (Phases 1–7), the Phase 8 Memory Engine implementation plans, and — from Phase 8 onward — the implementation itself. **The Memory Engine foundation (8.1), its PostgreSQL persistence layer (8.2) and, from 8.3, object storage, ingestion and the outbox handoff to RabbitMQ exist**; there is no extraction, retrieval, document processing, research or orchestration functionality yet.
 
 ## Current phase
 

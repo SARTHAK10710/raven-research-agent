@@ -51,6 +51,11 @@ Phase 8.1 created the foundation code (`memory-engine/src/memory_engine/`: `conf
 - Established in 8.3 step 3 (document ingestion):
   - The content decides a file's format; extensions and declared types are only cross-checked. Never parse, unzip or render a document during ingestion. DOCX is checked from its ZIP listing only.
   - Filenames are display names only (`safe_filename`); never build a key or path from them.
+- Established in 8.3 step 4 (reliable handoff):
+  - A handoff is an `OutboxMessage` added through the unit of work's `outbox`, in the same transaction as the record it hands off. Never publish to the broker from an application service.
+  - Envelopes carry identifiers and object keys only, never content; the contract is `memory_engine.domain.handoff` (schema version "1"). Consumers validate with `HandoffEnvelope.from_dict` and deduplicate on the message id: delivery is at least once.
+  - A record moves to `queued` only in the relay's transaction after the broker confirmed. Forget instructions never get a handoff to extraction.
+  - Only `memory_engine.infrastructure.messaging` imports celery, kombu or amqp (tested). Celery never retries a publish; the outbox does.
 
 ## Naming
 

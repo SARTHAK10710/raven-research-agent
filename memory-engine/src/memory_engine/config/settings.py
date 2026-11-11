@@ -8,7 +8,9 @@ Secrets use :class:`pydantic.SecretStr` so they are masked in ``repr`` and
 ``str``. The database connection itself is built in
 ``memory_engine.infrastructure.persistence`` (Phase 8.2, psycopg 3 with
 synchronous SQLAlchemy); the object-storage client in
-``memory_engine.infrastructure.object_storage`` (Phase 8.3, boto3).
+``memory_engine.infrastructure.object_storage`` (Phase 8.3, boto3); the broker
+connection and outbox relay in ``memory_engine.infrastructure.messaging``
+(Phase 8.3 step 4, RabbitMQ through Celery).
 """
 
 from enum import StrEnum
@@ -110,6 +112,51 @@ class IngestionSettings(BaseModel):
     max_upload_bytes: int = Field(default=25 * MIB, ge=1, le=512 * MIB)
 
 
+class BrokerSettings(BaseModel):
+    """RabbitMQ connection for handoff messages (7.4; 7.1 section 24.3).
+
+    ``use_tls`` must be enabled outside development and testing (7.4 section 18);
+    the local test broker listens on 127.0.0.1 without TLS.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    host: str = Field(min_length=1)
+    port: int = Field(default=5672, ge=1, le=65535)
+    virtual_host: str = Field(min_length=1, pattern=r"^[A-Za-z0-9_.-]+$")
+    user: str = Field(min_length=1)
+    password: SecretStr
+    use_tls: bool = False
+    connect_timeout_seconds: int = Field(default=5, ge=1, le=120)
+    # How long to wait for the broker to confirm one message (publisher confirms).
+    confirm_timeout_seconds: int = Field(default=10, ge=1, le=300)
+
+    @field_validator("password")
+    @classmethod
+    def _password_not_empty(cls, value: SecretStr) -> SecretStr:
+        if not value.get_secret_value():
+            raise ValueError("must not be empty")
+        return value
+
+
+class OutboxSettings(BaseModel):
+    """Outbox relay policy (owner-approved defaults, 8.3 step 4).
+
+    7.4 section 22 defers retry counts and delays, so these are configurable:
+    exponential backoff from ``backoff_base_seconds`` doubling up to
+    ``backoff_max_seconds``, with jitter; after ``max_attempts`` failures a
+    message becomes ``failed`` until an explicit retry.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    batch_size: int = Field(default=100, ge=1, le=10_000)
+    max_attempts: int = Field(default=10, ge=1, le=1000)
+    backoff_base_seconds: float = Field(default=2.0, gt=0, le=3600)
+    backoff_max_seconds: float = Field(default=300.0, gt=0, le=86_400)
+    poll_interval_seconds: float = Field(default=2.0, gt=0, le=3600)
+
+
 class MemoryEngineSettings(BaseSettings):
     """Top-level Memory Engine configuration."""
 
@@ -127,7 +174,9 @@ class MemoryEngineSettings(BaseSettings):
     log_level: LogLevel = "INFO"
     database: DatabaseSettings
     object_storage: ObjectStorageSettings
+    broker: BrokerSettings
     ingestion: IngestionSettings = IngestionSettings()
+    outbox: OutboxSettings = OutboxSettings()
 
 
 def load_settings(env_file: str | Path | None = None) -> MemoryEngineSettings:
