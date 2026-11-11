@@ -687,6 +687,7 @@ Approved on 2026-11-11.
 Approved on 2026-11-11.
 
 - **Phase 8.2** creates no outbox table. Nothing in 8.2 publishes to a broker, and an unused table would contradict the rule against placeholder structures. Operation and idempotency tables (`me_` prefix) stay in 8.2, because plan 8.2 §4.6 requires durable operation state.
+- **Implementation note (2026-11-11, 8.2 step 1):** no specification defines a generic `me_operation` table's columns, and its first consumers are ingestion idempotency (plan 8.3) and document processing (8.2 step 2, where `doc_processing_operation` is specified). Step 1 therefore creates no `me_` table; the same no-placeholder rule applies. Document processing operations use `doc_processing_operation`; a shared `me_operation` is introduced only when a consumer and its columns are defined.
 - **Phase 8.3** introduces the outbox table (`me_outbox`), its publisher, RabbitMQ and Celery together, with their tests, when ingestion first publishes work. Outbox rows are then written in the same transaction as the business change (7.4 §9; §23.2).
 - This differs from the [decision review](../project-context/PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) recommendation (outbox table in 8.2). The trade-off it names, a schema change in 8.3, is accepted.
 

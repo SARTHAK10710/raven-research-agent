@@ -81,6 +81,40 @@ def test_domain_depends_only_on_domain_and_exceptions() -> None:
     assert violations == []
 
 
+def test_personal_domain_depends_only_on_the_shared_kernel() -> None:
+    allowed = (*DOMAIN_ALLOWED_INTERNAL, "memory_engine.personal.domain")
+    violations = [
+        f"{path.relative_to(PACKAGE_ROOT)}: {module}"
+        for path in _python_files("personal/domain")
+        for module in _imports(path)
+        if _matches(module, FORBIDDEN_PREFIXES)
+        or (_matches(module, ("memory_engine",)) and not _matches(module, allowed))
+    ]
+    assert violations == []
+
+
+def test_personal_application_never_imports_infrastructure() -> None:
+    # 7.1 section 23.1: application depends on ports, never on adapters.
+    violations = [
+        f"{path.relative_to(PACKAGE_ROOT)}: {module}"
+        for path in _python_files("personal/application")
+        for module in _imports(path)
+        if _matches(module, FORBIDDEN_PREFIXES)
+        or _matches(module, ("memory_engine.interfaces", "memory_engine.documents"))
+    ]
+    assert violations == []
+
+
+def test_infrastructure_never_imports_interfaces() -> None:
+    violations = [
+        f"{path.relative_to(PACKAGE_ROOT)}: {module}"
+        for path in _python_files("infrastructure")
+        for module in _imports(path)
+        if _matches(module, ("memory_engine.interfaces",))
+    ]
+    assert violations == []
+
+
 @pytest.mark.parametrize("package", ["exceptions", "config", "observability"])
 def test_foundation_packages_have_no_infrastructure_imports(package: str) -> None:
     violations = [

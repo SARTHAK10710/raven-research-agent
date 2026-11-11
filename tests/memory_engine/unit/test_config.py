@@ -26,6 +26,10 @@ def test_valid_configuration_loads(valid_env: dict[str, str]) -> None:
     assert settings.database.host == "db.test.invalid"
     assert settings.database.port == 5432
     assert settings.database.schema_name == "memory"
+    assert settings.database.pool_size == 5
+    assert settings.database.max_overflow == 10
+    assert settings.database.pool_recycle_seconds == 1800
+    assert settings.database.connect_timeout_seconds == 10
 
 
 def test_optional_values_can_be_overridden(
@@ -83,6 +87,10 @@ def test_missing_nested_value_names_the_field(
         ("DATABASE__HOST", "", "database.host"),
         ("DATABASE__PASSWORD", "", "database.password"),
         ("DATABASE__SCHEMA_NAME", "memory; DROP SCHEMA", "database.schema_name"),
+        ("DATABASE__POOL_SIZE", "0", "database.pool_size"),
+        ("DATABASE__MAX_OVERFLOW", "-1", "database.max_overflow"),
+        ("DATABASE__POOL_RECYCLE_SECONDS", "5", "database.pool_recycle_seconds"),
+        ("DATABASE__CONNECT_TIMEOUT_SECONDS", "0", "database.connect_timeout_seconds"),
     ],
 )
 def test_invalid_values_are_rejected(

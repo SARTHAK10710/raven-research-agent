@@ -2,7 +2,7 @@
 
 A summary of Phase 7 ([docs/technical-decisions](../technical-decisions/Readme.md)). The source documents are authoritative.
 
-**Installed in the repository:** only the Phase 8.1 dependencies, declared in `pyproject.toml` files and locked in the root `uv.lock` (Phase 8.1, commit `5a0d6e5`, merged into `main` via PR #3). The Phase 8.2 driver decision is approved (below); the embedding model is still pending ([decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md), Decision 3). "Approved" below means selected in the specifications, not installed. Each dependency is added only in the subphase that needs it.
+**Installed in the repository:** the Phase 8.1 dependencies (merged) and, on the Phase 8.2 branch, the database dependencies, declared in `pyproject.toml` files and locked in the root `uv.lock`. The embedding model is still pending ([decision review](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md), Decision 3). "Approved" below means selected in the specifications, not installed. Each dependency is added only in the subphase that needs it.
 
 ## Approved Phase 8.1 project setup decisions
 
@@ -18,7 +18,7 @@ Approved by the project owner on 2026-11-11. Recorded in [7.1 §22](../technical
 
 ## Approved Phase 8.2 decisions
 
-Approved by the project owner on 2026-11-11. Recorded in [7.1 §23](../technical-decisions/01-baseline-technology-stack.md) and the Phase 8.2 amendment of [5.4](../data-models/phase-05-memory-engine-models.md). Phase 8.2 itself has **not started**.
+Approved by the project owner on 2026-11-11. Recorded in [7.1 §23](../technical-decisions/01-baseline-technology-stack.md) and the Phase 8.2 amendment of [5.4](../data-models/phase-05-memory-engine-models.md). Phase 8.2 was approved and started on 2026-11-11 (step 1 implemented).
 
 | # | Decision | Choice | Status |
 |---|---|---|---|
@@ -36,7 +36,7 @@ Approved by the project owner on 2026-11-11. Recorded in [7.1 §23](../technical
 |---|---|---|
 | Phase 8.1 — runtime | `pydantic`, `pydantic-settings` | Yes — 2.14.3, 2.16.2 (locked) |
 | Phase 8.1 — development | `pytest`, `pytest-cov`, `ruff`, `mypy` | Yes — 9.2.0, 7.1.0, 0.17.4, 2.4.1 (locked) |
-| Phase 8.2 | `SQLAlchemy` 2.x, `alembic`, `psycopg[binary]` (psycopg 3, approved 2026-11-11) | No |
+| Phase 8.2 | `SQLAlchemy` 2.x, `alembic`, `psycopg[binary]` (psycopg 3, approved 2026-11-11) | Yes — 2.1.8, 1.20.1, 3.3.8 (locked; uncommitted on `feat/phase-8-2-persistence-foundation`). Transitive: `mako`, `markupsafe`, `tzdata`. Test database: `pgvector/pgvector:pg17` via `docker-compose.yml` (dev/test only) |
 | When required | `HTTPX` (API/HTTP testing); OpenTelemetry API/SDK (instrumentation) | No |
 | Later milestones | NLP, embedding, messaging and storage libraries, in the subphase that needs them | No |
 

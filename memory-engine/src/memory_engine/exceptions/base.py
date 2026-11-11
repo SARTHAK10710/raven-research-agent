@@ -46,6 +46,25 @@ class AuthorizationError(ApplicationError):
     code: ClassVar[str] = "AUTHORIZATION_DENIED"
 
 
+class RecordNotFoundError(ApplicationError):
+    """The record does not exist within the caller's owner scope.
+
+    Raised identically for a missing record and for another owner's record, so
+    the error never reveals whether a private resource exists.
+    """
+
+    code: ClassVar[str] = "RECORD_NOT_FOUND"
+
+
+class ConcurrencyConflictError(ApplicationError):
+    """An optimistic-concurrency check failed: the record changed since it was read.
+
+    The caller may reload and retry; nothing was written (Decision 5.9.4).
+    """
+
+    code: ClassVar[str] = "CONCURRENCY_CONFLICT"
+
+
 class InfrastructureError(MemoryEngineError):
     """A technical dependency (database, storage, broker, model) failed."""
 
