@@ -44,6 +44,10 @@ Phase 8.1 created the foundation code (`memory-engine/src/memory_engine/`: `conf
   - Application code uses the `ObjectStorage` port from `memory_engine.domain.object_storage`; only `memory_engine.infrastructure.object_storage` imports boto3. Unit tests use `InMemoryObjectStorage`.
   - Object keys are opaque and owner-partitioned (`<area>/<owner_id>/…`, never a filename). Every port call takes the `OwnerScope` and refuses a key of another owner before any I/O.
   - Compute the SHA-256 and size before storing and pass them to `put`; the adapter verifies both and deletes a mismatched object. Never report content as stored when `put` raised.
+- Established in 8.3 step 2 (ingestion):
+  - Order of work: validate, check the idempotency key, upload to object storage, then write the database record. If the record fails, delete the uploads (best effort) and look the key up again, since a concurrent request may have won.
+  - An idempotency key always comes with a fingerprint of the request (excluding receipt time). The same key with a different fingerprint raises `IdempotencyKeyReusedError`; never overwrite.
+  - Rejections raise `IngestionRejectedError` with `details["outcome"]` and an UPPER_SNAKE_CASE `details["reason"]`; error messages never contain the input.
 
 ## Naming
 

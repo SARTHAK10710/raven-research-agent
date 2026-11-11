@@ -3,8 +3,8 @@
 ## Current position
 
 - **Phase:** 8 — Memory Engine Implementation
-- **Subphase:** 8.3 — Ingestion Pipeline ([plan](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md)): **approved 2026-11-11**, `IN_PROGRESS`. Step 1 (object storage) is implemented and tested, uncommitted on `feat/phase-8-3-object-storage`. 8.1 and 8.2 `VERIFIED` and merged.
-- **Next approved action:** owner review of step 1; step 2 starts when the owner says so, beginning with its open questions. Do not start 8.4.
+- **Subphase:** 8.3 — Ingestion Pipeline ([plan](../implementation-plans/Phase-08-memory-engine/03-ingestion-pipeline.md)): **approved 2026-11-11**, `IN_PROGRESS`. Step 1 (object storage) merged (PR #16). Step 2 (personal memory ingestion) implemented and tested, uncommitted on `feat/phase-8-3-personal-ingestion`. 8.1 and 8.2 `VERIFIED` and merged.
+- **Next approved action:** owner review of step 2; step 3 (document ingestion) starts when the owner says so, beginning with its open questions. Do not start 8.4.
 - **Decision review:** [PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) analyses all 15 open decisions, with a deep review of the Phase 8.2 blockers.
 
 ## Prerequisites before Phase 8.2
@@ -33,8 +33,8 @@ Ordered so each step builds on the previous one. All of them are persistence-bac
 
 | Step | Scope | Open questions to settle at the start of the step |
 |---|---|---|
-| 1 | **Object storage:** the storage port, an in-memory fake, the SeaweedFS service in `docker-compose.yml`, a boto3 adapter with checksum verification and multipart-upload cleanup; the object-storage failure tests deferred from 8.2 (store unavailable, partial upload) (Decision 8, 7.1 §24.1) | **Settled 2026-11-11:** port in the shared kernel; `chrislusf/seaweedfs:4.51`; one engine bucket with owner checks; required settings. **Implemented and tested; uncommitted** |
-| 2 | **Personal memory ingestion:** the request contract (`schema_version`), validation (schema, encoding, size, control characters), normalization (timestamps, speakers, conversation order), original content in object storage plus a `pm_memory_source` row, an idempotent ingestion operation, processing events, and recording remember/forget instructions (plan 8.3 §5, §7–9) | Where the ingestion operation and idempotency live (a `pm_` table or a shared `me_operation`); how `instruction_type` is stored; forget handling until 8.10 exists; text size limits |
+| 1 | **Object storage:** the storage port, an in-memory fake, the SeaweedFS service in `docker-compose.yml`, a boto3 adapter with checksum verification and multipart-upload cleanup; the object-storage failure tests deferred from 8.2 (store unavailable, partial upload) (Decision 8, 7.1 §24.1) | **Settled 2026-11-11:** port in the shared kernel; `chrislusf/seaweedfs:4.51`; one engine bucket with owner checks; required settings. **Merged (PR #16)** |
+| 2 | **Personal memory ingestion:** the request contract (`schema_version`), validation (schema, encoding, size, control characters), normalization (timestamps, speakers, conversation order), original content in object storage plus a `pm_memory_source` row, an idempotent ingestion operation, processing events, and recording remember/forget instructions (plan 8.3 §5, §7–9) | **Settled 2026-11-11:** extend `pm_memory_source` (migration `0007`); forget recorded, never extracted; 256 KiB text, 1,000 messages / 4 MiB per conversation; application dataclasses for the contract. **Implemented and tested; uncommitted** |
 | 3 | **Document ingestion:** actual-format detection (PDF, DOCX, TXT), size limits, checksum, the original in object storage, registration of the document and version, a `doc_processing_operation`, the re-upload policy; no parsing (Decision 13; plan 8.3 §6) | Detection approach (standard-library signature checks or a library); file-size limit (deferred, 7.6 §18); malware scanning (no approved tool); new document vs new version on re-upload |
 | 4 | **Reliable handoff:** the `me_outbox` table written in the same transaction as each registration, a publisher, RabbitMQ in `docker-compose.yml`, Celery wiring; handoff messages to the document pipeline (8.12) and to extraction (8.4); recovery of failed publishing (7.1 §23.6; 7.4) | Queue names and routing keys (deferred, 7.4 §22); message contract and versioning; Celery `send_task` or plain kombu for publishing; RabbitMQ image tag |
 | 5 | **Observability and acceptance:** ingestion events and metrics (plan 8.3 §11), the remaining plan §12 tests, and an acceptance review against plan 8.3 §13 | — |
@@ -84,31 +84,29 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 *Overwrite this section at the end of every session that changes the repository.*
 
 - **Date:** 2026-11-11
-- **Objective:** Phase 8.3 step 1, object storage. Branch `feat/phase-8-3-object-storage` from `main` @ `ea12c7a`; uncommitted.
+- **Objective:** Phase 8.3 step 2, personal memory ingestion. Branch `feat/phase-8-3-personal-ingestion` from `main` @ `3d01cbe`; uncommitted.
 - **Work completed:**
-  - port and key rules in the shared kernel (`domain/object_storage.py`): opaque owner-partitioned keys, owner check on every call;
-  - `InMemoryObjectStorage` fake and `S3ObjectStorage` (boto3), which streams with a SHA-256 and size check, re-checks the checksum on read, aborts failed multipart uploads, and offers `abort_incomplete_uploads`;
-  - `ObjectStorageError` and `ObjectIntegrityError`; required `ObjectStorageSettings`;
-  - SeaweedFS 4.51 as `object-storage-test` (`127.0.0.1:58333`, test-only keys in `docker/seaweedfs/s3.json`).
-  - A smoke check confirmed that SeaweedFS supports metadata, multipart uploads, listing and aborting uploads, and 404/`NoSuchKey`.
-- **Decisions made (owner):**
-  - the port lives in the shared kernel; 7.1 §24.1 is corrected, since application code may not import infrastructure;
-  - image 4.51;
-  - one engine bucket, never created by the application;
-  - required settings.
+  - `personal/application/ingestion.py`:
+    - request types (`IngestionRequest`, `ConversationMessage`);
+    - `prepare` (validation with `outcome` and reason codes, NFC and line-ending normalization, control-character removal, request fingerprint, priority);
+    - `PersonalIngestionService` (owner check; replay or `IdempotencyKeyReusedError`; original and normalized content to object storage; a `validated` Memory Source; uploads removed if registration fails; a lost key race returns the winner).
+  - Migration `0007_source_ingestion`: instruction type, priority, idempotency key and fingerprint, source ref and timestamp, normalized ref on `pm_memory_source`.
+  - Vocabularies `InstructionType`, `IngestionPriority`; errors `IngestionRejectedError`, `IdempotencyKeyReusedError`; `IngestionSettings` (limits).
+- **Decisions made (owner):** extend `pm_memory_source`; forget instructions recorded and never extracted until 8.10; 256 KiB / 1,000 messages / 4 MiB limits; application dataclasses for the contract.
 - **Tests and results:**
-  - `uv sync --locked` ok; ruff and format clean; mypy strict clean (69 files);
-  - `uv run pytest --cov`: **453 passed** (333 unit, 120 integration against PostgreSQL and SeaweedFS), 97% coverage, 3 green runs;
-  - services stopped: 119 skipped, and the unreachable-store test passes without services.
-- **Implementation status:** 8.3 `IN_PROGRESS`; step 1 tested; steps 2–5 to do.
+  - `uv sync --locked` ok; ruff and format clean; mypy strict clean (72 files);
+  - `uv run pytest --cov`: **500 passed** (368 unit, 132 integration), 97% coverage, 3 green runs;
+  - services stopped: 131 skipped.
+- **Implementation status:** 8.3 `IN_PROGRESS`; step 1 merged; step 2 tested; steps 3–5 to do.
 - **Unresolved:**
-  - for later steps: queue topology, file-size limits, malware scanning, the ingestion-operation table and forget handling;
-  - no encryption at rest in the development store (production concern; 7.1 §8);
+  - for later steps: queue topology; document file-size limit; malware scanning; the re-upload policy;
+  - no encryption at rest in the development store;
   - G6; Decision 6; embedding model; Decisions 7, 12, 14 and 15; ratio-label wording;
   - on this machine: uv not on PATH, and Docker Desktop can take minutes to start.
-- **Next action:** owner review; commit and PR for step 1 (with approval); then step 2 (personal memory ingestion), starting with its open questions.
-- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.3 §5 and §7–9, 6.2.1 (text and conversation inputs), 5.4.1 and 5.4.28, 7.1 §24, 7.2 §10–11, `domain/object_storage.py`, and `memory-engine/README.md`.
+- **Next action:** owner review; commit and PR for step 2 (with approval); then step 3 (document ingestion), starting with its open questions.
+- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.3 §6, §8 and §12.2, the 6.2 amendment on parsing ownership, 5.4 Document Intelligence amendment §3.1–3.2 and §14, `documents/application/ports.py`, `personal/application/ingestion.py`, and `memory-engine/README.md`.
 - **Earlier this session (all merged):**
+  - Phase 8.3 step 1, object storage (PR #16, `3d01cbe`).
   - Phase 8.2 completed and `VERIFIED` (PRs #10, #11, #12; `main` @ `c936fe3`): 412 tests passed on `main`.
   - Decision 8, local object storage: SeaweedFS and boto3 (PR #13).
   - Decision 13, document parsing ownership: the document pipeline parses (PR #14).

@@ -35,6 +35,11 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
 - Entities are private only (Decision 11). Shared entities need an approved curation process and a migration before they can exist. It is persistence only: no ingestion, parsing, chunking, embedding generation, resolution, retrieval ranking or deletion workflow exists, and there is no broker yet (object storage arrived in 8.3 step 1).
 - Document keyword search uses the language-neutral `simple` text-search configuration until the language requirement (G6) is decided.
 - Object storage (8.3 step 1): a port in the shared kernel, an in-memory fake, and a boto3 adapter, tested against SeaweedFS in `docker-compose.yml` (`object-storage-test`, `127.0.0.1:58333`, test-only keys in `docker/seaweedfs/s3.json`). The development store has no server-side encryption. Encrypting sensitive content at rest (7.1 §8) is a production-provider concern that is still deferred.
+- Personal memory ingestion (8.3 step 2):
+  - text and conversations are validated, normalized and stored, and end as a `validated` Memory Source;
+  - nothing is queued, handed off or extracted until step 4 and 8.4;
+  - forget instructions are recorded but delete nothing until 8.10;
+  - input limits (256 KiB text; 1,000 messages / 4 MiB per conversation) are configurable defaults, because 7.6 §18 still defers the final limits.
 - Integration tests need both `postgres-test` and `object-storage-test` running (`docker compose up -d --wait postgres-test object-storage-test`).
 - Integration tests skip, rather than fail, when the Docker PostgreSQL service is not running. A green test run without Docker does not cover persistence; check that the integration tests were not skipped.
 - Memory Source `content_ref` is optional until object storage exists (Phase 8.3).

@@ -12,7 +12,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 |---|---|---|
 | 8.1 Foundation and project setup | `VERIFIED` | `5a0d6e5`, merged in `6efd72d` (PR #3) |
 | 8.2 Database and persistence | `VERIFIED` (2026-11-11) | Steps 1–2 `d2346b6`, `e7fc443` (PR #8); step 3 `7a62cd4` (PR #9); step 4 `38411e1` (PR #10, `977c3b7`); step 5 `42b35c3` and review fixes `1b58b77` (PR #11, `423b6fd`) |
-| 8.3 Ingestion pipeline | `IN_PROGRESS` (step 1 tested; steps 2–5 to do) | Step 1 uncommitted |
+| 8.3 Ingestion pipeline | `IN_PROGRESS` (steps 1–2 tested; 3–5 to do) | Step 1 `206bc2f` (PR #16, `3d01cbe`); step 2 uncommitted |
 | 8.4 Extraction and evaluation | `NOT_STARTED` | — |
 | 8.5 Entity and relationship management | `NOT_STARTED` | — |
 | 8.6 Memory resolution | `NOT_STARTED` | — |
@@ -143,14 +143,21 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 
 | Field | Value |
 |---|---|
-| Status | `IN_PROGRESS`: approved 2026-11-11. **Step 1 (object storage) implemented and tested, uncommitted** on `feat/phase-8-3-object-storage`. Steps 2–5 not started ([NEXT_STEPS.md](NEXT_STEPS.md)) |
+| Status | `IN_PROGRESS`: approved 2026-11-11. Step 1 (object storage) merged (PR #16). **Step 2 (personal memory ingestion) implemented and tested, uncommitted** on `feat/phase-8-3-personal-ingestion`. Steps 3–5 not started ([NEXT_STEPS.md](NEXT_STEPS.md)) |
+| Step 2 decisions (owner, 2026-11-11) | Extend `pm_memory_source` (no ingestion-operation table); forget instructions recorded and never extracted until 8.10; limits 256 KiB text, 1,000 messages / 4 MiB per conversation (configurable); request contract as application dataclasses (Pydantic contract later, with `memory_engine.interfaces`) |
+| Files created (step 2) | `personal/application/ingestion.py` (request types, `prepare`, `normalize_text`, `PersonalIngestionService`); `migrations/versions/20261111_0007_memory_source_ingestion.py`. Tests: `unit/test_ingestion_preparation.py`, `integration/test_personal_ingestion.py` |
+| Files modified (step 2) | `domain/vocabulary.py` (`InstructionType`, `IngestionPriority`); `personal/domain/records.py` (`MemorySource` ingestion fields); `personal/application/ports.py` (`find_by_idempotency_key`); `persistence/personal/{models,repositories}.py`; `exceptions/{__init__,base}.py` (`IngestionRejectedError`, `IdempotencyKeyReusedError`); `config/{__init__,settings}.py` (`IngestionSettings`); `unit/test_persistence_definitions.py`. No new dependencies |
+| Migration (step 2) | `0007_source_ingestion`: 7 columns on `pm_memory_source`, 7 check constraints, partial unique index `uq_pm_memory_source_idempotency` |
+| Tests (step 2) | **500 passed, 0 failed** (368 unit, 132 integration), 97% coverage, 3 green runs; services stopped → 131 skipped; Ruff clean; mypy strict clean (72 files) |
+| What step 2 does not do | No queueing or handoff (step 4 moves sources from `validated` to `queued` through the outbox); no extraction; no deletion for forget instructions (8.10); no HTTP endpoint |
 | Prerequisites | Decision 8 (local object storage) and Decision 13 (parsing ownership) approved ([7.1 §24](../technical-decisions/01-baseline-technology-stack.md)); outbox, RabbitMQ and Celery scheduled for 8.3 (7.1 §23.6) |
 | Step 1 decisions (owner, 2026-11-11) | Port in the shared kernel (corrects 7.1 §24.1); image `chrislusf/seaweedfs:4.51`; one engine bucket with owner-partitioned keys and owner checks on every call, never created by the application; object-storage settings required |
 | Files created (step 1) | `domain/object_storage.py` (port, key rules, `StoredObject`); `infrastructure/object_storage/{__init__,memory,s3}.py`; `docker/seaweedfs/s3.json` (test-only keys). Tests: `unit/test_object_storage.py`, `integration/test_object_storage_s3.py` |
 | Files modified (step 1) | `exceptions/{__init__,base}.py` (`ObjectStorageError`, `ObjectIntegrityError`); `config/{__init__,settings}.py` (`ObjectStorageSettings`, required); `memory-engine/{pyproject.toml,.env.example}`; root `pyproject.toml` (mypy override for boto3, marker text), `uv.lock`, `docker-compose.yml` (`object-storage-test`); tests `conftest.py`, `unit/test_config.py` |
 | Dependencies (step 1) | `boto3` 1.44.0 and its transitive packages (see [TECHNOLOGY_DECISIONS.md](TECHNOLOGY_DECISIONS.md#dependency-timing)) |
+| Commit (step 1) | `206bc2f`, merged through PR #16 (`3d01cbe`) |
 | Tests (step 1) | **453 passed, 0 failed** (333 unit, 120 integration against PostgreSQL 17 + pgvector and SeaweedFS 4.51), 97% coverage, 3 green runs; services stopped → 119 skipped (the unreachable-store test needs no service and passes); Ruff clean; mypy strict clean (69 files) |
-| Open for later steps | Queue names and topology (deferred, 7.4 §22); file-size limits (deferred, 7.6 §18); malware scanning (no approved tool); ingestion-operation storage; forget handling until 8.10 |
+| Open for later steps | Queue names and topology (deferred, 7.4 §22); file-size limit for documents (deferred, 7.6 §18); malware scanning (no approved tool); re-upload policy |
 
 ## 8.4–8.12
 

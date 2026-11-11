@@ -61,6 +61,10 @@ class MemorySourceRepository(Protocol):
 
     def get(self, scope: OwnerScope, source_id: uuid.UUID) -> MemorySource | None: ...
 
+    def find_by_idempotency_key(self, scope: OwnerScope, key: str) -> MemorySource | None:
+        """The source an earlier ingestion request with this key created, if any."""
+        ...
+
 
 class MemoryCandidateRepository(Protocol):
     def add(self, scope: OwnerScope, candidate: MemoryCandidate) -> None:

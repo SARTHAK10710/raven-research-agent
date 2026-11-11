@@ -71,6 +71,7 @@ MIGRATION_0003 = VERSIONS / "20261111_0003_entities_and_relationships.py"
 MIGRATION_0004 = VERSIONS / "20261111_0004_episodes_profiles_categories.py"
 MIGRATION_0005 = VERSIONS / "20261111_0005_processing_corrections_deletion.py"
 MIGRATION_0006 = VERSIONS / "20261111_0006_episode_version.py"
+MIGRATION_0007 = VERSIONS / "20261111_0007_memory_source_ingestion.py"
 PASSWORD = "synthetic-db-password-91c2"  # noqa: S105 - test-only value
 
 
@@ -191,7 +192,7 @@ VOCABULARIES = [
 
 
 def test_vocabulary_module_defines_the_expected_enums() -> None:
-    assert len(VOCABULARIES) == 37
+    assert len(VOCABULARIES) == 39
 
 
 def test_documents_reuse_the_shared_embedding_status() -> None:
@@ -254,6 +255,17 @@ def test_migration_0005_rules_match_the_models(rule: str) -> None:
     migration = _load_migration(MIGRATION_0005)
     assert getattr(migration, rule) == getattr(lifecycle_models, rule)
     assert migration.down_revision == _load_migration(MIGRATION_0004).revision
+
+
+def test_migration_0007_matches_the_models_and_enums() -> None:
+    migration = _load_migration(MIGRATION_0007)
+    assert tuple(t.value for t in vocabulary.InstructionType) == migration.INSTRUCTION_TYPES
+    assert tuple(p.value for p in vocabulary.IngestionPriority) == migration.INGESTION_PRIORITIES
+    assert migration.IDEMPOTENCY_PAIR == models.IDEMPOTENCY_PAIR
+    assert migration.INSTRUCTION_PRIORITY == models.INSTRUCTION_PRIORITY
+    assert migration.down_revision == _load_migration(MIGRATION_0006).revision
+    columns = set(Base.metadata.tables["memory.pm_memory_source"].c.keys())
+    assert {"instruction_type", "priority", "idempotency_key", "normalized_ref"} <= columns
 
 
 def test_migration_0006_extends_the_episode_guard_from_0004() -> None:

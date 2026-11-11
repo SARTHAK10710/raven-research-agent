@@ -22,6 +22,8 @@ from memory_engine.domain.vocabulary import (
     CandidateOrigin,
     CandidateStatus,
     DocumentEvidenceStatus,
+    IngestionPriority,
+    InstructionType,
     MemoryLifecycleStatus,
     MemoryOrigin,
     ProvenanceOriginKind,
@@ -85,6 +87,13 @@ def _source_from_row(row: MemorySourceRow) -> MemorySource:
         received_at=row.received_at,
         content_ref=row.content_ref,
         content_sha256=row.content_sha256,
+        instruction_type=InstructionType(row.instruction_type),
+        priority=IngestionPriority(row.priority),
+        idempotency_key=row.idempotency_key,
+        request_sha256=row.request_sha256,
+        source_ref=row.source_ref,
+        source_timestamp=row.source_timestamp,
+        normalized_ref=row.normalized_ref,
     )
 
 
@@ -104,9 +113,28 @@ class SqlAlchemyMemorySourceRepository:
                     received_at=source.received_at,
                     content_ref=source.content_ref,
                     content_sha256=source.content_sha256,
+                    instruction_type=source.instruction_type.value,
+                    priority=source.priority.value,
+                    idempotency_key=source.idempotency_key,
+                    request_sha256=source.request_sha256,
+                    source_ref=source.source_ref,
+                    source_timestamp=source.source_timestamp,
+                    normalized_ref=source.normalized_ref,
                 )
             )
             self._session.flush()
+
+    def find_by_idempotency_key(self, scope: OwnerScope, key: str) -> MemorySource | None:
+        with translate_database_errors("find memory source by idempotency key"):
+            row = self._session.scalar(
+                select(MemorySourceRow)
+                .where(
+                    MemorySourceRow.owner_id == scope.owner_id,
+                    MemorySourceRow.idempotency_key == key,
+                )
+                .execution_options(populate_existing=True)
+            )
+        return None if row is None else _source_from_row(row)
 
     def get(self, scope: OwnerScope, source_id: uuid.UUID) -> MemorySource | None:
         with translate_database_errors("get memory source"):

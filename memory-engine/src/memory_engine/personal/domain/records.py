@@ -22,6 +22,8 @@ from memory_engine.domain.vocabulary import (
     CandidateOrigin,
     CandidateStatus,
     DocumentEvidenceStatus,
+    IngestionPriority,
+    InstructionType,
     MemoryLifecycleStatus,
     MemoryOrigin,
     ProvenanceOriginKind,
@@ -84,9 +86,15 @@ def _frozen(value: JsonMap) -> JsonMap:
 class MemorySource:
     """An original input (Decision 5.4.1). Content lives in content storage.
 
-    ``content_ref`` is the stable reference to stored content. It is optional
-    until content storage exists (Phase 8.3); ``content_sha256`` lets
-    reprocessing verify that the referenced content is unchanged.
+    ``content_ref`` is the stable reference to stored content; ``content_sha256``
+    lets reprocessing verify that the referenced content is unchanged.
+    ``normalized_ref`` keeps the normalized representation separate from the
+    original (6.2.1 AC-05).
+
+    Ingestion fields (Phase 8.3 step 2): ``idempotency_key`` makes retries safe
+    and ``request_sha256`` fingerprints the request, so a reused key with
+    different content is refused. Explicit remember and forget instructions are
+    always high priority (6.2.1 steps 8-9).
     """
 
     id: uuid.UUID
@@ -96,16 +104,41 @@ class MemorySource:
     received_at: datetime
     content_ref: str | None = None
     content_sha256: str | None = None
+    instruction_type: InstructionType = InstructionType.NORMAL
+    priority: IngestionPriority = IngestionPriority.NORMAL
+    idempotency_key: str | None = None
+    request_sha256: str | None = None
+    source_ref: str | None = None
+    source_timestamp: datetime | None = None
+    normalized_ref: str | None = None
 
     def __post_init__(self) -> None:
         _require_aware("received_at", self.received_at)
-        if self.content_ref is not None:
-            _require_text("content_ref", self.content_ref)
-        if self.content_sha256 is not None and (
-            len(self.content_sha256) != 64
-            or any(char not in "0123456789abcdef" for char in self.content_sha256)
+        _require_aware("source_timestamp", self.source_timestamp)
+        for name in ("content_ref", "normalized_ref", "source_ref", "idempotency_key"):
+            value = getattr(self, name)
+            if value is not None:
+                _require_text(name, value)
+        for name in ("content_sha256", "request_sha256"):
+            _require_sha256(name, getattr(self, name))
+        if (self.idempotency_key is None) != (self.request_sha256 is None):
+            raise DomainValidationError("an idempotency key needs its request fingerprint")
+        if self.idempotency_key is not None and len(self.idempotency_key) > 200:
+            raise DomainValidationError("idempotency_key is too long")
+        if self.source_ref is not None and len(self.source_ref) > 500:
+            raise DomainValidationError("source_ref is too long")
+        if (
+            self.instruction_type is not InstructionType.NORMAL
+            and self.priority is not IngestionPriority.HIGH
         ):
-            raise DomainValidationError("content_sha256 must be 64 lowercase hex characters")
+            raise DomainValidationError("explicit instructions are high priority")
+
+
+def _require_sha256(name: str, value: str | None) -> None:
+    if value is not None and (
+        len(value) != 64 or any(char not in "0123456789abcdef" for char in value)
+    ):
+        raise DomainValidationError(f"{name} must be 64 lowercase hex characters")
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

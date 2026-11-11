@@ -1595,3 +1595,25 @@ The embedding status vocabulary is now defined once, in the shared kernel, and u
 - **The deletion ledger** has one row per affected record: its kind, its identifier, whether the request named it directly, the action, the state and the attempt count. Rows move `pending` → `propagated` → `verified`; `failed` can return to `pending`. There is no foreign key to the record, so the row outlives a purged record and can be replayed after a restore (6.5.9 backup handling). Nothing in the ledger holds content (5.4.24 rule 7).
 - **Policy-driven forgetting** (6.5.8 A) and simple deletions (5.4.24 rule 3) create no operation.
 - **Error and reason codes** are UPPER_SNAKE_CASE codes, never free text, so they cannot carry user content.
+
+## 15. Ingestion fields on the Memory Source (Phase 8.3 step 2)
+
+**Approved 2026-11-11.** Plan 8.3 §5–8 and algorithm 6.2.1 need instruction, priority and retry-safety data for each accepted input. The owner chose to extend the Memory Source rather than add an ingestion-operation table. Rejected inputs create no Memory Source (§11), so there is nothing else to track.
+
+| Vocabulary | Values | Source |
+|---|---|---|
+| Instruction type | `normal`, `remember`, `forget` | 6.2.1 step 8 |
+| Ingestion priority | `normal`, `high` | 6.2.1 step 9 (a scheduling signal, not importance) |
+
+**Fields added to `pm_memory_source` (migration `0007`):**
+- `instruction_type`, `priority`;
+- `idempotency_key`, unique per owner, with `request_sha256`, a fingerprint of the request that excludes the receipt time;
+- `source_ref` (external source identifier), `source_timestamp`;
+- `normalized_ref` (object key of the normalized representation, kept apart from the original, 6.2.1 AC-05).
+
+**Rules:**
+- A key always comes with its fingerprint. Reusing a key for a different request is refused; repeating the same request returns the existing source.
+- Explicit `remember` and `forget` instructions are always `high` priority.
+- These fields are immutable once written (the 0005 column guard).
+- A `forget` instruction is stored and never handed to extraction. Plan 8.10 resolves what it targets.
+- Original and normalized content live in object storage under `memory-sources/{owner}/{source}/original` and `/normalized`.

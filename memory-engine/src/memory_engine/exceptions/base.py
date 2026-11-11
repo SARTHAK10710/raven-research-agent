@@ -75,6 +75,22 @@ class ConcurrencyConflictError(ApplicationError):
     code: ClassVar[str] = "CONCURRENCY_CONFLICT"
 
 
+class IngestionRejectedError(ApplicationError):
+    """An input was refused before anything was stored (6.2.1 sections 3.7-3.8).
+
+    ``details`` holds ``outcome`` (``invalid_input`` or ``unsupported_input``)
+    and ``reason`` (an UPPER_SNAKE_CASE code). Messages never contain the input.
+    """
+
+    code: ClassVar[str] = "INGESTION_REJECTED"
+
+
+class IdempotencyKeyReusedError(ApplicationError):
+    """An idempotency key was reused for a different request (plan 8.3 section 8)."""
+
+    code: ClassVar[str] = "IDEMPOTENCY_KEY_REUSED"
+
+
 class InfrastructureError(MemoryEngineError):
     """A technical dependency (database, storage, broker, model) failed."""
 

@@ -16,7 +16,9 @@ The two domains can share infrastructure (PostgreSQL, pgvector, object storage, 
 >
 > Phase 8.3 step 1 adds owner-scoped object storage: a port in `memory_engine.domain.object_storage`, an in-memory fake, and a boto3 adapter for S3-compatible stores (SeaweedFS in development and tests).
 >
-> This is storage only: no ingestion, parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking or deletion workflow exists yet.
+> Phase 8.3 step 2 adds personal memory ingestion (`personal/application/ingestion.py`). Text and conversations are validated, normalized and stored, and registered idempotently as a `validated` Memory Source; remember and forget instructions are recorded.
+>
+> Not yet: queueing and handoff, document ingestion, extraction, parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking, and the deletion workflow.
 
 ## Boundaries
 
