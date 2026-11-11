@@ -34,6 +34,7 @@ Phase 8.1 created the foundation code (`memory-engine/src/memory_engine/`: `conf
   - Status changes go through a conditional `UPDATE … WHERE status = <expected>` (`conditional_update` in `database.py`), which distinguishes "not found" from a concurrency conflict.
   - History that must keep insertion order within one transaction needs its own sequence (`seq`, an identity column): `now()` is the same for every row in a transaction (step 3).
   - Writers of derived document content call `require_writable_version` first, so nothing is recreated once deletion is requested.
+  - Mutually referencing rows (a profile and its current revision) use a deferrable foreign key. `SET CONSTRAINTS … IMMEDIATE` lasts for the rest of the transaction, so every such write runs `SET CONSTRAINTS ALL DEFERRED` first and `SET CONSTRAINTS ALL IMMEDIATE` at its end, to fail inside the operation rather than at commit (step 4).
   - Only `pm_document_evidence_ref` may reference `doc_` tables; `documents/` and its infrastructure never import Personal Memory code (tested).
 
 ## Naming

@@ -10,6 +10,20 @@ Do not add values without an approved specification change.
 
 from enum import StrEnum
 
+# Embedding status (Decision 5.4.20) is shared with memory embeddings and lives in
+# the shared kernel; re-exported here so document code keeps one import path.
+from memory_engine.domain.vocabulary import EmbeddingStatus
+
+__all__ = [
+    "DocumentLifecycleStatus",
+    "DocumentMediaType",
+    "EmbeddingStatus",
+    "ExtractionStatus",
+    "OperationStatus",
+    "OperationType",
+    "VersionProcessingStatus",
+]
+
 
 class DocumentMediaType(StrEnum):
     """The only accepted formats, by validated content type (not file extension)."""
@@ -68,19 +82,6 @@ class ExtractionStatus(StrEnum):
     EXTRACTED = "extracted"
     PARTIALLY_EXTRACTED = "partially_extracted"
     EXTRACTION_FAILED = "extraction_failed"
-
-
-class EmbeddingStatus(StrEnum):
-    """Embedding metadata lifecycle (Decision 5.4.20)."""
-
-    PENDING = "pending"
-    GENERATING = "generating"
-    GENERATED = "generated"
-    INDEXING = "indexing"
-    INDEXED = "indexed"
-    FAILED = "failed"
-    SUPERSEDED = "superseded"
-    DELETION_PENDING = "deletion_pending"
 
 
 class OperationType(StrEnum):

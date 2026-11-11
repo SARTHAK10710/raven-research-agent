@@ -15,20 +15,34 @@ from datetime import datetime
 from typing import Protocol
 
 from memory_engine.domain.identifiers import OwnerScope
-from memory_engine.domain.vocabulary import MentionResolutionStatus
+from memory_engine.domain.vocabulary import (
+    EmbeddingStatus,
+    EpisodeStatus,
+    MemoryCategory,
+    MentionResolutionStatus,
+    ProfileStatus,
+)
 from memory_engine.personal.domain import (
     AtomicMemory,
     AtomicMemoryRevision,
+    CategoryAssignment,
     DocumentEvidenceRef,
     Entity,
     EntityAlias,
     EntityMention,
     EntityRelationship,
     EntityResolutionRecord,
+    Episode,
+    EpisodeEvent,
+    EpisodeMembership,
     MemoryCandidate,
+    MemoryEmbedding,
     MemoryEntityAssociation,
     MemoryRelationship,
     MemorySource,
+    Profile,
+    ProfileRefresh,
+    ProfileRevision,
     ProvenanceRecord,
 )
 
@@ -228,6 +242,115 @@ class RelationshipRepository(Protocol):
     ) -> Sequence[MemoryEntityAssociation]: ...
 
 
+class EpisodeRepository(Protocol):
+    def add(self, scope: OwnerScope, episode: Episode) -> None: ...
+
+    def get(self, scope: OwnerScope, episode_id: uuid.UUID) -> Episode | None:
+        """Any status except ``deleted``."""
+        ...
+
+    def update(
+        self, scope: OwnerScope, episode: Episode, *, expected_status: EpisodeStatus
+    ) -> None:
+        """Replace title, summary, boundaries and status; conditional on the current status."""
+        ...
+
+    def add_member(self, scope: OwnerScope, membership: EpisodeMembership) -> None: ...
+
+    def remove_member(
+        self, scope: OwnerScope, membership_id: uuid.UUID, *, removed_at: datetime
+    ) -> None:
+        """Close a current membership; it stays as history."""
+        ...
+
+    def members(
+        self, scope: OwnerScope, episode_id: uuid.UUID, *, include_removed: bool = False
+    ) -> Sequence[EpisodeMembership]:
+        """Ordered by sequence (unsequenced last), then when added."""
+        ...
+
+    def episodes_of_memory(self, scope: OwnerScope, memory_id: uuid.UUID) -> Sequence[Episode]: ...
+
+    def add_event(self, scope: OwnerScope, event: EpisodeEvent) -> None: ...
+
+    def correct_event(
+        self, scope: OwnerScope, event_id: uuid.UUID, correction: EpisodeEvent
+    ) -> None:
+        """Close ``event_id`` and add ``correction``; the earlier understanding is kept."""
+        ...
+
+    def timeline(
+        self, scope: OwnerScope, episode_id: uuid.UUID, *, include_history: bool = False
+    ) -> Sequence[EpisodeEvent]: ...
+
+
+class ProfileRepository(Protocol):
+    def create(self, scope: OwnerScope, profile: Profile, revision: ProfileRevision) -> None:
+        """Create a profile with its first revision and supporting memories."""
+        ...
+
+    def get(self, scope: OwnerScope, profile_id: uuid.UUID) -> Profile | None: ...
+
+    def revision(
+        self, scope: OwnerScope, profile_id: uuid.UUID, revision_number: int | None = None
+    ) -> ProfileRevision | None:
+        """A revision with its supports; the current one when ``revision_number`` is None."""
+        ...
+
+    def apply_refresh(
+        self,
+        scope: OwnerScope,
+        refresh: ProfileRefresh,
+        *,
+        expected_status: ProfileStatus,
+        new_revision: ProfileRevision | None = None,
+    ) -> Profile:
+        """Record one refresh: append the new revision (if the outcome creates one),
+        move the profile to the status the outcome implies, and keep the history record.
+
+        Conditional on the profile still being at ``refresh.from_revision`` in
+        ``expected_status``.
+        """
+        ...
+
+    def history(self, scope: OwnerScope, profile_id: uuid.UUID) -> Sequence[ProfileRefresh]: ...
+
+    def profiles_supported_by(self, scope: OwnerScope, memory_id: uuid.UUID) -> Sequence[uuid.UUID]:
+        """Profiles whose *current* revision uses this memory (for refresh and deletion)."""
+        ...
+
+
+class CategoryRepository(Protocol):
+    def assign(self, scope: OwnerScope, assignment: CategoryAssignment) -> None: ...
+
+    def close(
+        self, scope: OwnerScope, assignment_id: uuid.UUID, *, superseded_at: datetime
+    ) -> None: ...
+
+    def current(self, scope: OwnerScope, memory_id: uuid.UUID) -> Sequence[CategoryAssignment]: ...
+
+    def history(self, scope: OwnerScope, memory_id: uuid.UUID) -> Sequence[CategoryAssignment]: ...
+
+    def memories_in(self, scope: OwnerScope, category: MemoryCategory) -> Sequence[uuid.UUID]:
+        """Memories currently assigned to ``category`` (retrievable memories only)."""
+        ...
+
+
+class MemoryEmbeddingRepository(Protocol):
+    def add(self, scope: OwnerScope, embedding: MemoryEmbedding) -> None: ...
+
+    def set_status(
+        self,
+        scope: OwnerScope,
+        embedding_id: uuid.UUID,
+        status: EmbeddingStatus,
+        *,
+        expected: EmbeddingStatus,
+    ) -> None: ...
+
+    def for_memory(self, scope: OwnerScope, memory_id: uuid.UUID) -> Sequence[MemoryEmbedding]: ...
+
+
 class PersonalUnitOfWork(Protocol):
     """One short transaction over Personal Memory records.
 
@@ -259,6 +382,18 @@ class PersonalUnitOfWork(Protocol):
 
     @property
     def relationships(self) -> RelationshipRepository: ...
+
+    @property
+    def episodes(self) -> EpisodeRepository: ...
+
+    @property
+    def profiles(self) -> ProfileRepository: ...
+
+    @property
+    def categories(self) -> CategoryRepository: ...
+
+    @property
+    def memory_embeddings(self) -> MemoryEmbeddingRepository: ...
 
 
 class PersonalUnitOfWorkFactory(Protocol):

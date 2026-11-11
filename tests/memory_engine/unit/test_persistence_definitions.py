@@ -36,16 +36,24 @@ from memory_engine.infrastructure.persistence import (
     translate_database_errors,
 )
 from memory_engine.infrastructure.persistence.base import Base
-from memory_engine.infrastructure.persistence.personal import entity_models, models
+from memory_engine.infrastructure.persistence.personal import (
+    derived_models,
+    entity_models,
+    models,
+)
 from memory_engine.personal.application.ports import (
     AtomicMemoryRepository,
+    CategoryRepository,
     DocumentEvidenceRepository,
     EntityMentionRepository,
     EntityRepository,
+    EpisodeRepository,
     MemoryCandidateRepository,
+    MemoryEmbeddingRepository,
     MemorySourceRepository,
     PersonalUnitOfWork,
     PersonalUnitOfWorkFactory,
+    ProfileRepository,
     ProvenanceRepository,
     RelationshipRepository,
 )
@@ -54,6 +62,7 @@ VERSIONS = Path(__file__).resolve().parents[3] / "memory-engine" / "migrations" 
 MIGRATION = VERSIONS / "20261111_0001_personal_memory_core.py"
 MIGRATION_0002 = VERSIONS / "20261111_0002_document_intelligence.py"
 MIGRATION_0003 = VERSIONS / "20261111_0003_entities_and_relationships.py"
+MIGRATION_0004 = VERSIONS / "20261111_0004_episodes_profiles_categories.py"
 PASSWORD = "synthetic-db-password-91c2"  # noqa: S105 - test-only value
 
 
@@ -92,7 +101,9 @@ def test_migration_0002_shares_the_evidence_rules_with_the_models() -> None:
     assert migration.down_revision == _load_migration().revision
 
 
-@pytest.mark.parametrize("path", [MIGRATION_0002, MIGRATION_0003], ids=lambda p: p.stem[:13])
+@pytest.mark.parametrize(
+    "path", [MIGRATION_0002, MIGRATION_0003, MIGRATION_0004], ids=lambda p: p.stem[:13]
+)
 def test_every_guarded_column_list_names_real_columns(path: Path) -> None:
     for table, mutable in _load_migration(path).GUARDED_TABLES.items():
         columns = set(Base.metadata.tables[f"memory.{table}"].c.keys())
@@ -170,7 +181,40 @@ VOCABULARIES = [
 
 
 def test_vocabulary_module_defines_the_expected_enums() -> None:
-    assert len(VOCABULARIES) == 20
+    assert len(VOCABULARIES) == 29
+
+
+def test_documents_reuse_the_shared_embedding_status() -> None:
+    assert doc_vocabulary.EmbeddingStatus is vocabulary.EmbeddingStatus
+
+
+@pytest.mark.parametrize(
+    ("frozen_name", "enum"),
+    [
+        ("EPISODE_STATUSES", vocabulary.EpisodeStatus),
+        ("TEMPORAL_PRECISIONS", vocabulary.TemporalPrecision),
+        ("PROFILE_TYPES", vocabulary.ProfileType),
+        ("PROFILE_STATUSES", vocabulary.ProfileStatus),
+        ("REFRESH_TRIGGERS", vocabulary.RefreshTrigger),
+        ("REFRESH_OUTCOMES", vocabulary.RefreshOutcome),
+        ("MEMORY_CATEGORIES", vocabulary.MemoryCategory),
+        ("MEMORY_ORIGINS", vocabulary.MemoryOrigin),
+        ("EMBEDDING_PURPOSES", vocabulary.EmbeddingPurpose),
+        ("EMBEDDING_STATUSES", vocabulary.EmbeddingStatus),
+    ],
+)
+def test_migration_0004_vocabularies_match_domain_enums(
+    frozen_name: str, enum: type[StrEnum]
+) -> None:
+    frozen = getattr(_load_migration(MIGRATION_0004), frozen_name)
+    assert tuple(frozen) == tuple(member.value for member in enum)
+
+
+def test_migration_0004_rules_match_the_models() -> None:
+    migration = _load_migration(MIGRATION_0004)
+    assert migration.REVISION_OUTCOMES == derived_models.REVISION_OUTCOMES
+    assert migration.SAFE_ERROR_CODE == derived_models.SAFE_ERROR_CODE
+    assert migration.down_revision == _load_migration(MIGRATION_0003).revision
 
 
 def test_sqlalchemy_adapters_satisfy_the_application_ports() -> None:
@@ -188,6 +232,11 @@ def test_sqlalchemy_adapters_satisfy_the_application_ports() -> None:
     mentions: EntityMentionRepository = unit.mentions
     relationships: RelationshipRepository = unit.relationships
     assert all(port is not None for port in (evidence, entities, mentions, relationships))
+    episodes: EpisodeRepository = unit.episodes
+    profiles: ProfileRepository = unit.profiles
+    categories: CategoryRepository = unit.categories
+    memory_embeddings: MemoryEmbeddingRepository = unit.memory_embeddings
+    assert all(port is not None for port in (episodes, profiles, categories, memory_embeddings))
     doc_factory: DocumentUnitOfWorkFactory = SqlAlchemyDocumentUnitOfWorkFactory(session_factory)
     doc_unit: DocumentUnitOfWork = doc_factory().__enter__()
     documents: DocumentRepository = doc_unit.documents
@@ -222,6 +271,15 @@ def test_every_table_is_owner_scoped_with_a_domain_prefix() -> None:
         "pm_entity_relationship",
         "pm_memory_relationship",
         "pm_memory_entity",
+        "pm_episode",
+        "pm_episode_membership",
+        "pm_episode_event",
+        "pm_profile",
+        "pm_profile_revision",
+        "pm_profile_memory",
+        "pm_profile_refresh",
+        "pm_memory_category",
+        "pm_memory_embedding",
         "doc_document",
         "doc_document_version",
         "doc_extracted_representation",
@@ -236,7 +294,7 @@ def test_every_table_is_owner_scoped_with_a_domain_prefix() -> None:
 
 # Root tables have no owner-scoped parent; every other table must reach its parent
 # through at least one foreign key that includes owner_id.
-ROOT_TABLES = {"pm_memory_source", "pm_atomic_memory", "pm_entity", "doc_document"}
+ROOT_TABLES = {"pm_memory_source", "pm_atomic_memory", "pm_entity", "pm_episode", "doc_document"}
 
 
 def test_foreign_keys_never_cascade_and_every_child_has_an_owner_key() -> None:

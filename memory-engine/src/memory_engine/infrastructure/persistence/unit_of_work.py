@@ -19,6 +19,12 @@ from memory_engine.infrastructure.persistence.documents.repositories import (
     SqlAlchemyDocumentRepository,
     SqlAlchemyProcessingOperationRepository,
 )
+from memory_engine.infrastructure.persistence.personal.derived_repositories import (
+    SqlAlchemyCategoryRepository,
+    SqlAlchemyEpisodeRepository,
+    SqlAlchemyMemoryEmbeddingRepository,
+    SqlAlchemyProfileRepository,
+)
 from memory_engine.infrastructure.persistence.personal.entity_repositories import (
     SqlAlchemyEntityMentionRepository,
     SqlAlchemyEntityRepository,
@@ -81,6 +87,10 @@ class SqlAlchemyPersonalUnitOfWork(_SqlAlchemyUnitOfWork):
     entities: SqlAlchemyEntityRepository
     mentions: SqlAlchemyEntityMentionRepository
     relationships: SqlAlchemyRelationshipRepository
+    episodes: SqlAlchemyEpisodeRepository
+    profiles: SqlAlchemyProfileRepository
+    categories: SqlAlchemyCategoryRepository
+    memory_embeddings: SqlAlchemyMemoryEmbeddingRepository
 
     def _bind(self, session: Session) -> None:
         self.sources = SqlAlchemyMemorySourceRepository(session)
@@ -93,6 +103,10 @@ class SqlAlchemyPersonalUnitOfWork(_SqlAlchemyUnitOfWork):
         self.entities = SqlAlchemyEntityRepository(session)
         self.mentions = SqlAlchemyEntityMentionRepository(session)
         self.relationships = SqlAlchemyRelationshipRepository(session)
+        self.episodes = SqlAlchemyEpisodeRepository(session)
+        self.profiles = SqlAlchemyProfileRepository(session)
+        self.categories = SqlAlchemyCategoryRepository(session)
+        self.memory_embeddings = SqlAlchemyMemoryEmbeddingRepository(session)
 
 
 class SqlAlchemyDocumentUnitOfWork(_SqlAlchemyUnitOfWork):

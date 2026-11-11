@@ -225,6 +225,122 @@ class MemoryEntityRole(StrEnum):
     CONTEXT = "context"
 
 
+class EmbeddingStatus(StrEnum):
+    """Embedding metadata lifecycle (Decision 5.4.20).
+
+    Shared by memory embeddings and document embeddings; the two stay in
+    separate tables with separate ownership and retrieval rules.
+    """
+
+    PENDING = "pending"
+    GENERATING = "generating"
+    GENERATED = "generated"
+    INDEXING = "indexing"
+    INDEXED = "indexed"
+    FAILED = "failed"
+    SUPERSEDED = "superseded"
+    DELETION_PENDING = "deletion_pending"
+
+
+class EmbeddingPurpose(StrEnum):
+    """Why a memory embedding exists (Decision 5.4.21)."""
+
+    PRIMARY = "primary"
+    ASPECT = "aspect"
+
+
+class MemoryCategory(StrEnum):
+    """Memory category taxonomy (Decision 5.4.9; 6.2 section 8.4)."""
+
+    PERSONAL_PREFERENCE = "personal_preference"
+    GOAL = "goal"
+    DECISION = "decision"
+    IMPORTANT_EVENT = "important_event"
+    RELATIONSHIP = "relationship"
+    KNOWLEDGE = "knowledge"
+    PROJECT = "project"
+    COMMITMENT = "commitment"
+
+
+class EpisodeStatus(StrEnum):
+    """Lifecycle of an Episode, a derived grouping of memories (Decision 5.4.16)."""
+
+    ACTIVE = "active"
+    NEEDS_REFRESH = "needs_refresh"
+    NEEDS_REVIEW = "needs_review"
+    DELETION_PENDING = "deletion_pending"
+    DELETED = "deleted"
+
+
+class TemporalPrecision(StrEnum):
+    """How precisely a time is known (Decision 5.4.30: never fabricate dates)."""
+
+    EXACT = "exact"
+    DAY = "day"
+    MONTH = "month"
+    YEAR = "year"
+    APPROXIMATE = "approximate"
+    UNKNOWN = "unknown"
+
+
+class ProfileType(StrEnum):
+    """Derived profile kinds (6.5.6 profile categories)."""
+
+    USER = "user"
+    PREFERENCE = "preference"
+    PROJECT = "project"
+    SKILL_KNOWLEDGE = "skill_knowledge"
+    RELATIONSHIP_CONTEXT = "relationship_context"
+    WORK_CONTEXT = "work_context"
+
+
+class ProfileStatus(StrEnum):
+    """Current freshness and refresh state of a Derived Profile (Decision 5.4.32)."""
+
+    CURRENT = "current"
+    STALE = "stale"
+    REFRESHING = "refreshing"
+    REFRESH_FAILED = "refresh_failed"
+    NEEDS_REVIEW = "needs_review"
+    DELETION_PENDING = "deletion_pending"
+    DELETED = "deleted"
+
+
+class RefreshTrigger(StrEnum):
+    """What started a profile refresh (6.5.1 trigger categories)."""
+
+    EVENT = "event"
+    SCHEDULED = "scheduled"
+    ON_DEMAND = "on_demand"
+
+
+class RefreshOutcome(StrEnum):
+    """Result of one recorded profile refresh (Decision 5.4.32; 6.5.6)."""
+
+    REFRESHED = "refreshed"
+    NO_CHANGE = "no_change"
+    PARTIALLY_REFRESHED = "partially_refreshed"
+    FAILED = "failed"
+    NEEDS_REVIEW = "needs_review"
+
+    @property
+    def creates_revision(self) -> bool:
+        return self in (RefreshOutcome.REFRESHED, RefreshOutcome.PARTIALLY_REFRESHED)
+
+    def resulting_status(self) -> ProfileStatus:
+        """The profile status this outcome leaves behind.
+
+        A partial or failed refresh never marks a profile current (6.5.6 safeguard).
+        """
+        return {
+            RefreshOutcome.REFRESHED: ProfileStatus.CURRENT,
+            RefreshOutcome.NO_CHANGE: ProfileStatus.CURRENT,
+            RefreshOutcome.PARTIALLY_REFRESHED: ProfileStatus.STALE,
+            RefreshOutcome.FAILED: ProfileStatus.REFRESH_FAILED,
+            RefreshOutcome.NEEDS_REVIEW: ProfileStatus.NEEDS_REVIEW,
+        }[self]
+
+
 class MemoryRelationshipType(StrEnum):
     """Atomic Memory to Atomic Memory relationships (amendment section 4)."""
 
