@@ -7,11 +7,12 @@ The Memory Engine is one of Raven's three primary engines. It owns Raven's persi
 
 The two domains can share infrastructure (PostgreSQL, pgvector, object storage, workers) but never share records, retrieval workflows or lifecycle rules. Document chunks are not personal memories, and uploading a document never creates memories automatically.
 
-> **Status:** Phase 8.1 foundation plus Phase 8.2 steps 1–4, PostgreSQL persistence for:
+> **Status:** Phase 8.1 foundation plus Phase 8.2 steps 1–5, PostgreSQL persistence for:
 > - the core Personal Memory records (Memory Source, Memory Candidate, Atomic Memory with immutable revisions, Provenance);
 > - Document Intelligence (documents, versions, extracted representations, chunks with locations, embedding metadata, processing operations), plus the document-evidence path into Personal Memory;
 > - entities (private only), aliases, mentions with resolution history, entity and memory relationships, and memory–entity associations;
-> - episodes with membership and a correctable event timeline, profiles with immutable revisions, supporting memories and refresh history, memory categories, and memory embedding metadata (no vectors).
+> - episodes with membership and a correctable event timeline, profiles with immutable revisions, supporting memories and refresh history, memory categories, and memory embedding metadata (no vectors);
+> - source processing events, candidate evaluation history, correction requests, and deletion operations with a content-free ledger.
 >
 > This is persistence only: no ingestion, parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking or deletion workflow exists yet.
 

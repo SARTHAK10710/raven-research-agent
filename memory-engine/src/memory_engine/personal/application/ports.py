@@ -9,13 +9,17 @@ Writes become durable only when the enclosing unit of work commits.
 """
 
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from contextlib import AbstractContextManager
 from datetime import datetime
 from typing import Protocol
 
 from memory_engine.domain.identifiers import OwnerScope
 from memory_engine.domain.vocabulary import (
+    CorrectionStatus,
+    DeletionOperationStatus,
+    DeletionTargetKind,
+    DeletionTargetState,
     EmbeddingStatus,
     EpisodeStatus,
     MemoryCategory,
@@ -25,7 +29,12 @@ from memory_engine.domain.vocabulary import (
 from memory_engine.personal.domain import (
     AtomicMemory,
     AtomicMemoryRevision,
+    CandidateEvaluation,
     CategoryAssignment,
+    CorrectionRequest,
+    CorrectionTarget,
+    DeletionOperation,
+    DeletionTarget,
     DocumentEvidenceRef,
     Entity,
     EntityAlias,
@@ -44,6 +53,7 @@ from memory_engine.personal.domain import (
     ProfileRefresh,
     ProfileRevision,
     ProvenanceRecord,
+    SourceProcessingEvent,
 )
 
 
@@ -351,6 +361,144 @@ class MemoryEmbeddingRepository(Protocol):
     def for_memory(self, scope: OwnerScope, memory_id: uuid.UUID) -> Sequence[MemoryEmbedding]: ...
 
 
+class ProcessingHistoryRepository(Protocol):
+    def transition(self, scope: OwnerScope, event: SourceProcessingEvent) -> None:
+        """Move the source from ``event.from_status`` to ``event.to_status`` and keep the
+        event, in one write. Conditional on the source still being in ``from_status``.
+        """
+        ...
+
+    def events(self, scope: OwnerScope, source_id: uuid.UUID) -> Sequence[SourceProcessingEvent]:
+        """Oldest first."""
+        ...
+
+
+class EvaluationHistoryRepository(Protocol):
+    def record(self, scope: OwnerScope, evaluation: CandidateEvaluation) -> None:
+        """Store the evaluation's status (and any scores it carries) as the candidate's
+        latest state and keep the evaluation as history, in one write. Conditional on
+        the candidate still being in ``evaluation.from_status``.
+        """
+        ...
+
+    def history(self, scope: OwnerScope, candidate_id: uuid.UUID) -> Sequence[CandidateEvaluation]:
+        """Oldest first."""
+        ...
+
+
+class CorrectionRepository(Protocol):
+    def open(
+        self, scope: OwnerScope, request: CorrectionRequest, targets: Sequence[CorrectionTarget]
+    ) -> None:
+        """Record a complex correction against live memories at existing revisions."""
+        ...
+
+    def get(self, scope: OwnerScope, request_id: uuid.UUID) -> CorrectionRequest | None:
+        """Any status except ``deleted``."""
+        ...
+
+    def targets(self, scope: OwnerScope, request_id: uuid.UUID) -> Sequence[CorrectionTarget]: ...
+
+    def resolve(
+        self,
+        scope: OwnerScope,
+        request_id: uuid.UUID,
+        status: CorrectionStatus,
+        *,
+        resolved_at: datetime,
+        note: str | None = None,
+        applied: Mapping[uuid.UUID, int] | None = None,
+    ) -> CorrectionRequest:
+        """Accept, reject or withdraw an open request.
+
+        Acceptance names, for every affected memory, the revision that applied
+        the correction (5.4.26 rule 4); rejection and withdrawal name none, so
+        they never change a memory (rule 7).
+        """
+        ...
+
+    def open_for_memory(
+        self, scope: OwnerScope, memory_id: uuid.UUID
+    ) -> Sequence[CorrectionRequest]: ...
+
+    def purge(self, scope: OwnerScope, request_id: uuid.UUID) -> None:
+        """Mark the request ``deleted`` and drop its content. Idempotent."""
+        ...
+
+
+class DeletionRepository(Protocol):
+    def create(
+        self,
+        scope: OwnerScope,
+        operation: DeletionOperation,
+        targets: Sequence[DeletionTarget],
+    ) -> tuple[DeletionOperation, bool]:
+        """Record an operation and its initial ledger once per idempotency key.
+
+        Returns the stored operation and whether this call created it; a repeated
+        key returns the existing operation and ignores ``targets``.
+        """
+        ...
+
+    def get(self, scope: OwnerScope, operation_id: uuid.UUID) -> DeletionOperation | None: ...
+
+    def add_targets(
+        self, scope: OwnerScope, operation_id: uuid.UUID, targets: Sequence[DeletionTarget]
+    ) -> int:
+        """Add dependencies found later; rows already in the ledger are skipped.
+
+        Returns how many rows were added. Refused once the operation is finished.
+        """
+        ...
+
+    def targets(
+        self,
+        scope: OwnerScope,
+        operation_id: uuid.UUID,
+        *,
+        state: DeletionTargetState | None = None,
+    ) -> Sequence[DeletionTarget]: ...
+
+    def record_target(
+        self,
+        scope: OwnerScope,
+        operation_id: uuid.UUID,
+        target_kind: DeletionTargetKind,
+        target_id: uuid.UUID,
+        state: DeletionTargetState,
+        *,
+        expected: DeletionTargetState,
+        error_code: str | None = None,
+    ) -> None:
+        """Record propagation progress for one ledger row (conditional on ``expected``)."""
+        ...
+
+    def set_status(
+        self,
+        scope: OwnerScope,
+        operation_id: uuid.UUID,
+        status: DeletionOperationStatus,
+        *,
+        expected: DeletionOperationStatus,
+        at: datetime,
+        error_code: str | None = None,
+    ) -> DeletionOperation:
+        """Move the operation to ``status``. ``completed`` requires every ledger row
+        to be ``verified`` (6.5.9: never report deletion complete before verification).
+        """
+        ...
+
+    def unfinished(self, scope: OwnerScope) -> Sequence[DeletionOperation]:
+        """Operations still to resume, oldest first."""
+        ...
+
+    def operations_for(
+        self, scope: OwnerScope, target_kind: DeletionTargetKind, target_id: uuid.UUID
+    ) -> Sequence[DeletionOperation]:
+        """Every operation whose ledger names this record (also after it is purged)."""
+        ...
+
+
 class PersonalUnitOfWork(Protocol):
     """One short transaction over Personal Memory records.
 
@@ -394,6 +542,18 @@ class PersonalUnitOfWork(Protocol):
 
     @property
     def memory_embeddings(self) -> MemoryEmbeddingRepository: ...
+
+    @property
+    def processing(self) -> ProcessingHistoryRepository: ...
+
+    @property
+    def evaluations(self) -> EvaluationHistoryRepository: ...
+
+    @property
+    def corrections(self) -> CorrectionRepository: ...
+
+    @property
+    def deletions(self) -> DeletionRepository: ...
 
 
 class PersonalUnitOfWorkFactory(Protocol):

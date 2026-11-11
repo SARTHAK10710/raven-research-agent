@@ -39,20 +39,25 @@ from memory_engine.infrastructure.persistence.base import Base
 from memory_engine.infrastructure.persistence.personal import (
     derived_models,
     entity_models,
+    lifecycle_models,
     models,
 )
 from memory_engine.personal.application.ports import (
     AtomicMemoryRepository,
     CategoryRepository,
+    CorrectionRepository,
+    DeletionRepository,
     DocumentEvidenceRepository,
     EntityMentionRepository,
     EntityRepository,
     EpisodeRepository,
+    EvaluationHistoryRepository,
     MemoryCandidateRepository,
     MemoryEmbeddingRepository,
     MemorySourceRepository,
     PersonalUnitOfWork,
     PersonalUnitOfWorkFactory,
+    ProcessingHistoryRepository,
     ProfileRepository,
     ProvenanceRepository,
     RelationshipRepository,
@@ -63,6 +68,7 @@ MIGRATION = VERSIONS / "20261111_0001_personal_memory_core.py"
 MIGRATION_0002 = VERSIONS / "20261111_0002_document_intelligence.py"
 MIGRATION_0003 = VERSIONS / "20261111_0003_entities_and_relationships.py"
 MIGRATION_0004 = VERSIONS / "20261111_0004_episodes_profiles_categories.py"
+MIGRATION_0005 = VERSIONS / "20261111_0005_processing_corrections_deletion.py"
 PASSWORD = "synthetic-db-password-91c2"  # noqa: S105 - test-only value
 
 
@@ -102,7 +108,9 @@ def test_migration_0002_shares_the_evidence_rules_with_the_models() -> None:
 
 
 @pytest.mark.parametrize(
-    "path", [MIGRATION_0002, MIGRATION_0003, MIGRATION_0004], ids=lambda p: p.stem[:13]
+    "path",
+    [MIGRATION_0002, MIGRATION_0003, MIGRATION_0004, MIGRATION_0005],
+    ids=lambda p: p.stem[:13],
 )
 def test_every_guarded_column_list_names_real_columns(path: Path) -> None:
     for table, mutable in _load_migration(path).GUARDED_TABLES.items():
@@ -181,7 +189,7 @@ VOCABULARIES = [
 
 
 def test_vocabulary_module_defines_the_expected_enums() -> None:
-    assert len(VOCABULARIES) == 29
+    assert len(VOCABULARIES) == 37
 
 
 def test_documents_reuse_the_shared_embedding_status() -> None:
@@ -217,6 +225,46 @@ def test_migration_0004_rules_match_the_models() -> None:
     assert migration.down_revision == _load_migration(MIGRATION_0003).revision
 
 
+@pytest.mark.parametrize(
+    ("frozen_name", "enum"),
+    [
+        ("SOURCE_PROCESSING_STATUSES", vocabulary.SourceProcessingStatus),
+        ("CANDIDATE_STATUSES", vocabulary.CandidateStatus),
+        ("PROCESSING_EVENT_TYPES", vocabulary.ProcessingEventType),
+        ("EVALUATION_OUTCOMES", vocabulary.EvaluationOutcome),
+        ("CORRECTION_STATUSES", vocabulary.CorrectionStatus),
+        ("DELETION_REQUEST_KINDS", vocabulary.DeletionRequestKind),
+        ("DELETION_OPERATION_STATUSES", vocabulary.DeletionOperationStatus),
+        ("DELETION_TARGET_KINDS", vocabulary.DeletionTargetKind),
+        ("DELETION_ACTIONS", vocabulary.DeletionAction),
+        ("DELETION_TARGET_STATES", vocabulary.DeletionTargetState),
+    ],
+)
+def test_migration_0005_vocabularies_match_domain_enums(
+    frozen_name: str, enum: type[StrEnum]
+) -> None:
+    frozen = getattr(_load_migration(MIGRATION_0005), frozen_name)
+    assert tuple(frozen) == tuple(member.value for member in enum)
+
+
+@pytest.mark.parametrize("rule", ["OUTCOME_STATUSES", "RESOLVED_CORRECTION", "FINISHED_DELETION"])
+def test_migration_0005_rules_match_the_models(rule: str) -> None:
+    migration = _load_migration(MIGRATION_0005)
+    assert getattr(migration, rule) == getattr(lifecycle_models, rule)
+    assert migration.down_revision == _load_migration(MIGRATION_0004).revision
+
+
+def test_the_deletion_ledger_can_name_every_personal_memory_table() -> None:
+    # Deletion must reach every derived record (6.5.9): one target kind per pm_ table,
+    # except the deletion records themselves.
+    pm_tables = {
+        t.name.removeprefix("pm_")
+        for t in Base.metadata.tables.values()
+        if t.name.startswith("pm_") and not t.name.startswith("pm_deletion_")
+    }
+    assert {kind.value for kind in vocabulary.DeletionTargetKind} == pm_tables
+
+
 def test_sqlalchemy_adapters_satisfy_the_application_ports() -> None:
     # Checked statically by mypy (structural typing) and at runtime by construction.
     session_factory = sessionmaker()
@@ -237,6 +285,11 @@ def test_sqlalchemy_adapters_satisfy_the_application_ports() -> None:
     categories: CategoryRepository = unit.categories
     memory_embeddings: MemoryEmbeddingRepository = unit.memory_embeddings
     assert all(port is not None for port in (episodes, profiles, categories, memory_embeddings))
+    processing: ProcessingHistoryRepository = unit.processing
+    evaluations: EvaluationHistoryRepository = unit.evaluations
+    corrections: CorrectionRepository = unit.corrections
+    deletions: DeletionRepository = unit.deletions
+    assert all(port is not None for port in (processing, evaluations, corrections, deletions))
     doc_factory: DocumentUnitOfWorkFactory = SqlAlchemyDocumentUnitOfWorkFactory(session_factory)
     doc_unit: DocumentUnitOfWork = doc_factory().__enter__()
     documents: DocumentRepository = doc_unit.documents
@@ -280,6 +333,12 @@ def test_every_table_is_owner_scoped_with_a_domain_prefix() -> None:
         "pm_profile_refresh",
         "pm_memory_category",
         "pm_memory_embedding",
+        "pm_source_processing_event",
+        "pm_candidate_evaluation",
+        "pm_correction_request",
+        "pm_correction_memory",
+        "pm_deletion_operation",
+        "pm_deletion_target",
         "doc_document",
         "doc_document_version",
         "doc_extracted_representation",
@@ -294,7 +353,15 @@ def test_every_table_is_owner_scoped_with_a_domain_prefix() -> None:
 
 # Root tables have no owner-scoped parent; every other table must reach its parent
 # through at least one foreign key that includes owner_id.
-ROOT_TABLES = {"pm_memory_source", "pm_atomic_memory", "pm_entity", "pm_episode", "doc_document"}
+ROOT_TABLES = {
+    "pm_memory_source",
+    "pm_atomic_memory",
+    "pm_entity",
+    "pm_episode",
+    "pm_correction_request",
+    "pm_deletion_operation",
+    "doc_document",
+}
 
 
 def test_foreign_keys_never_cascade_and_every_child_has_an_owner_key() -> None:

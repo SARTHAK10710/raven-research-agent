@@ -13,10 +13,13 @@ from memory_engine.infrastructure.persistence.base import Base
 from memory_engine.infrastructure.persistence.documents import models as _document_models
 from memory_engine.infrastructure.persistence.personal import derived_models as _derived_models
 from memory_engine.infrastructure.persistence.personal import entity_models as _entity_models
+from memory_engine.infrastructure.persistence.personal import (
+    lifecycle_models as _lifecycle_models,
+)
 from memory_engine.infrastructure.persistence.personal import models
 
 # Imported to register their tables on Base.metadata.
-del _derived_models, _document_models, _entity_models
+del _derived_models, _document_models, _entity_models, _lifecycle_models
 
 pytestmark = pytest.mark.integration
 
@@ -44,6 +47,12 @@ PM_TABLES = {
     "pm_profile_refresh",
     "pm_memory_category",
     "pm_memory_embedding",
+    "pm_source_processing_event",
+    "pm_candidate_evaluation",
+    "pm_correction_request",
+    "pm_correction_memory",
+    "pm_deletion_operation",
+    "pm_deletion_target",
     "doc_document",
     "doc_document_version",
     "doc_extracted_representation",
@@ -127,9 +136,34 @@ def test_downgrade_to_step_one_keeps_personal_memory_intact(
             )
         remaining = _tables(engine, CHECK_SCHEMA)
         assert not any(
-            name.startswith(("doc_", "pm_entity", "pm_memory_rel", "pm_episode", "pm_profile"))
+            name.startswith(
+                (
+                    "doc_",
+                    "pm_entity",
+                    "pm_memory_rel",
+                    "pm_episode",
+                    "pm_profile",
+                    "pm_correction",
+                    "pm_deletion",
+                    "pm_source_processing",
+                    "pm_candidate_evaluation",
+                )
+            )
             for name in remaining
         )
+        with engine.connect() as connection:
+            guards = set(
+                connection.scalars(
+                    text(
+                        "SELECT tgname FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid"
+                        " JOIN pg_namespace n ON n.oid = c.relnamespace"
+                        " WHERE n.nspname = :schema AND NOT t.tgisinternal"
+                    ),
+                    {"schema": CHECK_SCHEMA},
+                )
+            )
+        # Step 1 tables keep their append-only triggers; later guards are gone.
+        assert guards == {"pm_atomic_memory_revision_append_only", "pm_provenance_append_only"}
         for later in ("pm_memory_entity", "pm_memory_category", "pm_memory_embedding"):
             assert later not in remaining
         assert "pm_document_evidence_ref" not in remaining
@@ -187,4 +221,12 @@ def test_append_only_trigger_function_installed(engine: Engine) -> None:
         "pm_profile_refresh_guard",
         "pm_memory_category_guard",
         "pm_memory_embedding_guard",
+        "pm_memory_source_guard",
+        "pm_memory_candidate_guard",
+        "pm_source_processing_event_guard",
+        "pm_candidate_evaluation_guard",
+        "pm_correction_request_guard",
+        "pm_correction_memory_guard",
+        "pm_deletion_operation_guard",
+        "pm_deletion_target_guard",
     }
