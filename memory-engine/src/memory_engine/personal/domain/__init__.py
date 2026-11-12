@@ -21,6 +21,7 @@ from memory_engine.personal.domain.entities import (
     MemoryRelationship,
     ordered_pair,
 )
+from memory_engine.personal.domain.facts import FactProposal
 from memory_engine.personal.domain.lifecycle import (
     CandidateEvaluation,
     CorrectionRequest,
@@ -57,6 +58,7 @@ __all__ = [
     "Episode",
     "EpisodeEvent",
     "EpisodeMembership",
+    "FactProposal",
     "MemoryCandidate",
     "MemoryEmbedding",
     "MemoryEntityAssociation",

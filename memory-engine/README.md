@@ -28,7 +28,9 @@ The two domains can share infrastructure (PostgreSQL, pgvector, object storage, 
 >
 > Phase 8.4 step 2 adds the relevance gate (`personal/application/relevance.py`). It judges each user sentence with spaCy (`infrastructure/nlp`) and deterministic rules, records its decision in `pm_relevance_assessment`, and either stops a source (deferred or rejected, with a reason) or passes the relevant sentences on to fact extraction (step 3).
 >
-> Not yet: fact extraction, evaluation and candidate generation (8.4 steps 3–5), parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking, and the deletion workflow.
+> Phase 8.4 step 3 adds atomic fact extraction (`personal/application/facts.py`). Dependency-parse rules turn each relevant sentence into fact proposals: a third-person proposition plus subject, predicate, object, modality, negation, conditions, dates, quantities and attribution, with an extraction confidence. Proposals stay in memory and go on to evaluation.
+>
+> Not yet: evaluation and candidate generation (8.4 steps 4–5), parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking, and the deletion workflow.
 
 ## Boundaries
 

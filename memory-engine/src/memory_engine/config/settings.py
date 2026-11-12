@@ -177,6 +177,33 @@ class RelevanceSettings(BaseModel):
         return self
 
 
+class FactExtractionSettings(BaseModel):
+    """Extraction confidence (owner-approved, 8.4 step 3; 6.2.3 section 5.9).
+
+    A deductive score: 1.0 minus a penalty per weakness. Below
+    ``review_threshold`` a proposal needs review; below ``reject_threshold`` it
+    is rejected. Uncalibrated defaults; extraction confidence is never fact
+    confidence (6.2.3 AC-16).
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    penalty_no_subject: float = Field(default=0.4, ge=0, le=1)
+    penalty_no_verb: float = Field(default=0.4, ge=0, le=1)
+    penalty_unresolved_reference: float = Field(default=0.3, ge=0, le=1)
+    penalty_no_object: float = Field(default=0.2, ge=0, le=1)
+    penalty_long_sentence: float = Field(default=0.1, ge=0, le=1)
+    long_sentence_tokens: int = Field(default=30, ge=5, le=1000)
+    review_threshold: float = Field(default=0.5, ge=0, le=1)
+    reject_threshold: float = Field(default=0.2, ge=0, le=1)
+
+    @model_validator(mode="after")
+    def _ordered(self) -> "FactExtractionSettings":
+        if self.reject_threshold > self.review_threshold:
+            raise ValueError("reject_threshold must not exceed review_threshold")
+        return self
+
+
 class BrokerSettings(BaseModel):
     """RabbitMQ connection for handoff messages (7.4; 7.1 section 24.3).
 
@@ -244,6 +271,7 @@ class MemoryEngineSettings(BaseSettings):
     outbox: OutboxSettings = OutboxSettings()
     extraction: ExtractionSettings = ExtractionSettings()
     relevance: RelevanceSettings = RelevanceSettings()
+    facts: FactExtractionSettings = FactExtractionSettings()
 
 
 def load_settings(env_file: str | Path | None = None) -> MemoryEngineSettings:

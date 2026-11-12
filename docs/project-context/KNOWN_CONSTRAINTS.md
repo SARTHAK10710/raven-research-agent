@@ -45,7 +45,14 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
   - **No malware scanning**: no tool is approved, and the owner accepted the deferral on 2026-11-11. Content is never executed, DOCX macro parts are refused, and the parser (8.12) must treat files as hostile.
   - TXT must be UTF-8.
   - Upload limit: 25 MiB by default (configurable).
-- Relevance gate (8.4 step 2, uncommitted):
+- Fact extraction (8.4 step 3, uncommitted):
+  - dependency-parse rules over English sentences;
+  - only first-person references are resolved; third-person pronouns send a proposal to review;
+  - "we/us/our" become "the user and others" or "the user's", which loses the distinction between shared and personal;
+  - relative dates are kept as written, never resolved;
+  - extraction dataset v1 (24/24) is a regression set, not an unbiased measure;
+  - proposals are not stored on their own; evaluation and candidate generation (steps 4–5) do not exist yet.
+- Relevance gate (8.4 step 2, merged in PR #25):
   - it judges English sentences with spaCy `en_core_web_sm` and deterministic word lists;
   - weights and thresholds are uncalibrated defaults;
   - relevance dataset v1 scores 34 of 36, and both misses are conservative deferrals;

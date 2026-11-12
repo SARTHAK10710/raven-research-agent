@@ -852,3 +852,26 @@ Each step settles its own open questions with the owner at its start.
   - The model is a pinned wheel in `tool.uv.sources`.
   - Licences re-checked 2026-11-12: spaCy and the model are MIT; the transitive packages are MIT, BSD, Apache-2.0, MPL-2.0 or ISC.
 - **Quality:** relevance dataset v1 (36 cases, labelled by intent). 34 of 36 outcomes match. Both misses are deferrals where a reviewer would reject, the conservative direction 6.2.2 AC-10 asks for.
+
+### 25.7 Phase 8.4 step 3 — Atomic fact extraction
+
+**Status:** Approved by the project owner on 2026-11-12, at the start of 8.4 step 3.
+
+- **Representation:** in-memory `FactProposal` records (5.4 §18), stored only as candidates in step 5. The proposition restates the clause in the third person ("The user prefers window seats.") and keeps any condition. The exact original sentence is kept alongside.
+- **Method:** dependency-parse rules over the gate's spaCy parse. Each of these is one proposal:
+  - the root clause;
+  - each coordinated clause;
+  - each comma-separated participial clause.
+
+  Objects and prepositional details stay attached to their verb, so connected attributes keep their shared meaning. Conditions ("if", "unless", "provided") stay in the proposition and make it `conditional`. Reported speech ("say/tell/mention/claim") is attributed to the reporter. Under "I think/believe ..." the inner clause becomes `possible`, and the frame itself is not a fact. Negation comes from `neg`, "never" and "no longer". Dates and quantities are kept as written; relative times are never resolved.
+- **References:** first person only.
+  - "I/me" → "the user", "my" → "the user's", "we/us" → "the user and others", "our" → "the user's".
+  - Third-person pronouns are kept as written and listed as unresolved, and the proposal needs review.
+- **Confidence:** 1.0 minus penalties: no subject 0.4, no verb 0.4, unresolved reference 0.3, nothing beyond subject and verb 0.2, long sentence (over 30 tokens) 0.1.
+  - Below 0.5 the proposal needs review; below 0.2 it is rejected.
+  - The values are configurable (`FactExtractionSettings`) and uncalibrated.
+- **Failures:**
+  - a sentence that fails is recorded and the others are kept;
+  - questions yield no proposal;
+  - an empty result is not a failure.
+- **Quality:** extraction dataset v1 has 24 cases, and all 24 match. The labels were written after inspecting how the sentences parse, so this set is a regression check on the agreed conventions, not an unbiased measure. Step 6 needs a held-out set.
