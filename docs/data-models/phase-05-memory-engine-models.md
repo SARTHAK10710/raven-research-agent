@@ -1662,3 +1662,17 @@ The embedding status vocabulary is now defined once, in the shared kernel, and u
 - It is append-only, owner-scoped, and written in the same transaction as the source's outcome.
 - **Deletion:** `relevance_assessment` is a deletion target kind, so plan 8.10 removes the records with their source.
 - **Vocabulary:** relevance outcome `process`, `defer`, `reject` (6.2.2 §4.6).
+
+## 18. Fact proposals (Phase 8.4 step 3)
+
+**Approved 2026-11-12.** 6.2.3 §5.6 describes a fact proposal as "a conceptual contract, not a finalized database schema". The owner decided that proposals are not stored on their own.
+
+- **In memory only:** a Fact Proposal exists only inside one extraction run. Evaluation and candidate generation (6.2.4–6.2.6) consume it. Step 5 stores what survives as a Memory Candidate:
+  - the proposition becomes the candidate's proposition;
+  - subject, predicate, object, attributes, modality, negation, conditions, quantities, speaker, attribution, correction flag and unresolved references go into `context`;
+  - temporal expressions and their reference time go into `temporal`;
+  - method, version, weaknesses and location go into `extraction_metadata`.
+  - No new table.
+- **Vocabularies:**
+  - fact modality: `factual`, `intended`, `possible`, `conditional` (6.2.3 §5.6);
+  - proposal status: `extracted`, `needs_review`, `rejected` (6.2.3 §5.10). `partially_extracted` and `failed` describe a whole extraction run, not a single proposal.

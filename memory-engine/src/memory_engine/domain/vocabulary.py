@@ -498,6 +498,23 @@ class RelevanceOutcome(StrEnum):
     REJECT = "reject"
 
 
+class FactModality(StrEnum):
+    """Modality of a fact proposal (6.2.3 section 5.6); 5.4 Phase 8.4 amendment section 18."""
+
+    FACTUAL = "factual"
+    INTENDED = "intended"
+    POSSIBLE = "possible"
+    CONDITIONAL = "conditional"
+
+
+class ProposalStatus(StrEnum):
+    """Fact proposal outcome (6.2.3 section 5.10); 5.4 Phase 8.4 amendment section 18."""
+
+    EXTRACTED = "extracted"
+    NEEDS_REVIEW = "needs_review"
+    REJECTED = "rejected"
+
+
 class DeletionAction(StrEnum):
     """Required handling of one ledger row (6.5.9 dependency inventory)."""
 

@@ -43,6 +43,9 @@ class SpacySentenceAnalyzer:
                     head=token.head.i - start,
                     entity=token.ent_type_,
                     is_stop=bool(token.is_stop),
+                    tag=token.tag_,
+                    whitespace=token.whitespace_,
+                    entity_start=token.ent_iob_ == "B",
                 )
                 for token in span
                 if not token.is_space

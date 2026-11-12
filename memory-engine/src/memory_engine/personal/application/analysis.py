@@ -20,6 +20,9 @@ class Token:
     head: int  # index of the head token within the sentence
     entity: str = ""  # named-entity label, for example DATE, PERSON, or ""
     is_stop: bool = False
+    tag: str = ""  # fine-grained tag, for example VBP, VBZ, PRP$
+    whitespace: str = ""  # whitespace after the token in the original text
+    entity_start: bool = False  # first token of a named entity (IOB "B")
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

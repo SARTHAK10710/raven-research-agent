@@ -66,6 +66,11 @@ Phase 8.1 created the foundation code (`memory-engine/src/memory_engine/`: `conf
   - Scores combine only the signals that were evaluated, renormalizing the weights; a missing signal is never zero (6.2.2 AC-07). Weights and thresholds live in settings and are marked uncalibrated until step 6.
   - Stored decisions keep positions, outcomes, codes and scores, never the text.
   - Quality datasets are labelled by intent, not by the current output; quality tests assert exact matches for rule-decided cases and an accuracy floor overall.
+- Established in 8.4 step 3 (fact extraction):
+  - Pipeline stages hand each other in-memory records through ports (`ExtractionStage`, `ProposalStage`); only the final outcome is persisted, atomically. Fact proposals are never stored on their own.
+  - Rewrite only first-person references ("the user"); keep third-person pronouns as written and send the proposal to review. Never resolve a relative date to an absolute one.
+  - A failure on one sentence is recorded and never discards the others; an empty result is a valid outcome, distinct from a failure.
+  - If a dataset's labels were written after looking at the output, say so: it is a regression set, not a quality measure.
 - Established in 8.3 step 5 (observability):
   - Record metrics only through the `Metrics` port (`memory_engine.observability.metrics`), injected with a no-op default; tests use `InMemoryMetrics`. Labels are limited to `input`, `outcome`, `reason` and `kind`, with word or code values: identifiers belong in logs, never in labels.
   - Log events set `event_type` (`<area>.<outcome>`) and carry ids, codes and durations, plus `user_scope` (the opaque owner id); never content, filenames or caller-supplied keys.

@@ -13,7 +13,7 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 | 8.1 Foundation and project setup | `VERIFIED` | `5a0d6e5`, merged in `6efd72d` (PR #3) |
 | 8.2 Database and persistence | `VERIFIED` (2026-11-11) | Steps 1–2 `d2346b6`, `e7fc443` (PR #8); step 3 `7a62cd4` (PR #9); step 4 `38411e1` (PR #10, `977c3b7`); step 5 `42b35c3` and review fixes `1b58b77` (PR #11, `423b6fd`) |
 | 8.3 Ingestion pipeline | **`VERIFIED`** (2026-11-12) | Step 1 `206bc2f` (PR #16); step 2 `894da0f` (PR #17, `1e93dbd`); step 3 `15d752f` (PR #18, `d51039b`); step 4 `2fed5cb` (PR #19, `db13113`); step 5 `d08ae20` (PR #21, `1851f53`) |
-| 8.4 Extraction and evaluation | `IN_PROGRESS` (approved 2026-11-12; personal path; step 1 merged; step 2 tested, uncommitted) | Step 1 `203ce2d` (PR #24, `27fa245`) |
+| 8.4 Extraction and evaluation | `IN_PROGRESS` (approved 2026-11-12; personal path; steps 1–2 merged; step 3 tested, uncommitted) | Step 1 `203ce2d` (PR #24, `27fa245`); step 2 `520c31d` (PR #25, `7e1b441`) |
 | 8.5 Entity and relationship management | `NOT_STARTED` | — |
 | 8.6 Memory resolution | `NOT_STARTED` | — |
 | 8.7 Memory storage and indexing | `NOT_STARTED` | — |
@@ -183,7 +183,12 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 
 | Field | Value |
 |---|---|
-| Status | `IN_PROGRESS`: approved 2026-11-12. Step 1 merged (PR #24, `27fa245`). **Step 2 (relevance gate) implemented and tested, uncommitted** on `feat/phase-8-4-relevance-gate`. Steps 3–6 to do ([NEXT_STEPS.md](NEXT_STEPS.md)) |
+| Status | `IN_PROGRESS`: approved 2026-11-12. Steps 1–2 merged (PRs #24–#25; `main` @ `7e1b441`). **Step 3 (atomic fact extraction) implemented and tested, uncommitted** on `feat/phase-8-4-fact-extraction`. Steps 4–6 to do ([NEXT_STEPS.md](NEXT_STEPS.md)) |
+| Step 3 decisions (owner, 2026-11-12; [7.1 §25.7](../technical-decisions/01-baseline-technology-stack.md)) | In-memory `FactProposal` records, stored as candidates in step 5 (5.4 §18); dependency-parse rules; first-person references only; a deductive confidence score (review below 0.5, reject below 0.2) |
+| Files created (step 3) | `personal/domain/facts.py`; `personal/application/facts.py`; `tests/memory_engine/quality/{test_extraction_quality.py,data/extraction/v1.jsonl}`. Tests: `unit/test_fact_extraction.py`, `integration/test_fact_extraction.py` |
+| Files modified (step 3) | `domain/vocabulary.py` (`FactModality`, `ProposalStatus`); `personal/domain/__init__.py`; `personal/application/analysis.py` (`Token.tag`, `whitespace`, `entity_start`); `infrastructure/nlp/spacy_analyzer.py`; `config/{__init__,settings}.py` (`FactExtractionSettings`); `unit/test_persistence_definitions.py`. Docs: 5.4 §18, 7.1 §25.7, status files. No migration; no new dependencies |
+| Tests (step 3) | **836 passed, 0 failed** (623 unit and quality, 213 integration), 97% coverage, 3 green runs; services stopped: 624 passed, 212 skipped; Ruff clean; mypy strict clean (111 files). Extraction dataset v1: 24 of 24 (a regression set) |
+| Commit (step 2) | `520c31d`, merged through PR #25 (`7e1b441`) |
 | Step 2 decisions (owner, 2026-11-12; [7.1 §25.6](../technical-decisions/01-baseline-technology-stack.md)) | Per-sentence decisions rolled up to the source; a new append-only `pm_relevance_assessment` (5.4 §17); a weighted score over five optional signals plus rules, with uncalibrated defaults; spaCy added now |
 | Files created (step 2) | `personal/domain/relevance.py`; `personal/application/{analysis,relevance}.py`; `infrastructure/nlp/{__init__,spacy_analyzer}.py`; `migrations/versions/20261112_0010_relevance_assessment.py`; `tests/memory_engine/quality/{test_relevance_quality.py,data/relevance/v1.jsonl}`. Tests: `unit/test_relevance_gate.py`, `integration/test_relevance_gate.py` |
 | Files modified (step 2) | `domain/vocabulary.py` (`RelevanceOutcome`, `DeletionTargetKind.RELEVANCE_ASSESSMENT`); `personal/domain/__init__.py`; `personal/application/{extraction,ports}.py` (`PipelineResult.relevance`, `RelevanceRepository`); `persistence/personal/{lifecycle_models,lifecycle_repositories}.py`; `persistence/unit_of_work.py` (`relevance`); `config/{__init__,settings}.py` (`RelevanceSettings`); `memory-engine/pyproject.toml`, `uv.lock`. Tests: `unit/{test_persistence_definitions,test_domain_boundary}.py`, `integration/test_migrations.py`. Docs: 5.4 §17, 7.1 §25.6, status files |
