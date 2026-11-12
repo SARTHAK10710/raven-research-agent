@@ -17,7 +17,15 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, ValidationError, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SecretStr,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from memory_engine.exceptions.base import ConfigurationError
@@ -135,6 +143,40 @@ class ExtractionSettings(BaseModel):
     max_non_latin_letter_share: float = Field(default=0.3, ge=0, le=1)
 
 
+class RelevanceSettings(BaseModel):
+    """Relevance gate scoring (owner-approved, 8.4 step 2; 6.2.2 section 4.5).
+
+    Uncalibrated defaults: 6.2.2 leaves weights and thresholds to evaluation
+    data. A signal that cannot be evaluated is left out and the remaining
+    weights are renormalized; it is never counted as zero (6.2.2 AC-07).
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    weight_personal: float = Field(default=0.35, ge=0, le=1)
+    weight_utility: float = Field(default=0.2, ge=0, le=1)
+    weight_temporal: float = Field(default=0.15, ge=0, le=1)
+    weight_context: float = Field(default=0.15, ge=0, le=1)
+    weight_density: float = Field(default=0.15, ge=0, le=1)
+    process_threshold: float = Field(default=0.5, ge=0, le=1)
+    defer_threshold: float = Field(default=0.3, ge=0, le=1)
+
+    @model_validator(mode="after")
+    def _ordered(self) -> "RelevanceSettings":
+        if self.defer_threshold > self.process_threshold:
+            raise ValueError("defer_threshold must not exceed process_threshold")
+        weights = (
+            self.weight_personal,
+            self.weight_utility,
+            self.weight_temporal,
+            self.weight_context,
+            self.weight_density,
+        )
+        if sum(weights) <= 0:
+            raise ValueError("at least one weight must be positive")
+        return self
+
+
 class BrokerSettings(BaseModel):
     """RabbitMQ connection for handoff messages (7.4; 7.1 section 24.3).
 
@@ -201,6 +243,7 @@ class MemoryEngineSettings(BaseSettings):
     ingestion: IngestionSettings = IngestionSettings()
     outbox: OutboxSettings = OutboxSettings()
     extraction: ExtractionSettings = ExtractionSettings()
+    relevance: RelevanceSettings = RelevanceSettings()
 
 
 def load_settings(env_file: str | Path | None = None) -> MemoryEngineSettings:

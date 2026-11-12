@@ -45,7 +45,13 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
   - **No malware scanning**: no tool is approved, and the owner accepted the deferral on 2026-11-11. Content is never executed, DOCX macro parts are refused, and the parser (8.12) must treat files as hostile.
   - TXT must be UTF-8.
   - Upload limit: 25 MiB by default (configurable).
-- Extraction worker (8.4 step 1, uncommitted):
+- Relevance gate (8.4 step 2, uncommitted):
+  - it judges English sentences with spaCy `en_core_web_sm` and deterministic word lists;
+  - weights and thresholds are uncalibrated defaults;
+  - relevance dataset v1 scores 34 of 36, and both misses are conservative deferrals;
+  - sources the gate passes still need fact extraction (step 3), so no production pipeline is assembled yet;
+  - the spaCy model loads once per process (about 0.5 s).
+- Extraction worker (8.4 step 1, merged in PR #24):
   - the Celery consumer exists, but the pipeline behind it (steps 2–5) does not yet, and no worker process is deployed;
   - non-English sources are `deferred` with `UNSUPPORTED_LANGUAGE`, and nothing re-queues them yet;
   - the English check is a heuristic; short Latin-script texts count as English;

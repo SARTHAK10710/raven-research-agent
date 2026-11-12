@@ -73,6 +73,7 @@ MIGRATION_0005 = VERSIONS / "20261111_0005_processing_corrections_deletion.py"
 MIGRATION_0006 = VERSIONS / "20261111_0006_episode_version.py"
 MIGRATION_0007 = VERSIONS / "20261111_0007_memory_source_ingestion.py"
 MIGRATION_0009 = VERSIONS / "20261112_0009_source_deferral.py"
+MIGRATION_0010 = VERSIONS / "20261112_0010_relevance_assessment.py"
 PASSWORD = "synthetic-db-password-91c2"  # noqa: S105 - test-only value
 
 
@@ -192,7 +193,7 @@ VOCABULARIES = [
 
 
 def test_vocabulary_module_defines_the_expected_enums() -> None:
-    assert len(VOCABULARIES) == 39
+    assert len(VOCABULARIES) == 40  # 8.4 step 2 added RelevanceOutcome
 
 
 def test_documents_reuse_the_shared_embedding_status() -> None:
@@ -237,7 +238,6 @@ def test_migration_0004_rules_match_the_models() -> None:
         ("CORRECTION_STATUSES", vocabulary.CorrectionStatus),
         ("DELETION_REQUEST_KINDS", vocabulary.DeletionRequestKind),
         ("DELETION_OPERATION_STATUSES", vocabulary.DeletionOperationStatus),
-        ("DELETION_TARGET_KINDS", vocabulary.DeletionTargetKind),
         ("DELETION_ACTIONS", vocabulary.DeletionAction),
         ("DELETION_TARGET_STATES", vocabulary.DeletionTargetState),
     ],
@@ -280,6 +280,18 @@ def test_source_processing_statuses_evolve_through_0009() -> None:
     needs_reason = {s.value for s in vocabulary.SourceProcessingStatus if s.needs_reason}
     assert needs_reason == {"deferred", "rejected"}
     assert all(f"'{value}'" in migration.REASON_REQUIRED for value in needs_reason)
+
+
+def test_migration_0010_matches_the_models_and_enums() -> None:
+    migration = _load_migration(MIGRATION_0010)
+    assert migration.down_revision == _load_migration(MIGRATION_0009).revision
+    assert tuple(o.value for o in vocabulary.RelevanceOutcome) == migration.RELEVANCE_OUTCOMES
+    assert migration.RELEVANCE_REASON == lifecycle_models.RELEVANCE_REASON
+    # 0005 froze the original deletion target kinds; 0010 adds relevance_assessment.
+    frozen = _load_migration(MIGRATION_0005).DELETION_TARGET_KINDS
+    assert tuple(frozen) == migration.PREVIOUS_DELETION_TARGET_KINDS
+    assert tuple(k.value for k in vocabulary.DeletionTargetKind) == migration.DELETION_TARGET_KINDS
+    assert migration.GUARDED_TABLES == {"pm_relevance_assessment": ()}  # append-only
 
 
 def test_migration_0006_extends_the_episode_guard_from_0004() -> None:
@@ -375,6 +387,7 @@ def test_every_table_is_owner_scoped_with_a_domain_prefix() -> None:
         "pm_correction_memory",
         "pm_deletion_operation",
         "pm_deletion_target",
+        "pm_relevance_assessment",
         "doc_document",
         "doc_document_version",
         "doc_extracted_representation",

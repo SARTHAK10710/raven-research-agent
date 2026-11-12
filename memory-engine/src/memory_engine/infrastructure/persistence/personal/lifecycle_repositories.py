@@ -27,6 +27,7 @@ from memory_engine.domain.vocabulary import (
     EvaluationOutcome,
     MemoryLifecycleStatus,
     ProcessingEventType,
+    RelevanceOutcome,
     SourceProcessingStatus,
 )
 from memory_engine.exceptions import RecordNotFoundError
@@ -40,6 +41,7 @@ from memory_engine.infrastructure.persistence.personal.lifecycle_models import (
     CorrectionRequestRow,
     DeletionOperationRow,
     DeletionTargetRow,
+    RelevanceAssessmentRow,
     SourceProcessingEventRow,
 )
 from memory_engine.infrastructure.persistence.personal.models import (
@@ -54,7 +56,9 @@ from memory_engine.personal.domain import (
     CorrectionTarget,
     DeletionOperation,
     DeletionTarget,
+    RelevanceAssessment,
     SourceProcessingEvent,
+    UnitAssessment,
 )
 
 _TOMBSTONED_MEMORY = (
@@ -171,6 +175,56 @@ def _target(row: DeletionTargetRow) -> DeletionTarget:
 
 
 # --- source processing ---------------------------------------------------------------
+
+
+class SqlAlchemyRelevanceRepository:
+    """Relevance gate decisions (6.2.2 step 8). Append-only, oldest first."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def add(self, scope: OwnerScope, assessment: RelevanceAssessment) -> None:
+        _require_in_scope(scope, assessment.owner_id)
+        with translate_database_errors("add relevance assessment"):
+            self._session.add(
+                RelevanceAssessmentRow(
+                    id=assessment.id,
+                    owner_id=assessment.owner_id,
+                    source_id=assessment.source_id,
+                    outcome=assessment.outcome.value,
+                    reason_code=assessment.reason_code,
+                    method=assessment.method,
+                    method_version=assessment.method_version,
+                    units=[unit.to_json() for unit in assessment.units],
+                    assessed_at=assessment.assessed_at,
+                )
+            )
+            self._session.flush()
+
+    def for_source(self, scope: OwnerScope, source_id: uuid.UUID) -> Sequence[RelevanceAssessment]:
+        with translate_database_errors("list relevance assessments"):
+            rows = self._session.scalars(
+                select(RelevanceAssessmentRow)
+                .where(
+                    RelevanceAssessmentRow.owner_id == scope.owner_id,
+                    RelevanceAssessmentRow.source_id == source_id,
+                )
+                .order_by(RelevanceAssessmentRow.assessed_at, RelevanceAssessmentRow.seq)
+            ).all()
+        return [
+            RelevanceAssessment(
+                id=row.id,
+                owner_id=row.owner_id,
+                source_id=row.source_id,
+                outcome=RelevanceOutcome(row.outcome),
+                reason_code=row.reason_code,
+                method=row.method,
+                method_version=row.method_version,
+                assessed_at=row.assessed_at,
+                units=[UnitAssessment.from_json(unit) for unit in row.units],
+            )
+            for row in rows
+        ]
 
 
 class SqlAlchemyProcessingHistoryRepository:

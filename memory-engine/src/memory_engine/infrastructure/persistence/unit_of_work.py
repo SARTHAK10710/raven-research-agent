@@ -38,6 +38,7 @@ from memory_engine.infrastructure.persistence.personal.lifecycle_repositories im
     SqlAlchemyDeletionRepository,
     SqlAlchemyEvaluationHistoryRepository,
     SqlAlchemyProcessingHistoryRepository,
+    SqlAlchemyRelevanceRepository,
 )
 from memory_engine.infrastructure.persistence.personal.repositories import (
     SqlAlchemyAtomicMemoryRepository,
@@ -105,10 +106,12 @@ class SqlAlchemyPersonalUnitOfWork(_SqlAlchemyUnitOfWork):
     corrections: SqlAlchemyCorrectionRepository
     deletions: SqlAlchemyDeletionRepository
     outbox: SqlAlchemyOutboxRepository
+    relevance: SqlAlchemyRelevanceRepository
 
     def _bind(self, session: Session) -> None:
         self.sources = SqlAlchemyMemorySourceRepository(session)
         self.outbox = SqlAlchemyOutboxRepository(session)
+        self.relevance = SqlAlchemyRelevanceRepository(session)
         self.candidates = SqlAlchemyMemoryCandidateRepository(session, self.sources)
         self.memories = SqlAlchemyAtomicMemoryRepository(session)
         self.evidence = SqlAlchemyDocumentEvidenceRepository(session, self.candidates)

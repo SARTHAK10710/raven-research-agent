@@ -1649,3 +1649,16 @@ The embedding status vocabulary is now defined once, in the shared kernel, and u
 - **New Memory Source state `deferred`:** held for controlled later processing, never discarded. A deferred source may later return to `queued` when its blocker is lifted (for example, when multilingual support is approved).
 - **`reason_code` on Source Processing Events:** an UPPER_SNAKE_CASE code, required exactly for transitions into `deferred` or `rejected` (for example `UNSUPPORTED_LANGUAGE`). `error_code` stays for `failure` events only.
 - **Extraction transitions (8.4):** `queued` → `processing` → outcome, written in one transaction with the candidates, where the outcome is `extracted`, `partially_extracted`, `rejected`, `deferred`, `parsing_failed` or `processing_failed`. When the worker's retries run out, `queued` → `processing_failed`. The explicit reprocess goes `processing_failed` → `validated` as a `retry` event, and the handoff is re-armed.
+
+## 17. Relevance assessments (Phase 8.4 step 2)
+
+**Approved 2026-11-12.** 6.2.2 step 8 requires storing each relevance decision with its reason, score metadata and processing version. No record held it. Migration `0010`.
+
+- **Relevance Assessment** (`pm_relevance_assessment`): one row per extraction run of a Memory Source. It holds:
+  - the outcome (`process`, `defer` or `reject`) and a reason code, required exactly for `defer` and `reject`;
+  - the method and method version;
+  - per-sentence results as JSON: segment and sentence position, outcome, reason or protection code, score, and the signals that were evaluated.
+  - It never holds the text.
+- It is append-only, owner-scoped, and written in the same transaction as the source's outcome.
+- **Deletion:** `relevance_assessment` is a deletion target kind, so plan 8.10 removes the records with their source.
+- **Vocabulary:** relevance outcome `process`, `defer`, `reject` (6.2.2 §4.6).

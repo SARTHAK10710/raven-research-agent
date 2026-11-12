@@ -486,6 +486,16 @@ class DeletionTargetKind(StrEnum):
     MEMORY_EMBEDDING = "memory_embedding"
     CORRECTION_REQUEST = "correction_request"
     CORRECTION_MEMORY = "correction_memory"
+    # 8.4 step 2 (5.4 Phase 8.4 amendment section 17).
+    RELEVANCE_ASSESSMENT = "relevance_assessment"
+
+
+class RelevanceOutcome(StrEnum):
+    """Relevance gate outcome (6.2.2 section 4.6); 5.4 Phase 8.4 amendment section 17."""
+
+    PROCESS = "process"
+    DEFER = "defer"
+    REJECT = "reject"
 
 
 class DeletionAction(StrEnum):

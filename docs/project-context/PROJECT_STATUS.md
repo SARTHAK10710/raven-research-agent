@@ -7,9 +7,9 @@
 | Item | Value |
 |---|---|
 | Current phase | Phase 8 — Memory Engine Implementation |
-| Current subphase | 8.4 — Extraction and Evaluation: **approved 2026-11-12**, `IN_PROGRESS`: step 1 (extraction worker) implemented and tested, uncommitted on `feat/phase-8-4-extraction-worker`. Personal path only for now (Decision 7); English first (G6); spaCy + `en_core_web_sm` (Decision 14); six steps in [NEXT_STEPS.md](NEXT_STEPS.md) ([7.1 §25](../technical-decisions/01-baseline-technology-stack.md)). Previous: 8.3 — Ingestion Pipeline: **`VERIFIED` (2026-11-12)**. All five steps merged (PRs #16–#19, #21; `main` @ `1851f53`); every plan §13 criterion met, with one owner-accepted deferral ([PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md)). 8.4 is not approved |
+| Current subphase | 8.4 — Extraction and Evaluation: **approved 2026-11-12**, `IN_PROGRESS`: step 1 (extraction worker) merged (PR #24, `27fa245`); step 2 (relevance gate) implemented and tested, uncommitted on `feat/phase-8-4-relevance-gate`. Personal path only for now (Decision 7); English first (G6); spaCy + `en_core_web_sm` (Decision 14); six steps in [NEXT_STEPS.md](NEXT_STEPS.md) ([7.1 §25](../technical-decisions/01-baseline-technology-stack.md)). Previous: 8.3 — Ingestion Pipeline: **`VERIFIED` (2026-11-12)**. All five steps merged (PRs #16–#19, #21; `main` @ `1851f53`); every plan §13 criterion met, with one owner-accepted deferral ([PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md)). 8.4 is not approved |
 | Subphase status | 8.2 **`VERIFIED`** (2026-11-11) and merged: all five steps plus the acceptance-review fixes, with every plan 8.2 §14 criterion met on `main` @ `423b6fd` (two owner-accepted deferrals; [PHASE-8-2-ACCEPTANCE-REVIEW.md](PHASE-8-2-ACCEPTANCE-REVIEW.md)). 8.1 remains `VERIFIED` and merged |
-| Current active task | Owner review of 8.4 step 1 (extraction worker: Celery consumer, atomic outcome, `deferred` state, English check, dataset scaffold); then step 2 (relevance gate) |
+| Current active task | Owner review of 8.4 step 2 (relevance gate: per-sentence decisions, `pm_relevance_assessment`, spaCy); then step 3 (atomic fact extraction) |
 | Application code | 8.1 foundation plus 8.2: Personal Memory core (`0001`), Document Intelligence and the evidence path (`0002`), entities and relationships (`0003`), episodes, profiles, categories and memory embedding metadata (`0004`), processing, evaluation, correction and deletion records (`0005`), episode version (`0006`); owner-scoped repositories and units of work. 8.3 step 1 (merged): an owner-scoped object-storage port with an in-memory fake and a boto3/S3 adapter. 8.3 step 2 (merged): text and conversation ingestion into a `validated` Memory Source (`0007`). 8.3 step 3 (merged): document uploads checked, stored and registered with an `extraction` operation. 8.3 step 4 (merged): a transactional outbox (`me_outbox`, `0008`) written with each registration, and a relay that publishes to RabbitMQ through Celery and only then marks the source or operation `queued`; forget instructions get no handoff. **No** consumer, extraction, resolution, consolidation, parsing, chunking, embedding generation, retrieval ranking or deletion workflow |
 
 ## Documentation completion
@@ -31,7 +31,7 @@ Documentation recovery: four specifications that had been overwritten by amendme
 
 | Phase | Status |
 |---|---|
-| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `VERIFIED` (merged); 8.3 `VERIFIED` (merged; 2026-11-12); 8.4 `IN_PROGRESS` (approved 2026-11-12; personal path; step 1 tested, uncommitted); 8.5–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
+| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `VERIFIED` (merged); 8.3 `VERIFIED` (merged; 2026-11-12); 8.4 `IN_PROGRESS` (approved 2026-11-12; personal path; step 1 merged; step 2 tested, uncommitted); 8.5–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
 | Research Engine | Not started (later phase) |
 | Agent Orchestrator | Not started (later phase) |
 | Shared Infrastructure | Not started |

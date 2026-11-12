@@ -11,6 +11,7 @@ from memory_engine.config.settings import (
     MemoryEngineSettings,
     ObjectStorageSettings,
     OutboxSettings,
+    RelevanceSettings,
     load_settings,
 )
 
@@ -25,5 +26,6 @@ __all__ = [
     "MemoryEngineSettings",
     "ObjectStorageSettings",
     "OutboxSettings",
+    "RelevanceSettings",
     "load_settings",
 ]

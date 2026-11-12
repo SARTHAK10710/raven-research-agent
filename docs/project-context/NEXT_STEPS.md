@@ -45,8 +45,8 @@ Approved with 8.4 ([7.1 §25](../technical-decisions/01-baseline-technology-stac
 
 | Step | Scope | Open questions to settle at the start of the step |
 |---|---|---|
-| 1 | **Extraction worker:** the Celery consumer for `memory.personal.extraction` (envelope validation, idempotency, Memory Source `queued` → `processing` → outcome), the English-language check, the spaCy dependency, the synthetic dataset scaffold | **Settled 2026-11-12** (7.1 §25.5): atomic outcome with Celery retries, then `processing_failed`; `deferred` state and `reason_code` (5.4 §16); deterministic English check; JSON Lines datasets; spaCy deferred to its first user. **Implemented and tested; uncommitted** |
-| 2 | **Relevance gate** (6.2.2): `PROCESS` / `DEFER` / `REJECT` with reason codes; protection rules | Initial dimensions and weights (uncalibrated defaults); where a deferral is recorded; reason-code vocabulary |
+| 1 | **Extraction worker:** the Celery consumer for `memory.personal.extraction` (envelope validation, idempotency, Memory Source `queued` → `processing` → outcome), the English-language check, the spaCy dependency, the synthetic dataset scaffold | **Settled 2026-11-12** (7.1 §25.5): atomic outcome with Celery retries, then `processing_failed`; `deferred` state and `reason_code` (5.4 §16); deterministic English check; JSON Lines datasets; spaCy deferred to its first user. **Merged (PR #24)** |
+| 2 | **Relevance gate** (6.2.2): `PROCESS` / `DEFER` / `REJECT` with reason codes; protection rules | **Settled 2026-11-12** (7.1 §25.6): per-sentence decisions rolled up; `pm_relevance_assessment` (5.4 §17); weighted score over five optional signals plus rules; spaCy added. **Implemented and tested; uncommitted** |
 | 3 | **Atomic fact extraction** (6.2.3): segmentation, speaker attribution, statement classification, negation, conditions, time and quantities | Fact representation inside the candidate (subject, predicate, object); pattern coverage; coreference scope |
 | 4 | **Evaluation and classification** (6.2.4–6.2.5): independent importance and confidence; explicit, inferred or unresolved | Initial scoring rules and thresholds; method versioning |
 | 5 | **Candidate generation** (6.2.6): validation, persistence with provenance and evaluation history, category assignment, handoff to resolution (8.6) | Where candidate categories live (no candidate category column exists); the resolution handoff (a new outbox kind and queue, or polling) |
@@ -97,33 +97,30 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 *Overwrite this section at the end of every session that changes the repository.*
 
 - **Date:** 2026-11-12
-- **Objective:** Phase 8.4 step 1, the extraction worker. Branch `feat/phase-8-4-extraction-worker` from `main` @ `f59c602`; uncommitted.
-- **Decisions made (owner, 2026-11-12; 7.1 §25.5, 5.4 §16):**
-  - atomic outcome: Celery retries for transient errors (5, 2 s doubling to 5 min), then `processing_failed`, then an explicit reprocess;
-  - new source state `deferred`, and a `reason_code` on events for deferral and rejection;
-  - deterministic English check;
-  - JSON Lines datasets.
+- **Objective:** Phase 8.4 step 2, the relevance gate. Branch `feat/phase-8-4-relevance-gate` from `main` @ `27fa245` (step 1 merged, PR #24); uncommitted.
+- **Decisions made (owner, 2026-11-12; 7.1 §25.6, 5.4 §17):**
+  - per-sentence decisions on user-authored messages, rolled up to the source;
+  - an append-only `pm_relevance_assessment`;
+  - a weighted score over five optional signals plus protection and rejection rules, with uncalibrated defaults;
+  - spaCy 3.8.18 with `en_core_web_sm` 3.8.0 added now.
 - **Work completed:**
-  - `personal/application/extraction.py`: `ExtractionService`.
-    - Validates the envelope, enforces the owner scope, and refuses forget sources.
-    - Reads the normalized content into segments and defers non-English sources.
-    - Runs the `ExtractionPipeline` port, then writes the candidates and `queued` → `processing` → outcome atomically.
-    - `mark_failed` and `reprocess_failed` (the latter re-arms the outbox row).
-  - `personal/application/language.py`: the English check (`assess`, `language_policy`).
-  - `infrastructure/messaging/tasks.py`: `register_extraction_task` (bounded Celery retries, then `mark_failed`).
-  - Migration `0009`: `deferred` and `reason_code`.
-  - `OutboxWriter.rearm`; `ExtractionSettings`.
-  - The quality dataset scaffold and language dataset v1 (26 cases).
+  - `personal/domain/relevance.py`: `RelevanceAssessment` and `UnitAssessment` (no text, JSON round trip).
+  - `personal/application/analysis.py`: the `SentenceAnalyzer` port.
+  - `infrastructure/nlp/spacy_analyzer.py`: `SpacySentenceAnalyzer`, the model loaded once per process.
+  - `personal/application/relevance.py`: `RelevanceGate` (signals, score, protections, rejections, roll-up, analyzer-failure deferral) and `GatedPipeline` (gate, then an `ExtractionStage` port for step 3).
+  - `PipelineResult.relevance`, persisted in the outcome transaction.
+  - `RelevanceRepository`; `RelevanceSettings`.
+  - Migration `0010`; relevance dataset v1 (36 cases).
 - **Tests and results:**
-  - `uv sync --locked` ok; ruff and format clean; mypy strict clean (98 files);
-  - `uv run pytest --cov` with all three services: **732 passed** (527 unit and quality, 205 integration), 97% coverage, 3 green runs;
-  - services stopped: 528 passed, 204 skipped;
-  - end to end through RabbitMQ: ingest, relay, consume, extract with a stand-in pipeline.
-- **Implementation status:** 8.4 `IN_PROGRESS`; step 1 tested, uncommitted; steps 2–6 to do.
+  - `uv sync --locked` ok; ruff and format clean; mypy strict clean (106 files);
+  - `uv run pytest --cov` with all three services: **798 passed** (587 unit and quality, 211 integration), 97% coverage, 3 green runs;
+  - services stopped: 588 passed, 210 skipped;
+  - relevance dataset v1: 34 of 36 outcomes, every labelled reason exact; the two misses are conservative deferrals.
+- **Implementation status:** 8.4 `IN_PROGRESS`; step 1 merged; step 2 tested, uncommitted; steps 3–6 to do.
 - **Unresolved:**
-  - the pipeline (steps 2–5) does not exist; no worker is deployed; deferred sources are not re-queued yet; no reconciliation sweep for sources stuck `queued`;
+  - fact extraction (step 3) and the remaining pipeline stages; no deployed worker; deferred sources are not re-queued; no reconciliation sweep;
   - from 8.3: no dead-letter queue or outbox cleanup; no encryption at rest in the development store; no malware scanning; test broker without TLS;
   - Decisions 6, 12 and 15; the embedding model (Decision 3); ratio-label wording;
-  - on this machine: uv not on PATH, Docker Desktop can take minutes to start, the SeaweedFS image once needed a re-pull, and Python defaults to cp1252 (script doc edits with UTF-8).
-- **Next action:** owner review of step 1; commit, PR and merge with approval; then step 2 (relevance gate) with its open questions.
-- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.4 and its amendment, 7.1 §25, 5.4 §16, algorithm 6.2.2 (`docs/algorithms/memory/01-memory-ingestion-extraction.md` §4), `personal/application/extraction.py`.
+  - on this machine: uv not on PATH, Docker Desktop must be started by hand after a reboot, the SeaweedFS image once needed a re-pull, and Python defaults to cp1252 (script doc edits with UTF-8).
+- **Next action:** owner review of step 2; commit, PR and merge with approval; then step 3 (atomic fact extraction) with its open questions.
+- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.4 with its amendment, 7.1 §25, 5.4 §16–§17, algorithm 6.2.3 (`docs/algorithms/memory/01-memory-ingestion-extraction.md` §5), `personal/application/{extraction,relevance,analysis}.py`.

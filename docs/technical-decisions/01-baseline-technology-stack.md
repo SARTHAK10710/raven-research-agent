@@ -830,3 +830,25 @@ Each step settles its own open questions with the owner at its start.
 - **Datasets:** versioned JSON Lines, `tests/memory_engine/quality/data/<capability>/v<N>.jsonl` (`schema_version`, `id`, `input`, `expected`, `notes`), validated by a loader test.
 - **spaCy:** not added in step 1, which does not use it. It arrives in the first step whose code imports it, as §25.3 requires.
 - **Known limitation:** if the database is down for the whole retry window, the task cannot record the failure and the source stays `queued`. A reconciliation sweep is not built yet.
+
+### 25.6 Phase 8.4 step 2 — Relevance gate
+
+**Status:** Approved by the project owner on 2026-11-12, at the start of 8.4 step 2.
+
+- **Unit:** each sentence of each user-authored message. Assistant turns give context only.
+  - **Roll-up:** any `process` sentence → extraction continues with those sentences; otherwise any deferral → source `deferred`; otherwise `rejected`.
+  - **Reason codes:** `SMALL_TALK`, `QUESTION_ONLY`, `HYPOTHETICAL`, `GENERAL_KNOWLEDGE`, `THIRD_PARTY_ONLY`, `LOW_INFORMATION`, `NOT_PERSONALLY_RELEVANT`, `NO_USER_CONTENT` (reject); `AMBIGUOUS_RELEVANCE`, `ANALYSIS_UNAVAILABLE` (defer).
+  - **Protection codes:** `EXPLICIT_REMEMBER`, `REMEMBER_PHRASE`, `CORRECTION`, `SIGNIFICANT_EVENT`.
+- **Record:** `pm_relevance_assessment` (5.4 §17), append-only, in the source's outcome transaction.
+- **Scoring:** a weighted mean of five signals, each in [0, 1].
+  - Signals: personal relevance, long-term utility, temporal significance, contextual significance (conversations only), information density.
+  - Signals that cannot be evaluated are left out and the weights renormalized; they are never counted as zero.
+  - Default weights 0.35 / 0.2 / 0.15 / 0.15 / 0.15. `process` at 0.5 or above, `defer` from 0.3, `reject` below.
+  - Explicit protection runs first; then small talk, questions and hypotheticals are rejected; then significant life events are protected.
+  - All values are configurable (`RelevanceSettings`) and uncalibrated.
+  - An analyzer failure defers the source with `ANALYSIS_UNAVAILABLE` (6.2.2 §4.10).
+- **spaCy 3.8.18 with `en_core_web_sm` 3.8.0** arrives in this step.
+  - It sits behind the `SentenceAnalyzer` port; only `memory_engine.infrastructure.nlp` imports it (tested).
+  - The model is a pinned wheel in `tool.uv.sources`.
+  - Licences re-checked 2026-11-12: spaCy and the model are MIT; the transitive packages are MIT, BSD, Apache-2.0, MPL-2.0 or ISC.
+- **Quality:** relevance dataset v1 (36 cases, labelled by intent). 34 of 36 outcomes match. Both misses are deferrals where a reviewer would reject, the conservative direction 6.2.2 AC-10 asks for.

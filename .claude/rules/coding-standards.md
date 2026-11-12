@@ -61,6 +61,11 @@ Phase 8.1 created the foundation code (`memory-engine/src/memory_engine/`: `conf
   - Pipeline outcomes are written atomically with their candidates, in one unit of work, conditional on the expected source state. Transient infrastructure errors (`TRANSIENT_ERRORS`) propagate for the Celery retry; every other failure becomes a final state with an error code.
   - Transitions into `deferred` or `rejected` carry a `reason_code`; only failures carry an `error_code`.
   - Quality datasets are versioned JSON Lines under `tests/memory_engine/quality/data/` and are never edited once a result depends on them: add a new version instead.
+- Established in 8.4 step 2 (relevance gate):
+  - NLP goes through the `SentenceAnalyzer` port (`personal/application/analysis.py`); only `memory_engine.infrastructure.nlp` imports spaCy (tested). Analyzer output is a signal for deterministic rules, never a decision.
+  - Scores combine only the signals that were evaluated, renormalizing the weights; a missing signal is never zero (6.2.2 AC-07). Weights and thresholds live in settings and are marked uncalibrated until step 6.
+  - Stored decisions keep positions, outcomes, codes and scores, never the text.
+  - Quality datasets are labelled by intent, not by the current output; quality tests assert exact matches for rule-decided cases and an accuracy floor overall.
 - Established in 8.3 step 5 (observability):
   - Record metrics only through the `Metrics` port (`memory_engine.observability.metrics`), injected with a no-op default; tests use `InMemoryMetrics`. Labels are limited to `input`, `outcome`, `reason` and `kind`, with word or code values: identifiers belong in logs, never in labels.
   - Log events set `event_type` (`<area>.<outcome>`) and carry ids, codes and durations, plus `user_scope` (the opaque owner id); never content, filenames or caller-supplied keys.

@@ -37,6 +37,7 @@ from memory_engine.personal.domain.records import (
     MemorySource,
     ProvenanceRecord,
 )
+from memory_engine.personal.domain.relevance import RelevanceAssessment, UnitAssessment
 
 __all__ = [
     "AtomicMemory",
@@ -66,6 +67,8 @@ __all__ = [
     "ProfileRevision",
     "ProfileSupport",
     "ProvenanceRecord",
+    "RelevanceAssessment",
     "SourceProcessingEvent",
+    "UnitAssessment",
     "ordered_pair",
 ]
