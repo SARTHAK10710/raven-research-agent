@@ -53,6 +53,7 @@ from memory_engine.personal.domain import (
     ProfileRefresh,
     ProfileRevision,
     ProvenanceRecord,
+    RelevanceAssessment,
     SourceProcessingEvent,
 )
 
@@ -380,6 +381,16 @@ class ProcessingHistoryRepository(Protocol):
         ...
 
 
+class RelevanceRepository(Protocol):
+    def add(self, scope: OwnerScope, assessment: RelevanceAssessment) -> None:
+        """Append one relevance gate decision (6.2.2 step 8)."""
+        ...
+
+    def for_source(self, scope: OwnerScope, source_id: uuid.UUID) -> Sequence[RelevanceAssessment]:
+        """Oldest first."""
+        ...
+
+
 class EvaluationHistoryRepository(Protocol):
     def record(self, scope: OwnerScope, evaluation: CandidateEvaluation) -> None:
         """Store the evaluation's status (and any scores it carries) as the candidate's
@@ -519,6 +530,9 @@ class PersonalUnitOfWork(Protocol):
 
     @property
     def outbox(self) -> OutboxWriter: ...
+
+    @property
+    def relevance(self) -> RelevanceRepository: ...
 
     @property
     def candidates(self) -> MemoryCandidateRepository: ...

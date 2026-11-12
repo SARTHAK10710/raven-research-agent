@@ -26,7 +26,9 @@ The two domains can share infrastructure (PostgreSQL, pgvector, object storage, 
 >
 > Phase 8.4 step 1 adds the extraction worker (`personal/application/extraction.py`, `infrastructure/messaging/tasks.py`). It is the Celery consumer for `memory.personal.extraction`. It validates the handoff, defers non-English sources, and writes each source's outcome atomically. The pipeline it runs (relevance gate, fact extraction, evaluation, candidates) arrives in steps 2–5.
 >
-> Not yet: the extraction pipeline itself, parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking, and the deletion workflow.
+> Phase 8.4 step 2 adds the relevance gate (`personal/application/relevance.py`). It judges each user sentence with spaCy (`infrastructure/nlp`) and deterministic rules, records its decision in `pm_relevance_assessment`, and either stops a source (deferred or rejected, with a reason) or passes the relevant sentences on to fact extraction (step 3).
+>
+> Not yet: fact extraction, evaluation and candidate generation (8.4 steps 3–5), parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking, and the deletion workflow.
 
 ## Boundaries
 

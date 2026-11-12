@@ -164,6 +164,19 @@ def test_only_the_messaging_adapter_imports_the_broker_libraries() -> None:
     assert violations == []
 
 
+def test_only_the_nlp_adapter_imports_spacy() -> None:
+    # 8.4 step 2: application code uses the SentenceAnalyzer port only.
+    nlp = PACKAGE_ROOT / "infrastructure" / "nlp"
+    violations = [
+        f"{path.relative_to(PACKAGE_ROOT)}: {module}"
+        for path in sorted(PACKAGE_ROOT.rglob("*.py"))
+        if nlp not in path.parents
+        for module in _imports(path)
+        if _matches(module, ("spacy", "thinc", "en_core_web_sm"))
+    ]
+    assert violations == []
+
+
 @pytest.mark.parametrize("package", ["exceptions", "config", "observability"])
 def test_foundation_packages_have_no_infrastructure_imports(package: str) -> None:
     violations = [

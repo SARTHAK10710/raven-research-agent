@@ -52,7 +52,12 @@ from memory_engine.exceptions import (
 from memory_engine.observability import get_logger
 from memory_engine.personal.application.language import LanguagePolicy, assess
 from memory_engine.personal.application.ports import PersonalUnitOfWorkFactory
-from memory_engine.personal.domain import MemoryCandidate, MemorySource, SourceProcessingEvent
+from memory_engine.personal.domain import (
+    MemoryCandidate,
+    MemorySource,
+    RelevanceAssessment,
+    SourceProcessingEvent,
+)
 
 NORMALIZATION_VERSION = "1"
 MALFORMED_CONTENT = "MALFORMED_NORMALIZED_CONTENT"
@@ -99,6 +104,8 @@ class PipelineResult:
     status: SourceProcessingStatus
     candidates: Sequence[MemoryCandidate] = ()
     reason_code: str | None = None
+    # The relevance gate's decision (6.2.2 step 8), persisted with the outcome.
+    relevance: RelevanceAssessment | None = None
 
     def __post_init__(self) -> None:
         if self.status not in _PIPELINE_STATUSES:
@@ -159,6 +166,7 @@ class _Outcome:
     candidates: Sequence[MemoryCandidate] = field(default=())
     reason_code: str | None = None
     error_code: str | None = None
+    relevance: RelevanceAssessment | None = None
 
 
 def parse_segments(data: bytes) -> list[Segment]:
@@ -318,7 +326,16 @@ class ExtractionService:
                 return _Outcome(
                     SourceProcessingStatus.PROCESSING_FAILED, error_code="INVALID_CANDIDATE"
                 )
-        return _Outcome(result.status, result.candidates, reason_code=result.reason_code)
+        relevance = result.relevance
+        if relevance is not None and (
+            relevance.owner_id != scope.owner_id or relevance.source_id != source.id
+        ):
+            return _Outcome(
+                SourceProcessingStatus.PROCESSING_FAILED, error_code="INVALID_ASSESSMENT"
+            )
+        return _Outcome(
+            result.status, result.candidates, reason_code=result.reason_code, relevance=relevance
+        )
 
     def _complete(
         self, scope: OwnerScope, source: MemorySource, outcome: _Outcome, attempt: int
@@ -335,6 +352,8 @@ class ExtractionService:
                         attempt,
                     ),
                 )
+                if outcome.relevance is not None:
+                    uow.relevance.add(scope, outcome.relevance)
                 for candidate in outcome.candidates:
                     uow.candidates.add(scope, candidate)
                 uow.processing.transition(

@@ -49,6 +49,7 @@ from memory_engine.domain.vocabulary import (
     DeletionTargetState,
     EvaluationOutcome,
     ProcessingEventType,
+    RelevanceOutcome,
     SourceProcessingStatus,
 )
 from memory_engine.infrastructure.persistence.base import Base, in_vocabulary
@@ -156,6 +157,41 @@ class CandidateEvaluationRow(Base):
         CheckConstraint(_safe_code("reason_code"), name="reason_code"),
         CheckConstraint("length(btrim(method)) > 0", name="method"),
         Index(None, "owner_id", "candidate_id"),
+    )
+
+
+# --- relevance gate (8.4 step 2) ------------------------------------------------------
+
+# A processed source has no reason; deferred and rejected ones always have one.
+RELEVANCE_REASON = "(outcome = 'process') = (reason_code IS NULL)"
+
+
+class RelevanceAssessmentRow(Base):
+    """One relevance gate decision per extraction run (6.2.2 step 8). Append-only."""
+
+    __tablename__ = "pm_relevance_assessment"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    owner_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    seq: Mapped[int] = mapped_column(BigInteger, Identity(always=True), nullable=False)
+    source_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    outcome: Mapped[str] = mapped_column(String(16), nullable=False)
+    reason_code: Mapped[str | None] = mapped_column(String(64))
+    method: Mapped[str] = mapped_column(Text, nullable=False)
+    method_version: Mapped[str] = mapped_column(Text, nullable=False)
+    # Positions, outcomes, codes and scores per sentence; never the text.
+    units: Mapped[list[Json]] = mapped_column(JSONB, nullable=False)
+    assessed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = _now()
+
+    __table_args__ = (
+        _owner_fk("source_id", "pm_memory_source"),
+        in_vocabulary("outcome", RelevanceOutcome, name="outcome"),
+        CheckConstraint(RELEVANCE_REASON, name="reason_required"),
+        CheckConstraint(_safe_code("reason_code"), name="reason_code"),
+        CheckConstraint("length(btrim(method)) > 0", name="method"),
+        CheckConstraint("jsonb_typeof(units) = 'array'", name="units_array"),
+        Index(None, "owner_id", "source_id"),
     )
 
 
