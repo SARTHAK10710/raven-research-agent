@@ -71,6 +71,11 @@ Phase 8.1 created the foundation code (`memory-engine/src/memory_engine/`: `conf
   - Rewrite only first-person references ("the user"); keep third-person pronouns as written and send the proposal to review. Never resolve a relative date to an absolute one.
   - A failure on one sentence is recorded and never discards the others; an empty result is a valid outcome, distinct from a failure.
   - If a dataset's labels were written after looking at the output, say so: it is a regression set, not a quality measure.
+- Established in 8.4 step 4 (evaluation):
+  - Keep evaluation dimensions separate (importance, fact confidence, extraction confidence, freshness, utility, context); never derive one from another. Each carries a basis or reason code.
+  - Never invent time: `observed_at` is the source's own time, and freshness is a class until a decay policy is approved.
+  - Third-party subjects and reported claims keep their subject and attribution; `about_user()` decides whether a fact is about the user.
+  - Write a dataset's labels before the code it measures, and say when the same author wrote both.
 - Established in 8.3 step 5 (observability):
   - Record metrics only through the `Metrics` port (`memory_engine.observability.metrics`), injected with a no-op default; tests use `InMemoryMetrics`. Labels are limited to `input`, `outcome`, `reason` and `kind`, with word or code values: identifiers belong in logs, never in labels.
   - Log events set `event_type` (`<area>.<outcome>`) and carry ids, codes and durations, plus `user_scope` (the opaque owner id); never content, filenames or caller-supplied keys.

@@ -72,6 +72,8 @@ _DETAIL_DEPS = frozenset({"prep", "npadvmod", "advmod", "agent", "prt", "dative"
 _CONDITION_MARKS = frozenset({"if", "unless", "provided"})
 _REPORTING = frozenset({"say", "tell", "mention", "claim", "report", "write"})
 _BELIEF = frozenset({"think", "believe", "guess", "suspect", "reckon", "feel", "expect"})
+# "Remember/note that X": X is the fact; the instruction frame is not (modality unchanged).
+_MEMORY_FRAMES = frozenset({"remember", "note", "forget"})
 _INTENT = frozenset({"want", "plan", "intend", "hope", "aim", "wish", "mean"})
 _POSSIBLE_AUX = frozenset({"might", "may", "could"})
 _FUTURE_AUX = frozenset({"will", "shall", "'ll"})
@@ -322,6 +324,7 @@ class FactExtractor:
             attributes=tuple(_render(parse, parse.subtree(c, stop)) for c in sorted(details)),
             modality=modality,
             negated=_negated(parse, chain),
+            past=_past(parse, head),
             conditions=tuple(_render(parse, parse.subtree(c)) for c in conditions),
             temporal=_spans(tokens, clause_text, _TEMPORAL_ENTITIES),
             temporal_reference=segment.sent_at or content.source.received_at.isoformat(),
@@ -386,6 +389,16 @@ def _xcomp_chain(parse: _Parse, head: int) -> list[int]:
     return chain
 
 
+def _past(parse: _Parse, head: int) -> bool:
+    """Past tense: the verb itself (VBD) or its auxiliary ("did not", "was moving")."""
+    if parse.tokens[head].tag == "VBD":
+        return True
+    return any(
+        parse.tokens[c].tag == "VBD" and parse.tokens[c].dep in ("aux", "auxpass")
+        for c in parse.children[head]
+    )
+
+
 def _negated(parse: _Parse, chain: Sequence[int]) -> bool:
     for verb in chain:
         for child in parse.children[verb]:
@@ -438,6 +451,8 @@ def _clauses(parse: _Parse) -> list[_Clause]:
                 pending.append((child, (), subject, believed))
             elif dep == "ccomp" and lemma in _BELIEF and _is_user(tokens, subject):
                 pending.append((child, (), reporter, True))
+            elif dep == "ccomp" and lemma in _MEMORY_FRAMES and not subject:
+                pending.append((child, (), reporter, believed))
         heads.append((head, subject, reporter, believed))
     separate = {h for h, *_ in heads}
     clauses = []
@@ -446,11 +461,11 @@ def _clauses(parse: _Parse) -> list[_Clause]:
         stop = frozenset(separate - {head})
         members = parse.subtree(head, stop)
         members -= {c for c in parse.children[head] if tokens[c].dep == "cc"}
-        if reporter or believed:  # "... said [that] the project is cancelled"
+        if head != root:  # "... said [that] the project is cancelled"
             members -= {c for c in parse.children[head] if tokens[c].dep == "mark"}
         is_frame = any(
             tokens[c].dep == "ccomp" and c in separate for c in parse.children[head]
-        ) and (lemma in _REPORTING or lemma in _BELIEF)
+        ) and (lemma in _REPORTING or lemma in _BELIEF or lemma in _MEMORY_FRAMES)
         if is_frame:
             continue  # "my friend said ..." / "I think ...": the frame is not a fact
         members -= set(subject) if parse.child(head, _SUBJECT_DEPS) is None else set()

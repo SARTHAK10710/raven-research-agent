@@ -515,6 +515,15 @@ class ProposalStatus(StrEnum):
     REJECTED = "rejected"
 
 
+class FreshnessClass(StrEnum):
+    """How a fact ages (6.2.4 section 6.3 C); 5.4 Phase 8.4 amendment section 19."""
+
+    STABLE = "stable"  # identity, relationships, health, birthdays
+    CHANGING = "changing"  # job, home, preferences, current projects
+    TIME_BOUND = "time_bound"  # tied to a date or deadline
+    HISTORICAL = "historical"  # a completed past event
+
+
 class DeletionAction(StrEnum):
     """Required handling of one ledger row (6.5.9 dependency inventory)."""
 

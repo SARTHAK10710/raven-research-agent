@@ -30,7 +30,9 @@ The two domains can share infrastructure (PostgreSQL, pgvector, object storage, 
 >
 > Phase 8.4 step 3 adds atomic fact extraction (`personal/application/facts.py`). Dependency-parse rules turn each relevant sentence into fact proposals: a third-person proposition plus subject, predicate, object, modality, negation, conditions, dates, quantities and attribution, with an extraction confidence. Proposals stay in memory and go on to evaluation.
 >
-> Not yet: evaluation and candidate generation (8.4 steps 4–5), parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking, and the deletion workflow.
+> Phase 8.4 step 4 adds evaluation and origin classification (`personal/application/evaluation.py`). Each proposal gets independent scores: importance, fact confidence, a freshness class, utility and context. It also gets uncertainty flags (including conflicts and repetitions within a source), an outcome (proceed, review, reject) and an origin (explicit or unresolved).
+>
+> Not yet: candidate generation (8.4 step 5), parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking, and the deletion workflow.
 
 ## Boundaries
 

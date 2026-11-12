@@ -875,3 +875,34 @@ Each step settles its own open questions with the owner at its start.
   - questions yield no proposal;
   - an empty result is not a failure.
 - **Quality:** extraction dataset v1 has 24 cases, and all 24 match. The labels were written after inspecting how the sentences parse, so this set is a regression check on the agreed conventions, not an unbiased measure. Step 6 needs a held-out set.
+
+### 25.8 Phase 8.4 step 4 — Evaluation and origin classification
+
+**Status:** Approved by the project owner on 2026-11-12, at the start of 8.4 step 4.
+
+- **Importance (rule table):** the first matching category sets the value.
+  - goal, commitment, decision, relationship, health/identity: 0.85;
+  - preference 0.7; habit 0.6; one-off event 0.4; other 0.3;
+  - +0.1 when the user asked to remember (instruction or "remember that"), capped at 1.
+- **Fact confidence (rule table):**
+  - direct 0.9; intended 0.8; conditional 0.6; possible (hedged) 0.5;
+  - a reported claim is capped at 0.35;
+  - an unresolved reference costs 0.2.
+  - It is independent of importance and of extraction confidence.
+- **Freshness:** a class (stable, changing, time-bound, historical) plus the source's own time. No decay score.
+- **Origin:**
+  - direct statements are `explicit`, with a reason saying whether the fact is about the user, a third party, a reported claim or a remember request;
+  - an unresolved reference or a missing subject makes the origin `unresolved`, which needs review;
+  - `inferred` is supported for proposals that carry derived evidence, but nothing generates inferences in 8.4. This is recorded as a limitation.
+- **Outcome policy:**
+  - `reject` what extraction rejected, or an importance below 0.2 without a remember request;
+  - `needs_review` what extraction sent to review, an unresolved origin, or a fact confidence below 0.4 (second-hand claims land here);
+  - `defer` is not used, because nothing re-evaluates later;
+  - otherwise `proceed`.
+  - Contradictions within a source are flagged `CONFLICT` and kept for resolution; repetitions are flagged `REPEATED` and add no evidence.
+- **All values** are configurable in `EvaluationSettings` and uncalibrated.
+- **Step-3 additions in this step:**
+  - the past-tense flag;
+  - `derived_from`;
+  - "remember/note that X" frames, which make X the fact.
+- **Quality:** evaluation dataset v1 (22 cases) scores 22 of 22. The labels were written from the approved tables before the evaluator existed, but by the same author as the rules. It is a specification check, not an independent measure.
