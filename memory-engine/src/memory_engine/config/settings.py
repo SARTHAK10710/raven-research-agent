@@ -204,6 +204,38 @@ class FactExtractionSettings(BaseModel):
         return self
 
 
+class EvaluationSettings(BaseModel):
+    """Evaluation rule tables (owner-approved, 8.4 step 4; 6.2.4).
+
+    Importance by what a fact is about, fact confidence by its evidence
+    situation; independent of each other and of extraction confidence.
+    Uncalibrated defaults.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    importance_goal: float = Field(default=0.85, ge=0, le=1)
+    importance_commitment: float = Field(default=0.85, ge=0, le=1)
+    importance_decision: float = Field(default=0.85, ge=0, le=1)
+    importance_relationship: float = Field(default=0.85, ge=0, le=1)
+    importance_health_identity: float = Field(default=0.85, ge=0, le=1)
+    importance_preference: float = Field(default=0.7, ge=0, le=1)
+    importance_habit: float = Field(default=0.6, ge=0, le=1)
+    importance_event: float = Field(default=0.4, ge=0, le=1)
+    importance_other: float = Field(default=0.3, ge=0, le=1)
+    remember_bonus: float = Field(default=0.1, ge=0, le=1)
+    confidence_direct: float = Field(default=0.9, ge=0, le=1)
+    confidence_intended: float = Field(default=0.8, ge=0, le=1)
+    confidence_conditional: float = Field(default=0.6, ge=0, le=1)
+    confidence_possible: float = Field(default=0.5, ge=0, le=1)
+    confidence_reported: float = Field(default=0.35, ge=0, le=1)
+    unresolved_penalty: float = Field(default=0.2, ge=0, le=1)
+    # Outcome policy: review below this fact confidence; reject below this
+    # importance unless the user asked to remember.
+    review_fact_confidence: float = Field(default=0.4, ge=0, le=1)
+    reject_importance: float = Field(default=0.2, ge=0, le=1)
+
+
 class BrokerSettings(BaseModel):
     """RabbitMQ connection for handoff messages (7.4; 7.1 section 24.3).
 
@@ -272,6 +304,7 @@ class MemoryEngineSettings(BaseSettings):
     extraction: ExtractionSettings = ExtractionSettings()
     relevance: RelevanceSettings = RelevanceSettings()
     facts: FactExtractionSettings = FactExtractionSettings()
+    evaluation: EvaluationSettings = EvaluationSettings()
 
 
 def load_settings(env_file: str | Path | None = None) -> MemoryEngineSettings:

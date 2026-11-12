@@ -45,7 +45,14 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
   - **No malware scanning**: no tool is approved, and the owner accepted the deferral on 2026-11-11. Content is never executed, DOCX macro parts are refused, and the parser (8.12) must treat files as hostile.
   - TXT must be UTF-8.
   - Upload limit: 25 MiB by default (configurable).
-- Fact extraction (8.4 step 3, uncommitted):
+- Evaluation and classification (8.4 step 4, uncommitted):
+  - rule tables for importance and fact confidence, with uncalibrated defaults;
+  - freshness is a class only, with no decay;
+  - no inference generator exists, so every origin is `explicit` or `unresolved` in practice;
+  - `defer` is never produced;
+  - conflicts and repetitions are detected only within one source; across sources they are plan 8.6;
+  - evaluation dataset v1 (22/22) checks the specification, not quality.
+- Fact extraction (8.4 step 3, merged in PR #26):
   - dependency-parse rules over English sentences;
   - only first-person references are resolved; third-person pronouns send a proposal to review;
   - "we/us/our" become "the user and others" or "the user's", which loses the distinction between shared and personal;

@@ -194,8 +194,8 @@ VOCABULARIES = [
 
 def test_vocabulary_module_defines_the_expected_enums() -> None:
     assert (
-        len(VOCABULARIES) == 42
-    )  # 8.4: RelevanceOutcome (step 2), FactModality, ProposalStatus (step 3)
+        len(VOCABULARIES) == 43
+    )  # 8.4: RelevanceOutcome, FactModality, ProposalStatus, FreshnessClass
 
 
 def test_documents_reuse_the_shared_embedding_status() -> None:

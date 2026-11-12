@@ -56,6 +56,7 @@ class FactProposal:
     object: str | None = None
     attributes: tuple[str, ...] = ()
     negated: bool = False
+    past: bool = False  # the clause verb is in the past tense
     conditions: tuple[str, ...] = ()
     temporal: tuple[str, ...] = ()
     temporal_reference: str | None = None
@@ -65,6 +66,9 @@ class FactProposal:
     unresolved_references: tuple[str, ...] = ()
     weaknesses: tuple[str, ...] = ()
     reason_code: str | None = None
+    # Where an inferred proposal's evidence lies, as (segment, sentence); empty for
+    # direct statements. No step derives inferences yet (8.4 step 4 decision).
+    derived_from: tuple[tuple[int, int], ...] = ()
 
     def __post_init__(self) -> None:
         if self.segment < 0 or self.sentence < 0:
@@ -94,6 +98,7 @@ class FactProposal:
             "attributes": list(self.attributes),
             "modality": self.modality.value,
             "negated": self.negated,
+            "past": self.past,
             "conditions": list(self.conditions),
             "quantities": list(self.quantities),
             "speaker": self.speaker,

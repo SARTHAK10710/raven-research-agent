@@ -47,8 +47,8 @@ Approved with 8.4 ([7.1 §25](../technical-decisions/01-baseline-technology-stac
 |---|---|---|
 | 1 | **Extraction worker:** the Celery consumer for `memory.personal.extraction` (envelope validation, idempotency, Memory Source `queued` → `processing` → outcome), the English-language check, the spaCy dependency, the synthetic dataset scaffold | **Settled 2026-11-12** (7.1 §25.5): atomic outcome with Celery retries, then `processing_failed`; `deferred` state and `reason_code` (5.4 §16); deterministic English check; JSON Lines datasets; spaCy deferred to its first user. **Merged (PR #24)** |
 | 2 | **Relevance gate** (6.2.2): `PROCESS` / `DEFER` / `REJECT` with reason codes; protection rules | **Settled 2026-11-12** (7.1 §25.6): per-sentence decisions rolled up; `pm_relevance_assessment` (5.4 §17); weighted score over five optional signals plus rules; spaCy added. **Merged (PR #25)** |
-| 3 | **Atomic fact extraction** (6.2.3): segmentation, speaker attribution, statement classification, negation, conditions, time and quantities | **Settled 2026-11-12** (7.1 §25.7): in-memory proposals stored as candidates in step 5 (5.4 §18); dependency-parse rules; first-person references only; deductive confidence. **Implemented and tested; uncommitted** |
-| 4 | **Evaluation and classification** (6.2.4–6.2.5): independent importance and confidence; explicit, inferred or unresolved | Initial scoring rules and thresholds; method versioning |
+| 3 | **Atomic fact extraction** (6.2.3): segmentation, speaker attribution, statement classification, negation, conditions, time and quantities | **Settled 2026-11-12** (7.1 §25.7): in-memory proposals stored as candidates in step 5 (5.4 §18); dependency-parse rules; first-person references only; deductive confidence. **Merged (PR #26)** |
+| 4 | **Evaluation and classification** (6.2.4–6.2.5): independent importance and confidence; explicit, inferred or unresolved | **Settled 2026-11-12** (7.1 §25.8): rule tables; freshness classes without decay; explicit/unresolved origin (inferred supported, not generated); outcome policy without `defer`. **Implemented and tested; uncommitted** |
 | 5 | **Candidate generation** (6.2.6): validation, persistence with provenance and evaluation history, category assignment, handoff to resolution (8.6) | Where candidate categories live (no candidate category column exists); the resolution handoff (a new outbox kind and queue, or polling) |
 | 6 | **Observability and acceptance:** extraction events and metrics, dataset evaluation, the acceptance review against plan 8.4 §16 (personal path) | Quality thresholds for the dataset evaluation |
 
@@ -97,34 +97,33 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 *Overwrite this section at the end of every session that changes the repository.*
 
 - **Date:** 2026-11-12
-- **Objective:** Phase 8.4 step 3, atomic fact extraction. Branch `feat/phase-8-4-fact-extraction` from `main` @ `7e1b441` (steps 1–2 merged, PRs #24–#25); uncommitted.
-- **Decisions made (owner, 2026-11-12; 7.1 §25.7, 5.4 §18):**
-  - in-memory `FactProposal` records, stored only as candidates in step 5 (no new table);
-  - dependency-parse rules;
-  - first-person references only;
-  - deductive confidence: 1.0 minus penalties, review below 0.5, reject below 0.2.
+- **Objective:** Phase 8.4 step 4, evaluation and origin classification. Branch `feat/phase-8-4-evaluation` from `main` @ `abf8cdb` (steps 1–3 merged, PRs #24–#26); uncommitted.
+- **Decisions made (owner, 2026-11-12; 7.1 §25.8, 5.4 §19):**
+  - rule tables for importance and fact confidence;
+  - freshness classes with no decay;
+  - origin explicit or unresolved; inferred is supported but not generated in 8.4;
+  - outcome policy: reject, review or proceed, with no `defer`.
 - **Work completed:**
-  - `personal/domain/facts.py`: `FactProposal` (invariants; `structure()` for the candidate's JSON).
-  - `personal/application/facts.py`:
-    - `FactExtractor`: clauses, attribution, conditions, belief frames, negation, modality, dates and quantities, the third-person proposition, confidence and status, per-sentence failure isolation, question skipping;
-    - `FactExtraction`;
-    - the `ProposalStage` port (steps 4–5);
-    - `FactExtractionStage`.
-  - Vocabularies `FactModality` and `ProposalStatus`; `FactExtractionSettings`.
-  - `Token` gains `tag`, `whitespace` and `entity_start`.
-  - Extraction dataset v1 (24 cases).
+  - `personal/domain/evaluation.py`: `ProposalEvaluation`, `OriginClassification`, `EvaluatedProposal` (with the combined outcome).
+  - `personal/application/evaluation.py`:
+    - `ProposalEvaluator`: categories, importance, fact confidence, freshness, utility, contextual significance, uncertainty, conflict and repetition detection, outcome and classification;
+    - the `CandidateStage` port (step 5);
+    - `EvaluationStage`;
+    - `category()` and `about_user()`, reusable in step 5.
+  - `FreshnessClass`; `EvaluationSettings`.
+  - Proposals gain `past` and `derived_from`; "remember/note that X" frames now yield X.
+  - Evaluation dataset v1 (22 cases, labelled before the code).
 - **Tests and results:**
-  - `uv sync --locked` ok; ruff and format clean; mypy strict clean (111 files);
-  - `uv run pytest --cov` with all three services: **836 passed** (623 unit and quality, 213 integration), 97% coverage, 3 green runs;
-  - services stopped: 624 passed, 212 skipped;
-  - extraction dataset v1: 24 of 24. It is a regression set: the labels were written after inspecting the parses.
-- **Implementation status:** 8.4 `IN_PROGRESS`; steps 1–2 merged; step 3 tested, uncommitted; steps 4–6 to do.
+  - `uv sync --locked` ok; ruff and format clean; mypy strict clean (116 files);
+  - `uv run pytest --cov` with all three services: **887 passed** (673 unit and quality, 214 integration), 98% coverage, 3 green runs;
+  - services stopped: 674 passed, 213 skipped;
+  - evaluation dataset v1: 22 of 22, a specification check.
+- **Implementation status:** 8.4 `IN_PROGRESS`; steps 1–3 merged; step 4 tested, uncommitted; steps 5–6 to do.
 - **Unresolved:**
-  - evaluation, classification and candidate generation (steps 4–5); no production pipeline assembled or deployed;
-  - a held-out quality set for step 6;
-  - deferred sources are not re-queued; no reconciliation sweep;
+  - step 5 (candidate generation, category assignment, the resolution handoff) and step 6 (observability, held-out quality sets, acceptance review);
+  - no inference generator; no production pipeline assembled or deployed; deferred sources are not re-queued; no reconciliation sweep;
   - from 8.3: no dead-letter queue or outbox cleanup; no encryption at rest in the development store; no malware scanning; test broker without TLS;
   - Decisions 6, 12 and 15; the embedding model (Decision 3); ratio-label wording;
   - on this machine: uv not on PATH, Docker Desktop must be started by hand after a reboot, the SeaweedFS image once needed a re-pull, and Python defaults to cp1252 (script doc edits with UTF-8).
-- **Next action:** owner review of step 3; commit, PR and merge with approval; then step 4 (evaluation and explicit/inferred classification, 6.2.4–6.2.5) with its open questions.
-- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.4 with its amendment, 7.1 §25, 5.4 §16–§18, algorithm 6.2.4–6.2.5 (`docs/algorithms/memory/01-memory-ingestion-extraction.md` §6–§7), `personal/application/{facts,relevance,extraction}.py`.
+- **Next action:** owner review of step 4; commit, PR and merge with approval; then step 5 (candidate generation and validation, 6.2.6) with its open questions: where candidate categories live, and how candidates are handed to resolution (8.6).
+- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, plan 8.4 with its amendment, 7.1 §25, 5.4 §16–§19 and 5.4.25 (candidate evaluation), algorithm 6.2.6 (`docs/algorithms/memory/01-memory-ingestion-extraction.md` §8), `personal/application/{evaluation,facts,extraction}.py`.

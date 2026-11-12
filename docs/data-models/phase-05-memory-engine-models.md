@@ -1676,3 +1676,17 @@ The embedding status vocabulary is now defined once, in the shared kernel, and u
 - **Vocabularies:**
   - fact modality: `factual`, `intended`, `possible`, `conditional` (6.2.3 §5.6);
   - proposal status: `extracted`, `needs_review`, `rejected` (6.2.3 §5.10). `partially_extracted` and `failed` describe a whole extraction run, not a single proposal.
+
+## 19. Proposal evaluation and origin classification (Phase 8.4 step 4)
+
+**Approved 2026-11-12.** Like fact proposals (§18), evaluations exist only inside one extraction run. Step 5 stores them:
+- the outcome, importance, confidence, method and reason go in `pm_candidate_evaluation` (5.4.25);
+- the origin goes in the candidate's `origin` (explicit, inferred or unresolved, 6.2.5);
+- the other dimensions go in the candidate's metadata.
+
+- **Vocabulary:** freshness class `stable`, `changing`, `time_bound`, `historical` (6.2.4 §6.3 C). There is no numeric decay until consolidation (8.9) defines how staleness is used.
+- **Dimensions** stay separate: importance, fact confidence (with its basis), freshness (with the observed time, never invented), long-term utility, contextual significance, and uncertainty codes.
+  - Uncertainty codes: `HEDGED`, `CONDITIONAL`, `REPORTED`, `UNRESOLVED_REFERENCE`, `CONFLICT`, `REPEATED`.
+- **Fact proposals** (§18) gain two fields:
+  - `past`: the clause is in the past tense;
+  - `derived_from`: evidence locations for an inferred proposal. It stays empty for direct statements, and no step derives inferences yet.
