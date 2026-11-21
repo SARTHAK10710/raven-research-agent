@@ -38,6 +38,7 @@ from memory_engine.domain.identifiers import OwnerScope, new_id
 from memory_engine.domain.vocabulary import (
     IngestionPriority,
     InstructionType,
+    MemoryCategory,
     SourceProcessingStatus,
     SourceType,
 )
@@ -55,6 +56,8 @@ from memory_engine.infrastructure.messaging import (
 from memory_engine.infrastructure.messaging.relay import jittered
 from memory_engine.infrastructure.persistence import outbox as outbox_models
 from memory_engine.infrastructure.persistence.outbox import SqlAlchemyOutboxRepository
+from memory_engine.infrastructure.persistence.personal import lifecycle_models
+from memory_engine.infrastructure.persistence.personal import models as personal_models
 from memory_engine.personal.application.ingestion import (
     extraction_handoff as personal_handoff,
 )
@@ -69,6 +72,7 @@ MIGRATION_0008 = (
     / "versions"
     / "20261112_0008_outbox.py"
 )
+MIGRATION_0011 = MIGRATION_0008.with_name("20261122_0011_candidate_generation.py")
 
 
 def _source(instruction: InstructionType = InstructionType.NORMAL) -> MemorySource:
@@ -278,12 +282,14 @@ def test_the_outbox_refuses_a_message_of_another_owner() -> None:
 def test_every_handoff_kind_has_its_own_queue_and_routing_key() -> None:
     assert set(ROUTES) == set(HandoffKind)
     routes = list(ROUTES.values())
-    assert len({r.queue for r in routes}) == len({r.routing_key for r in routes}) == 2
-    assert len({r.task_name for r in routes}) == 2
+    assert len({r.queue for r in routes}) == len({r.routing_key for r in routes}) == 3
+    assert len({r.task_name for r in routes}) == 3
     assert ROUTES[HandoffKind.DOCUMENT_EXTRACTION].queue == "memory.document.processing"
     assert ROUTES[HandoffKind.PERSONAL_EXTRACTION].queue == "memory.personal.extraction"
+    assert ROUTES[HandoffKind.PERSONAL_RESOLUTION].queue == "memory.personal.resolution"
     assert ROUTES[HandoffKind.DOCUMENT_EXTRACTION].routing_key == "document.extraction.requested"
     assert ROUTES[HandoffKind.PERSONAL_EXTRACTION].routing_key == "personal.extraction.requested"
+    assert ROUTES[HandoffKind.PERSONAL_RESOLUTION].routing_key == "personal.resolution.requested"
 
 
 def _broker(**overrides: Any) -> BrokerSettings:
@@ -449,17 +455,28 @@ def test_an_unreachable_broker_raises_a_publish_error() -> None:
 # --- migration 0008 -------------------------------------------------------------------
 
 
-def _migration() -> Any:
-    spec = importlib.util.spec_from_file_location("migration_0008", MIGRATION_0008)
+def _migration(path: Path = MIGRATION_0008) -> Any:
+    spec = importlib.util.spec_from_file_location(path.stem, path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
+def test_migration_0011_adds_the_resolution_kind() -> None:
+    # Migrations freeze vocabularies: 0008 keeps its two kinds, 0011 matches the enum.
+    migration = _migration(MIGRATION_0011)
+    assert tuple(k.value for k in HandoffKind) == migration.HANDOFF_KINDS
+    assert migration.PREVIOUS_HANDOFF_KINDS == _migration().HANDOFF_KINDS
+    assert tuple(c.value for c in MemoryCategory) == migration.MEMORY_CATEGORIES
+    assert migration.CANDIDATE_CATEGORIES == personal_models.CANDIDATE_CATEGORIES
+    assert migration.OUTCOME_SUMMARY == lifecycle_models.OUTCOME_SUMMARY
+    assert migration.down_revision == "0010_relevance_assessment"
+
+
 def test_migration_0008_matches_the_model_and_enums() -> None:
     migration = _migration()
-    assert tuple(k.value for k in HandoffKind) == migration.HANDOFF_KINDS
+    assert migration.HANDOFF_KINDS == ("document_extraction", "personal_extraction")
     assert tuple(s.value for s in OutboxStatus) == migration.OUTBOX_STATUSES
     assert migration.PUBLISHED_AT_RULE == outbox_models.PUBLISHED_AT_RULE
     assert migration.SAFE_LAST_ERROR == outbox_models.SAFE_LAST_ERROR

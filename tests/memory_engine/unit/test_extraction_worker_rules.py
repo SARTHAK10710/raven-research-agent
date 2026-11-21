@@ -146,6 +146,7 @@ def test_reports_serialize_identifiers_and_codes_only() -> None:
         "source_id": str(OWNER),
         "status": "deferred",
         "candidates": 0,
+        "validated": 0,
         "reason_code": "UNSUPPORTED_LANGUAGE",
         "error_code": None,
     }

@@ -75,12 +75,36 @@ def _require_not_before(start: datetime, end: datetime | None, name: str) -> Non
         raise DomainValidationError(f"{name} must not be earlier than when the record started")
 
 
+def _require_summary(summary: Mapping[str, int] | None) -> None:
+    if summary is None:
+        return
+    for key, value in summary.items():
+        name, _, code = key.partition(":")
+        if not (
+            name
+            and name[0].islower()
+            and len(name) <= 32
+            and all(c.islower() or c.isdigit() or c == "_" for c in name)
+        ):
+            raise DomainValidationError("outcome_summary keys are lowercase counter names")
+        if code:
+            _require_code("outcome_summary key code", code)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise DomainValidationError("outcome_summary values are non-negative counts")
+
+
 # --- source processing and candidate evaluation ---------------------------------------
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SourceProcessingEvent:
-    """A meaningful Memory Source processing transition (Decision 5.4.28)."""
+    """A meaningful Memory Source processing transition (Decision 5.4.28).
+
+    ``outcome_summary`` (8.4 step 5) is set on the transition that ends an
+    extraction run: counts per outcome, and rejected proposals tallied by reason
+    as ``rejected:<CODE>``. Counts and codes only, never content, so a rejected
+    proposal leaves no text behind (owner decision, 2026-11-22).
+    """
 
     id: uuid.UUID
     owner_id: uuid.UUID
@@ -92,8 +116,16 @@ class SourceProcessingEvent:
     occurred_at: datetime
     error_code: str | None = None
     reason_code: str | None = None
+    outcome_summary: Mapping[str, int] | None = None
 
     def __post_init__(self) -> None:
+        _require_summary(self.outcome_summary)
+        if self.outcome_summary is not None:
+            if self.event_type is not ProcessingEventType.TRANSITION:
+                raise DomainValidationError("only a transition carries an outcome summary")
+            object.__setattr__(
+                self, "outcome_summary", MappingProxyType(dict(self.outcome_summary))
+            )
         _require_aware("occurred_at", self.occurred_at)
         if self.from_status is self.to_status:
             raise DomainValidationError("a processing event changes the source status")

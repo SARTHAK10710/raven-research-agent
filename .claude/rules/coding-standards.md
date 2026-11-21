@@ -76,6 +76,12 @@ Phase 8.1 created the foundation code (`memory-engine/src/memory_engine/`: `conf
   - Never invent time: `observed_at` is the source's own time, and freshness is a class until a decay policy is approved.
   - Third-party subjects and reported claims keep their subject and attribution; `about_user()` decides whether a fact is about the user.
   - Write a dataset's labels before the code it measures, and say when the same author wrote both.
+- Established in 8.4 step 5 (candidate generation):
+  - A candidate is inserted as `candidate`; every status change after that is a recorded `CandidateEvaluation` (conditional on `from_status`), never a direct status write. Rejected proposals are counted in the run's `outcome_summary`, never stored.
+  - Categories, like every other classification, come from the record's own evidence; when nothing supports one, assign none rather than guess.
+  - A follow-up handoff written by a worker is an `OutboxMessage` in the same transaction as its outcome, with the worker's `source_component` and the incoming correlation id. Its relay subject decides from the current state whether the handoff is still due.
+  - Migration literal tests pin each migration to its own frozen tuple. When a later migration extends a vocabulary, it keeps the previous tuple (`PREVIOUS_…`) and its test checks the new tuple against the enum.
+  - If a rule changes after a dataset run showed a miss, say so in the quality test: that case is no longer an independent measure.
 - Established in 8.3 step 5 (observability):
   - Record metrics only through the `Metrics` port (`memory_engine.observability.metrics`), injected with a no-op default; tests use `InMemoryMetrics`. Labels are limited to `input`, `outcome`, `reason` and `kind`, with word or code values: identifiers belong in logs, never in labels.
   - Log events set `event_type` (`<area>.<outcome>`) and carry ids, codes and durations, plus `user_scope` (the opaque owner id); never content, filenames or caller-supplied keys.

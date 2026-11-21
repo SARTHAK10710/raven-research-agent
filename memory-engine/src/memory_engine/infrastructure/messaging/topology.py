@@ -33,5 +33,12 @@ ROUTES: MappingProxyType[HandoffKind, Route] = MappingProxyType(
             queue="memory.personal.extraction",
             routing_key="personal.extraction.requested",
         ),
+        # 8.4 step 5: the consumer (memory resolution) arrives with plan 8.6; until
+        # then messages wait in this durable queue, as document handoffs wait for 8.12.
+        HandoffKind.PERSONAL_RESOLUTION: Route(
+            task_name="memory.personal.resolution",
+            queue="memory.personal.resolution",
+            routing_key="personal.resolution.requested",
+        ),
     }
 )

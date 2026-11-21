@@ -23,6 +23,14 @@ source no longer ``queued`` and does nothing.
   moves the source to ``processing_failed``. :meth:`reprocess_failed` is the
   explicit way back: ``processing_failed`` -> ``validated`` and the same
   handoff re-armed.
+
+**Candidates** (6.2.6; owner decisions, 8.4 step 5): the same transaction
+inserts each candidate as ``candidate``, records its evaluation into
+``validated`` or ``needs_review`` (or leaves it ``candidate``; history in
+``pm_candidate_evaluation``), stores the run's ``outcome_summary`` (counts and
+rejection reason codes, never content) on the final transition and, when at
+least one candidate was validated, adds one ``personal_resolution`` handoff
+for the source to the outbox (consumer: plan 8.6).
 """
 
 import json
@@ -35,10 +43,16 @@ from enum import StrEnum
 from typing import Any, Protocol
 
 from memory_engine.domain.errors import DomainValidationError
-from memory_engine.domain.handoff import HandoffEnvelope, HandoffKind
+from memory_engine.domain.handoff import (
+    EXTRACTION_COMPONENT,
+    HandoffEnvelope,
+    HandoffKind,
+    OutboxMessage,
+)
 from memory_engine.domain.identifiers import OwnerScope, new_id
 from memory_engine.domain.object_storage import ObjectStorage
 from memory_engine.domain.vocabulary import (
+    CandidateStatus,
     InstructionType,
     ProcessingEventType,
     SourceProcessingStatus,
@@ -53,6 +67,7 @@ from memory_engine.observability import get_logger
 from memory_engine.personal.application.language import LanguagePolicy, assess
 from memory_engine.personal.application.ports import PersonalUnitOfWorkFactory
 from memory_engine.personal.domain import (
+    CandidateEvaluation,
     MemoryCandidate,
     MemorySource,
     RelevanceAssessment,
@@ -106,6 +121,10 @@ class PipelineResult:
     reason_code: str | None = None
     # The relevance gate's decision (6.2.2 step 8), persisted with the outcome.
     relevance: RelevanceAssessment | None = None
+    # Each candidate's evaluation (6.2.6 step 9), recorded in order after the insert.
+    evaluations: Sequence[CandidateEvaluation] = ()
+    # Counts and reason codes of this run (owner decision, 8.4 step 5); never content.
+    outcome_summary: Mapping[str, int] | None = None
 
     def __post_init__(self) -> None:
         if self.status not in _PIPELINE_STATUSES:
@@ -117,6 +136,15 @@ class PipelineResult:
             SourceProcessingStatus.PARTIALLY_EXTRACTED,
         ):
             raise DomainValidationError("only an extracted source produces candidates")
+        ids = {c.id for c in self.candidates}
+        if len(ids) != len(self.candidates):
+            raise DomainValidationError("candidate ids are unique")
+        if any(e.candidate_id not in ids for e in self.evaluations):
+            raise DomainValidationError("an evaluation names a candidate of this result")
+
+    @property
+    def validated(self) -> int:
+        return _validated(self.evaluations)
 
 
 class ExtractionPipeline(Protocol):
@@ -146,6 +174,7 @@ class ExtractionReport:
     source_id: uuid.UUID | None = None
     status: SourceProcessingStatus | None = None
     candidates: int = 0
+    validated: int = 0
     reason_code: str | None = None
     error_code: str | None = None
 
@@ -155,6 +184,7 @@ class ExtractionReport:
             "source_id": None if self.source_id is None else str(self.source_id),
             "status": None if self.status is None else self.status.value,
             "candidates": self.candidates,
+            "validated": self.validated,
             "reason_code": self.reason_code,
             "error_code": self.error_code,
         }
@@ -167,6 +197,18 @@ class _Outcome:
     reason_code: str | None = None
     error_code: str | None = None
     relevance: RelevanceAssessment | None = None
+    evaluations: Sequence[CandidateEvaluation] = field(default=())
+    outcome_summary: Mapping[str, int] | None = None
+
+    @property
+    def validated(self) -> int:
+        return _validated(self.evaluations)
+
+
+def _validated(evaluations: Sequence[CandidateEvaluation]) -> int:
+    """Candidates whose last evaluation leaves them ``validated``."""
+    final = {e.candidate_id: e.to_status for e in evaluations}
+    return sum(1 for status in final.values() if status is CandidateStatus.VALIDATED)
 
 
 def parse_segments(data: bytes) -> list[Segment]:
@@ -235,7 +277,8 @@ class ExtractionService:
             return _report(_refused(source), scope)
         if source.processing_status is not SourceProcessingStatus.QUEUED:
             return _report(_already(source), scope)
-        return self._complete(scope, source, self._run(scope, source), attempt)
+        outcome = self._run(scope, source)
+        return self._complete(scope, source, outcome, attempt, envelope.correlation_id)
 
     def mark_failed(
         self, message: Mapping[str, Any], error_code: str, *, attempt: int
@@ -326,6 +369,10 @@ class ExtractionService:
                 return _Outcome(
                     SourceProcessingStatus.PROCESSING_FAILED, error_code="INVALID_CANDIDATE"
                 )
+        if any(e.owner_id != scope.owner_id for e in result.evaluations):
+            return _Outcome(
+                SourceProcessingStatus.PROCESSING_FAILED, error_code="INVALID_CANDIDATE"
+            )
         relevance = result.relevance
         if relevance is not None and (
             relevance.owner_id != scope.owner_id or relevance.source_id != source.id
@@ -334,11 +381,21 @@ class ExtractionService:
                 SourceProcessingStatus.PROCESSING_FAILED, error_code="INVALID_ASSESSMENT"
             )
         return _Outcome(
-            result.status, result.candidates, reason_code=result.reason_code, relevance=relevance
+            result.status,
+            result.candidates,
+            reason_code=result.reason_code,
+            relevance=relevance,
+            evaluations=result.evaluations,
+            outcome_summary=result.outcome_summary,
         )
 
     def _complete(
-        self, scope: OwnerScope, source: MemorySource, outcome: _Outcome, attempt: int
+        self,
+        scope: OwnerScope,
+        source: MemorySource,
+        outcome: _Outcome,
+        attempt: int,
+        correlation_id: uuid.UUID,
     ) -> ExtractionReport:
         try:
             with self._uow_factory() as uow:
@@ -356,6 +413,10 @@ class ExtractionService:
                     uow.relevance.add(scope, outcome.relevance)
                 for candidate in outcome.candidates:
                     uow.candidates.add(scope, candidate)
+                for evaluation in outcome.evaluations:
+                    uow.evaluations.record(scope, evaluation)
+                if outcome.validated:
+                    uow.outbox.add(scope, self._resolution(scope, source, outcome, correlation_id))
                 uow.processing.transition(
                     scope,
                     self._event(
@@ -366,6 +427,7 @@ class ExtractionService:
                         attempt,
                         error_code=outcome.error_code,
                         reason_code=outcome.reason_code,
+                        outcome_summary=outcome.outcome_summary,
                     ),
                 )
         except ConcurrencyConflictError:  # another delivery finished it first
@@ -376,10 +438,34 @@ class ExtractionService:
                 source_id=source.id,
                 status=outcome.status,
                 candidates=len(outcome.candidates),
+                validated=outcome.validated,
                 reason_code=outcome.reason_code,
                 error_code=outcome.error_code,
             ),
             scope,
+        )
+
+    def _resolution(
+        self,
+        scope: OwnerScope,
+        source: MemorySource,
+        outcome: _Outcome,
+        correlation_id: uuid.UUID,
+    ) -> OutboxMessage:
+        """One handoff per source, carrying identifiers and counts only (7.4 section 7)."""
+        return OutboxMessage.new(
+            scope,
+            kind=HandoffKind.PERSONAL_RESOLUTION,
+            subject_id=source.id,
+            payload={
+                "source_id": str(source.id),
+                "validated_candidates": str(outcome.validated),
+            },
+            payload_reference=None,
+            priority=source.priority.value,
+            created_at=self._clock(),
+            correlation_id=correlation_id,
+            source_component=EXTRACTION_COMPONENT,
         )
 
     def _event(
@@ -392,6 +478,7 @@ class ExtractionService:
         *,
         error_code: str | None = None,
         reason_code: str | None = None,
+        outcome_summary: Mapping[str, int] | None = None,
     ) -> SourceProcessingEvent:
         return SourceProcessingEvent(
             id=new_id(),
@@ -408,6 +495,7 @@ class ExtractionService:
             occurred_at=self._clock(),
             error_code=error_code,
             reason_code=reason_code,
+            outcome_summary=outcome_summary,
         )
 
 

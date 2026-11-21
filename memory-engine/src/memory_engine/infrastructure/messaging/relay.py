@@ -4,12 +4,14 @@ One message per database transaction:
 
 1. Claim the oldest due ``pending`` row (``FOR UPDATE SKIP LOCKED``).
 2. Lock its subject (Memory Source or processing operation) and check it is
-   still waiting for handoff (``validated`` / ``created``). If not, for example
-   because a deletion cancelled the operation, the row becomes ``failed`` with
-   ``SUBJECT_NOT_PENDING`` and nothing is published.
+   still waiting for handoff (``validated`` / ``created``; for a resolution
+   handoff, an extracted source with a validated candidate). If not, for
+   example because a deletion cancelled the operation, the row becomes
+   ``failed`` with ``SUBJECT_NOT_PENDING`` and nothing is published.
 3. Publish and wait for the broker's confirmation.
 4. Confirmed: mark the row ``published`` and move the subject to ``queued``
-   (with a ``pm_source_processing_event`` for a Memory Source), then commit.
+   (with a ``pm_source_processing_event`` for a Memory Source; a resolution
+   handoff moves nothing), then commit.
    Not confirmed: count the attempt, record the error code and schedule the
    next try with exponential backoff and jitter; after ``max_attempts`` the row
    becomes ``failed`` until an explicit retry. The subject is never moved.
@@ -32,14 +34,18 @@ from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Protocol
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from memory_engine.config.settings import OutboxSettings
 from memory_engine.documents.domain.vocabulary import OperationStatus
 from memory_engine.domain.handoff import HandoffKind, OutboxMessage
 from memory_engine.domain.identifiers import OwnerScope, new_id
-from memory_engine.domain.vocabulary import ProcessingEventType, SourceProcessingStatus
+from memory_engine.domain.vocabulary import (
+    CandidateStatus,
+    ProcessingEventType,
+    SourceProcessingStatus,
+)
 from memory_engine.exceptions import MessagePublishError, PersistenceError
 from memory_engine.infrastructure.messaging.publisher import MessagePublisher
 from memory_engine.infrastructure.persistence.database import translate_database_errors
@@ -51,7 +57,10 @@ from memory_engine.infrastructure.persistence.outbox import SqlAlchemyOutboxRepo
 from memory_engine.infrastructure.persistence.personal.lifecycle_repositories import (
     SqlAlchemyProcessingHistoryRepository,
 )
-from memory_engine.infrastructure.persistence.personal.models import MemorySourceRow
+from memory_engine.infrastructure.persistence.personal.models import (
+    MemoryCandidateRow,
+    MemorySourceRow,
+)
 from memory_engine.observability import get_logger
 from memory_engine.observability.metrics import (
     HANDOFF_ATTEMPTS,
@@ -161,9 +170,51 @@ class _ProcessingOperationSubject:
         )
 
 
+_EXTRACTED = (
+    SourceProcessingStatus.EXTRACTED.value,
+    SourceProcessingStatus.PARTIALLY_EXTRACTED.value,
+)
+
+
+class _ExtractedSourceSubject:
+    """The subject of a resolution handoff: an extracted Memory Source (8.4 step 5).
+
+    It is pending while the source is still extracted and has a ``validated``
+    candidate. Resolution (8.6) tracks its progress on the candidates, so the
+    source itself is not moved; the outbox row records the publication.
+    """
+
+    def is_pending(self, session: Session, scope: OwnerScope, subject_id: uuid.UUID) -> bool:
+        with translate_database_errors("lock memory source for resolution handoff"):
+            status = session.scalar(
+                select(MemorySourceRow.processing_status)
+                .where(MemorySourceRow.id == subject_id, MemorySourceRow.owner_id == scope.owner_id)
+                .with_for_update()
+            )
+            if status not in _EXTRACTED:
+                return False
+            return bool(
+                session.scalar(
+                    select(
+                        exists().where(
+                            MemoryCandidateRow.owner_id == scope.owner_id,
+                            MemoryCandidateRow.source_id == subject_id,
+                            MemoryCandidateRow.status == CandidateStatus.VALIDATED.value,
+                        )
+                    )
+                )
+            )
+
+    def mark_queued(
+        self, session: Session, scope: OwnerScope, subject_id: uuid.UUID, at: datetime
+    ) -> None:
+        return None
+
+
 _SUBJECTS: dict[HandoffKind, _Subject] = {
     HandoffKind.PERSONAL_EXTRACTION: _MemorySourceSubject(),
     HandoffKind.DOCUMENT_EXTRACTION: _ProcessingOperationSubject(),
+    HandoffKind.PERSONAL_RESOLUTION: _ExtractedSourceSubject(),
 }
 
 

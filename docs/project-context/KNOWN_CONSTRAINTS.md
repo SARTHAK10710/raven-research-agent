@@ -45,7 +45,14 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
   - **No malware scanning**: no tool is approved, and the owner accepted the deferral on 2026-11-11. Content is never executed, DOCX macro parts are refused, and the parser (8.12) must treat files as hostile.
   - TXT must be UTF-8.
   - Upload limit: 25 MiB by default (configurable).
-- Evaluation and classification (8.4 step 4, uncommitted):
+- Candidate generation (8.4 step 5, uncommitted):
+  - candidate categories are rule-based proposals; they reach `pm_memory_category` only through resolution (8.6);
+  - **no resolution consumer exists yet**: `personal_resolution` messages wait on `memory.personal.resolution` until plan 8.6 registers its task; a handoff whose candidates left `validated` before publication is abandoned (`SUBJECT_NOT_PENDING`);
+  - rejected proposals leave only counts and reason codes (`outcome_summary`), so they cannot be reviewed later;
+  - validation is rule-based (evidence present, negation and condition kept); it does not check paraphrase fidelity beyond that;
+  - no production pipeline is assembled or deployed: the stages are composed in tests only;
+  - candidate dataset v1 (22/22) checks the specification; one case (cand-019) led to a rule change after the first run.
+- Evaluation and classification (8.4 step 4, merged in PR #27):
   - rule tables for importance and fact confidence, with uncalibrated defaults;
   - freshness is a class only, with no decay;
   - no inference generator exists, so every origin is `explicit` or `unresolved` in practice;

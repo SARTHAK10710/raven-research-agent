@@ -108,6 +108,7 @@ def _event(row: SourceProcessingEventRow) -> SourceProcessingEvent:
         occurred_at=row.occurred_at,
         error_code=row.error_code,
         reason_code=row.reason_code,
+        outcome_summary=row.outcome_summary,
     )
 
 
@@ -263,6 +264,10 @@ class SqlAlchemyProcessingHistoryRepository:
                     error_code=event.error_code,
                     reason_code=event.reason_code,
                     occurred_at=event.occurred_at,
+                    # SQL NULL when absent: Python None would store JSON null.
+                    outcome_summary=(
+                        null() if event.outcome_summary is None else dict(event.outcome_summary)
+                    ),
                 )
             )
             self._session.flush()

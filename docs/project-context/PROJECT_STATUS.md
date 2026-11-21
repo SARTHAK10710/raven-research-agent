@@ -1,16 +1,16 @@
 # Project Status
 
-**Last verified update:** 2026-11-12, `main` @ `1851f53`: all of Phase 8.3 is on `main` through PRs #16–#19 and [PR #21](https://github.com/SARTHAK10710/raven-research-agent/pull/21) (status sync PR #20), and **8.3 is `VERIFIED`** ([PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md)). Earlier: 2026-11-11, `main` @ `423b6fd`. All of Phase 8.2 is on `main` through [PR #8](https://github.com/SARTHAK10710/raven-research-agent/pull/8), [PR #9](https://github.com/SARTHAK10710/raven-research-agent/pull/9), [PR #10](https://github.com/SARTHAK10710/raven-research-agent/pull/10) (`977c3b7`) and [PR #11](https://github.com/SARTHAK10710/raven-research-agent/pull/11) (`423b6fd`); Phase 8.1 through [PR #3](https://github.com/SARTHAK10710/raven-research-agent/pull/3).
+**Last verified update:** 2026-11-22, `main` @ `b386d90`: Phase 8.4 steps 1–4 are merged (PRs #24–#27). Step 5 (candidate generation) is implemented and tested on branch `feat/phase-8-4-candidates`, uncommitted, awaiting owner review. Earlier: 2026-11-12, `main` @ `1851f53`: all of Phase 8.3 is on `main` through PRs #16–#19 and [PR #21](https://github.com/SARTHAK10710/raven-research-agent/pull/21) (status sync PR #20), and **8.3 is `VERIFIED`** ([PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md)). Earlier: 2026-11-11, `main` @ `423b6fd`. All of Phase 8.2 is on `main` through [PR #8](https://github.com/SARTHAK10710/raven-research-agent/pull/8), [PR #9](https://github.com/SARTHAK10710/raven-research-agent/pull/9), [PR #10](https://github.com/SARTHAK10710/raven-research-agent/pull/10) (`977c3b7`) and [PR #11](https://github.com/SARTHAK10710/raven-research-agent/pull/11) (`423b6fd`); Phase 8.1 through [PR #3](https://github.com/SARTHAK10710/raven-research-agent/pull/3).
 
 ## Current position
 
 | Item | Value |
 |---|---|
 | Current phase | Phase 8 — Memory Engine Implementation |
-| Current subphase | 8.4 — Extraction and Evaluation: **approved 2026-11-12**, `IN_PROGRESS`: steps 1–3 (extraction worker, relevance gate, fact extraction) merged (PRs #24–#26, `abf8cdb`); step 4 (evaluation and origin classification) implemented and tested, uncommitted on `feat/phase-8-4-evaluation`. Personal path only for now (Decision 7); English first (G6); spaCy + `en_core_web_sm` (Decision 14); six steps in [NEXT_STEPS.md](NEXT_STEPS.md) ([7.1 §25](../technical-decisions/01-baseline-technology-stack.md)). Previous: 8.3 — Ingestion Pipeline: **`VERIFIED` (2026-11-12)**. All five steps merged (PRs #16–#19, #21; `main` @ `1851f53`); every plan §13 criterion met, with one owner-accepted deferral ([PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md)). 8.4 is not approved |
+| Current subphase | 8.4 — Extraction and Evaluation: **approved 2026-11-12**, `IN_PROGRESS`: steps 1–4 (extraction worker, relevance gate, fact extraction, evaluation and origin classification) merged (PRs #24–#27, `b386d90`); step 5 (candidate generation and validation, 6.2.6) implemented and tested, uncommitted on `feat/phase-8-4-candidates`. Personal path only for now (Decision 7); English first (G6); spaCy + `en_core_web_sm` (Decision 14); six steps in [NEXT_STEPS.md](NEXT_STEPS.md) ([7.1 §25](../technical-decisions/01-baseline-technology-stack.md)). Previous: 8.3 — Ingestion Pipeline: **`VERIFIED` (2026-11-12)**. All five steps merged (PRs #16–#19, #21; `main` @ `1851f53`); every plan §13 criterion met, with one owner-accepted deferral ([PHASE-8-3-ACCEPTANCE-REVIEW.md](PHASE-8-3-ACCEPTANCE-REVIEW.md)). 8.4 is not approved |
 | Subphase status | 8.2 **`VERIFIED`** (2026-11-11) and merged: all five steps plus the acceptance-review fixes, with every plan 8.2 §14 criterion met on `main` @ `423b6fd` (two owner-accepted deferrals; [PHASE-8-2-ACCEPTANCE-REVIEW.md](PHASE-8-2-ACCEPTANCE-REVIEW.md)). 8.1 remains `VERIFIED` and merged |
-| Current active task | Owner review of 8.4 step 4 (evaluation and origin classification: rule tables, freshness classes, explicit/unresolved origin, outcome policy); then step 5 (candidate generation and the resolution handoff) |
-| Application code | 8.1 foundation plus 8.2: Personal Memory core (`0001`), Document Intelligence and the evidence path (`0002`), entities and relationships (`0003`), episodes, profiles, categories and memory embedding metadata (`0004`), processing, evaluation, correction and deletion records (`0005`), episode version (`0006`); owner-scoped repositories and units of work. 8.3 step 1 (merged): an owner-scoped object-storage port with an in-memory fake and a boto3/S3 adapter. 8.3 step 2 (merged): text and conversation ingestion into a `validated` Memory Source (`0007`). 8.3 step 3 (merged): document uploads checked, stored and registered with an `extraction` operation. 8.3 step 4 (merged): a transactional outbox (`me_outbox`, `0008`) written with each registration, and a relay that publishes to RabbitMQ through Celery and only then marks the source or operation `queued`; forget instructions get no handoff. **No** consumer, extraction, resolution, consolidation, parsing, chunking, embedding generation, retrieval ranking or deletion workflow |
+| Current active task | Owner review of 8.4 step 5 (candidate generation: categories, validation, evaluation history, run summary, the `personal_resolution` handoff; migration `0011`); then step 6 (observability, dataset evaluation and the 8.4 acceptance review) |
+| Application code | 8.1 foundation plus 8.2: Personal Memory core (`0001`), Document Intelligence and the evidence path (`0002`), entities and relationships (`0003`), episodes, profiles, categories and memory embedding metadata (`0004`), processing, evaluation, correction and deletion records (`0005`), episode version (`0006`); owner-scoped repositories and units of work. 8.3 step 1 (merged): an owner-scoped object-storage port with an in-memory fake and a boto3/S3 adapter. 8.3 step 2 (merged): text and conversation ingestion into a `validated` Memory Source (`0007`). 8.3 step 3 (merged): document uploads checked, stored and registered with an `extraction` operation. 8.3 step 4 (merged): a transactional outbox (`me_outbox`, `0008`) written with each registration, and a relay that publishes to RabbitMQ through Celery and only then marks the source or operation `queued`; forget instructions get no handoff. 8.4 (personal path): the extraction worker (steps 1–4 merged; `0009`, `0010`) runs the language check, the relevance gate, fact extraction, evaluation and origin classification; step 5 (uncommitted; `0011`) turns evaluated proposals into stored Memory Candidates with categories and evaluation history, and hands validated ones to resolution through the outbox. **No** resolution consumer, consolidation, parsing, chunking, embedding generation, retrieval ranking or deletion workflow |
 
 ## Documentation completion
 
@@ -31,7 +31,7 @@ Documentation recovery: four specifications that had been overwritten by amendme
 
 | Phase | Status |
 |---|---|
-| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `VERIFIED` (merged); 8.3 `VERIFIED` (merged; 2026-11-12); 8.4 `IN_PROGRESS` (approved 2026-11-12; personal path; steps 1–3 merged; step 4 tested, uncommitted); 8.5–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
+| 8 — Memory Engine | 8.1 `VERIFIED` (merged); 8.2 `VERIFIED` (merged); 8.3 `VERIFIED` (merged; 2026-11-12); 8.4 `IN_PROGRESS` (approved 2026-11-12; personal path; steps 1–4 merged; step 5 tested, uncommitted); 8.5–8.12 `NOT_STARTED`. See [IMPLEMENTATION_STATE.md](IMPLEMENTATION_STATE.md) |
 | Research Engine | Not started (later phase) |
 | Agent Orchestrator | Not started (later phase) |
 | Shared Infrastructure | Not started |
@@ -41,10 +41,7 @@ Installed: Phase 8.1 dependencies, the Phase 8.2 database dependencies (SQLAlche
 
 ## Pending work
 
-1. Phase 8.3, approved 2026-11-11, in five steps ([NEXT_STEPS.md](NEXT_STEPS.md)):
-   1. object storage;
-   2. personal memory ingestion;
-   3. document ingestion;
-   4. outbox and RabbitMQ handoff;
-   5. observability and the acceptance review.
-2. Each step starts by settling its open questions with the owner. Step 1 also takes over the object-storage failure tests deferred from 8.2.
+1. Phase 8.4 (personal path), approved 2026-11-12 ([NEXT_STEPS.md](NEXT_STEPS.md)):
+   1. owner review, commit and PR of step 5 (candidate generation);
+   2. step 6: observability, dataset evaluation and the acceptance review.
+2. Each step starts by settling its open questions with the owner.

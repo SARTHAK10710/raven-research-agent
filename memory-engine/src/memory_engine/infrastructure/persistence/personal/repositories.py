@@ -24,6 +24,7 @@ from memory_engine.domain.vocabulary import (
     DocumentEvidenceStatus,
     IngestionPriority,
     InstructionType,
+    MemoryCategory,
     MemoryLifecycleStatus,
     MemoryOrigin,
     ProvenanceOriginKind,
@@ -173,9 +174,11 @@ def _candidate_from_row(row: MemoryCandidateRow) -> MemoryCandidate:
         importance=row.importance,
         confidence=row.confidence,
         extraction_confidence=row.extraction_confidence,
+        categories=tuple(MemoryCategory(c) for c in row.categories),
         context=row.context,
         temporal=row.temporal,
         extraction_metadata=row.extraction_metadata,
+        evaluation_metadata=row.evaluation_metadata,
     )
 
 
@@ -200,9 +203,11 @@ class SqlAlchemyMemoryCandidateRepository:
                     importance=candidate.importance,
                     confidence=candidate.confidence,
                     extraction_confidence=candidate.extraction_confidence,
+                    categories=[category.value for category in candidate.categories],
                     context=_json(candidate.context),
                     temporal=_json(candidate.temporal),
                     extraction_metadata=_json(candidate.extraction_metadata),
+                    evaluation_metadata=_json(candidate.evaluation_metadata),
                 )
             )
             self._session.flush()
