@@ -34,7 +34,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from memory_engine.domain.vocabulary import (
@@ -43,6 +43,7 @@ from memory_engine.domain.vocabulary import (
     DocumentEvidenceStatus,
     IngestionPriority,
     InstructionType,
+    MemoryCategory,
     MemoryLifecycleStatus,
     MemoryOrigin,
     ProvenanceOriginKind,
@@ -54,6 +55,12 @@ from memory_engine.domain.vocabulary import (
 from memory_engine.infrastructure.persistence.base import Base, in_vocabulary
 
 Json = dict[str, Any]
+
+# Every proposed candidate category is a 5.4.9 category (0011). Containment in a
+# literal array; duplicates are refused by the domain record.
+CANDIDATE_CATEGORIES = "categories <@ ARRAY[{}]::varchar[]".format(
+    ", ".join(f"'{category.value}'" for category in MemoryCategory)
+)
 
 # A deleted memory keeps only a tombstone; every other state needs real content.
 # (A bare length(...) > 0 check would pass for NULL, so NULL is tested explicitly.)
@@ -161,6 +168,12 @@ class MemoryCandidateRow(Base):
     context: Mapped[Json] = mapped_column(JSONB, nullable=False, server_default="{}")
     temporal: Mapped[Json] = mapped_column(JSONB, nullable=False, server_default="{}")
     extraction_metadata: Mapped[Json] = mapped_column(JSONB, nullable=False, server_default="{}")
+    # Candidate generation (0011, 8.4 step 5): proposed 5.4.9 categories and the
+    # 6.2.4-6.2.5 dimensions without a column. Insert-only (me_guard_columns).
+    categories: Mapped[list[str]] = mapped_column(
+        ARRAY(String(32)), nullable=False, server_default="{}"
+    )
+    evaluation_metadata: Mapped[Json] = mapped_column(JSONB, nullable=False, server_default="{}")
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
@@ -178,6 +191,10 @@ class MemoryCandidateRow(Base):
         CheckConstraint("length(btrim(proposition)) > 0", name="proposition_not_blank"),
         CheckConstraint(
             "NOT (origin = 'unresolved' AND status = 'validated')", name="unresolved_not_validated"
+        ),
+        CheckConstraint(CANDIDATE_CATEGORIES, name="categories"),
+        CheckConstraint(
+            "jsonb_typeof(evaluation_metadata) = 'object'", name="evaluation_metadata_object"
         ),
         *score_range(("importance", "confidence", "extraction_confidence")),
         Index(None, "owner_id", "source_id"),

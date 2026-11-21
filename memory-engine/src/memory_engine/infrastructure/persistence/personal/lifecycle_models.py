@@ -96,6 +96,11 @@ def _owner_fk(column: str, table: str) -> ForeignKeyConstraint:
 
 # 5.4 Phase 8.4 amendment: a reason code exactly for deferral and rejection.
 REASON_REQUIRED = "(to_status IN ('deferred', 'rejected')) = (reason_code IS NOT NULL)"
+# 0011: a run summary is a JSON object, and only a plain transition carries one.
+OUTCOME_SUMMARY = (
+    "outcome_summary IS NULL OR "
+    "(jsonb_typeof(outcome_summary) = 'object' AND event_type = 'transition')"
+)
 
 
 class SourceProcessingEventRow(Base):
@@ -112,6 +117,8 @@ class SourceProcessingEventRow(Base):
     error_code: Mapped[str | None] = mapped_column(String(64))
     reason_code: Mapped[str | None] = mapped_column(String(64))
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Counts and reason codes for the run that ended here (0011, 8.4 step 5).
+    outcome_summary: Mapped[dict[str, int] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = _now()
 
     __table_args__ = (
@@ -125,6 +132,7 @@ class SourceProcessingEventRow(Base):
         CheckConstraint(_safe_code("error_code"), name="error_code"),
         CheckConstraint(REASON_REQUIRED, name="reason_required"),
         CheckConstraint(_safe_code("reason_code"), name="reason_code"),
+        CheckConstraint(OUTCOME_SUMMARY, name="outcome_summary"),
         Index(None, "owner_id", "source_id"),
     )
 

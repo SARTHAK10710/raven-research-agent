@@ -24,6 +24,7 @@ from memory_engine.domain.vocabulary import (
     DocumentEvidenceStatus,
     IngestionPriority,
     InstructionType,
+    MemoryCategory,
     MemoryLifecycleStatus,
     MemoryOrigin,
     ProvenanceOriginKind,
@@ -146,7 +147,10 @@ class MemoryCandidate:
     """An extracted proposition awaiting resolution (Decisions 5.4.2-5.4.3; 6.2.6).
 
     Importance, confidence and extraction confidence stay independent
-    (6.2.6 rule 7).
+    (6.2.6 rule 7). ``categories`` are the 5.4.9 categories proposed for the
+    candidate (zero or more, 6.2.6 section 8.4); resolution (8.6) carries them
+    onto the memory. ``evaluation_metadata`` holds the 6.2.4-6.2.5 dimensions
+    that have no column of their own (owner decision, 8.4 step 5).
     """
 
     id: uuid.UUID
@@ -158,9 +162,11 @@ class MemoryCandidate:
     importance: float | None = None
     confidence: float | None = None
     extraction_confidence: float | None = None
+    categories: tuple[MemoryCategory, ...] = ()
     context: JsonMap = field(default_factory=_empty)
     temporal: JsonMap = field(default_factory=_empty)
     extraction_metadata: JsonMap = field(default_factory=_empty)
+    evaluation_metadata: JsonMap = field(default_factory=_empty)
 
     def __post_init__(self) -> None:
         _require_text("proposition", self.proposition)
@@ -170,9 +176,13 @@ class MemoryCandidate:
         if self.origin is CandidateOrigin.UNRESOLVED and self.status is CandidateStatus.VALIDATED:
             # 6.2.6 rule 2: unresolved origin must remain in review.
             raise DomainValidationError("a candidate with unresolved origin cannot be validated")
+        if len(set(self.categories)) != len(self.categories):
+            raise DomainValidationError("a candidate lists each category once")
+        object.__setattr__(self, "categories", tuple(MemoryCategory(c) for c in self.categories))
         object.__setattr__(self, "context", _frozen(self.context))
         object.__setattr__(self, "temporal", _frozen(self.temporal))
         object.__setattr__(self, "extraction_metadata", _frozen(self.extraction_metadata))
+        object.__setattr__(self, "evaluation_metadata", _frozen(self.evaluation_metadata))
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

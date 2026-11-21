@@ -30,6 +30,7 @@ from memory_engine.domain.identifiers import OwnerScope, new_id
 
 ENVELOPE_SCHEMA_VERSION = "1"
 SOURCE_COMPONENT = "memory_engine.ingestion"
+EXTRACTION_COMPONENT = "memory_engine.extraction"
 MESSAGE_TYPE_COMMAND = "command"
 
 _SAFE_CODE = re.compile(r"[A-Z][A-Z0-9_]{0,63}")
@@ -42,6 +43,9 @@ class HandoffKind(StrEnum):
 
     DOCUMENT_EXTRACTION = "document_extraction"  # document pipeline, plan 8.12
     PERSONAL_EXTRACTION = "personal_extraction"  # memory extraction, plan 8.4
+    # Validated candidates of one extracted source, for memory resolution (plan 8.6);
+    # the subject is the Memory Source (owner decision, 8.4 step 5).
+    PERSONAL_RESOLUTION = "personal_resolution"
 
     @property
     def destination(self) -> str:
@@ -51,6 +55,7 @@ class HandoffKind(StrEnum):
 _DESTINATIONS = {
     HandoffKind.DOCUMENT_EXTRACTION: "memory_engine.document_pipeline",
     HandoffKind.PERSONAL_EXTRACTION: "memory_engine.extraction",
+    HandoffKind.PERSONAL_RESOLUTION: "memory_engine.resolution",
 }
 
 
@@ -269,6 +274,7 @@ class OutboxMessage:
         priority: str,
         created_at: datetime,
         correlation_id: uuid.UUID | None = None,
+        source_component: str = SOURCE_COMPONENT,
     ) -> "OutboxMessage":
         """A pending handoff of ``subject_id``; one per subject and kind."""
         message_id = new_id()
@@ -283,6 +289,7 @@ class OutboxMessage:
             priority=priority,
             payload=payload,
             payload_reference=payload_reference,
+            source_component=source_component,
         )
         return cls(
             id=message_id,

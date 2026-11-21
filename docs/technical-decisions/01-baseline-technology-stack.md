@@ -906,3 +906,41 @@ Each step settles its own open questions with the owner at its start.
   - `derived_from`;
   - "remember/note that X" frames, which make X the fact.
 - **Quality:** evaluation dataset v1 (22 cases) scores 22 of 22. The labels were written from the approved tables before the evaluator existed, but by the same author as the rules. It is a specification check, not an independent measure.
+
+### 25.9 Phase 8.4 step 5 — Candidate generation and validation
+
+**Status:** Approved by the project owner on 2026-11-22, at the start of 8.4 step 5 (all four recommended options).
+
+- **Storage: new columns.** Migration 0011 changes three tables:
+  - `pm_memory_candidate` gains `categories` (a text array, checked against the 5.4.9 vocabulary) and `evaluation_metadata` (a JSONB object). Both are insert-only: the guard trigger does not list them as mutable.
+  - `pm_source_processing_event` gains `outcome_summary` (JSONB, only on transitions).
+  - `me_outbox` accepts the kind `personal_resolution`.
+- **Categories: rules, multi-label.** Categories come only from the proposal's own evidence:
+  - The importance rule maps goal, commitment, decision and relationship directly; preference and habit become personal preference; event becomes important event.
+  - A learning predicate adds knowledge.
+  - A building predicate, or working on a project-like object or attribute, adds project.
+  - A subject naming a related person adds relationship.
+  - Health, identity and anything else get no category rather than a guess. Zero, one or several categories may apply, listed in taxonomy order.
+- **Handoff: outbox, per source.** When at least one candidate ends `validated`, the extraction transaction adds one `personal_resolution` message for the source:
+  - It goes to queue `memory.personal.resolution` with routing key `personal.resolution.requested`.
+  - The payload holds identifiers and counts only. The message carries the extraction message's correlation id and has source component `memory_engine.extraction`.
+  - The relay publishes it while the source is extracted and still has a validated candidate. Otherwise the message is abandoned with `SUBJECT_NOT_PENDING`. The source's status is not changed.
+  - The consumer arrives with plan 8.6.
+- **Rejected proposals: never stored.** They are counted in the run's `outcome_summary` by reason code (`rejected:<CODE>`), together with proposals, candidates, validated, needs_review, deferred, failed sentences and skipped questions. The summary holds no content.
+- **Lifecycle and history:**
+  - Each candidate is inserted as `candidate`.
+  - One recorded evaluation (5.4.25) then moves it to `validated` (proceed) or `needs_review`. `defer` leaves it `candidate`.
+  - Nothing is merged, resolved or activated (6.2.6 rules 8–9).
+- **Validation (6.2.6 §8.7):**
+  - A proposal of another owner or source is rejected (`OWNERSHIP_MISMATCH`).
+  - These go to review:
+    - evidence not found in the source (`EVIDENCE_NOT_FOUND`), including an inferred candidate's derived locations;
+    - a negation missing from the proposition (`NEGATION_LOST`);
+    - a conditional without its condition (`CONDITION_LOST`).
+- **Source outcome:**
+  - `partially_extracted` when sentences failed;
+  - otherwise `extracted` when any candidate exists;
+  - otherwise `rejected`, with `NO_FACT_PROPOSALS` or `ALL_PROPOSALS_REJECTED`.
+- **Quality:** candidate dataset v1 has 22 cases, including the eight examples from 6.2.6 §8.4.
+  - The labels were written before the generator, by the same author as the rules.
+  - The first run matched 21 of 22. cand-019 led to one rule change (project-like words are also looked for in prepositional attributes), and all 22 now match.

@@ -185,6 +185,11 @@ def about_user(subject: str | None) -> bool:
     return not (_words(subject) & _RELATION_NOUNS)
 
 
+def names_relation(subject: str | None) -> bool:
+    """'the user's sister', 'my friends': a person related to the user (step 5)."""
+    return bool(_words(subject) & _RELATION_NOUNS)
+
+
 def _lemma(proposal: FactProposal) -> str:
     return (proposal.predicate or "").split(" ")[0]
 

@@ -1690,3 +1690,22 @@ The embedding status vocabulary is now defined once, in the shared kernel, and u
 - **Fact proposals** (§18) gain two fields:
   - `past`: the clause is in the past tense;
   - `derived_from`: evidence locations for an inferred proposal. It stays empty for direct statements, and no step derives inferences yet.
+
+## 20. Candidate generation (Phase 8.4 step 5)
+
+**Approved 2026-11-22** (migration 0011; 7.1 §25.9).
+
+- **Memory Candidate** gains two insert-only fields:
+  - `categories`: zero or more 5.4.9 categories (`personal_preference`, `goal`, `decision`, `important_event`, `relationship`, `knowledge`, `project`, `commitment`), each listed once, in taxonomy order. Resolution (8.6) carries them onto the memory through 5.4.9's category assignments; until then they are proposals.
+  - `evaluation_metadata`: the §19 dimensions that have no column of their own, plus the origin's reason, confidence and evidence locations. It holds codes, scores and locations, never text.
+- **Other candidate fields:**
+  - `context` holds the proposal's structure (§18);
+  - `temporal` holds its expressions, the source's reference time, the past flag, the modality and whether a condition applies;
+  - `extraction_metadata` holds the method, weaknesses, location and `derived_from`.
+- **Lifecycle:**
+  - A candidate is inserted as `candidate`. Its first `pm_candidate_evaluation` row moves it to `validated` or `needs_review`, or, for `defer`, keeps it `candidate`.
+  - Rejected proposals are never stored as candidates.
+- **Source Processing Event** gains `outcome_summary`, allowed only on a transition:
+  - It maps lowercase counter names, optionally suffixed `:<UPPER_CODE>`, to non-negative integers. Example: `{"validated": 2, "rejected:LOW_IMPORTANCE": 1}`.
+  - It records what one extraction run produced and why proposals were rejected, without content.
+- **Handoff kind** `personal_resolution` (subject: the Memory Source) hands a source's validated candidates to resolution (8.6).

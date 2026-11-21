@@ -32,6 +32,8 @@ The two domains can share infrastructure (PostgreSQL, pgvector, object storage, 
 >
 > Phase 8.4 step 4 adds evaluation and origin classification (`personal/application/evaluation.py`). Each proposal gets independent scores: importance, fact confidence, a freshness class, utility and context. It also gets uncertainty flags (including conflicts and repetitions within a source), an outcome (proceed, review, reject) and an origin (explicit or unresolved).
 >
+> Phase 8.4 step 5 adds candidate generation and validation (`personal/application/candidates.py`, migration `0011`). Proposals that are not rejected become Memory Candidates with evidence-based categories and separate metadata. Each candidate's first evaluation (validated, needs review) is recorded as history. The run's counts and rejection codes are kept on the source's final event. A source with validated candidates gets one `personal_resolution` handoff in the outbox for memory resolution (plan 8.6).
+>
 > Not yet: candidate generation (8.4 step 5), parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking, and the deletion workflow.
 
 ## Boundaries
