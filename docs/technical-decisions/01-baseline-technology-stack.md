@@ -944,3 +944,22 @@ Each step settles its own open questions with the owner at its start.
 - **Quality:** candidate dataset v1 has 22 cases, including the eight examples from 6.2.6 §8.4.
   - The labels were written before the generator, by the same author as the rules.
   - The first run matched 21 of 22. cand-019 led to one rule change (project-like words are also looked for in prepositional attributes), and all 22 now match.
+
+### 25.10 Phase 8.4 step 6 — Observability, quality gates and acceptance
+
+**Status:** Approved by the project owner on 2026-11-22, at the start of 8.4 step 6 (all four recommended options).
+
+- **Quality gates:**
+  - The 0.85 case-accuracy floors of the language, relevance, extraction, evaluation and candidate datasets stay as regression gates.
+  - A new end-to-end set (raw text to candidates, 30 cases, 27 facts) is scored for fact precision and recall (7.7 §13.1) and gated at precision ≥ 0.80 and recall ≥ 0.70.
+  - All gates are uncalibrated.
+- **Labels for the end-to-end set:** drafted by the author of the rules, then reviewed by the owner before the pipeline ran against them. The owner approved them as drafted on 2026-11-22.
+  - First run: precision 0.962, recall 0.926.
+  - Misses are recorded, not tuned away.
+- **Metrics, per run:** recorded through the `Metrics` port (8.3 pattern, 7.1 §24.4):
+  - `memory_extraction_runs_total` and `memory_extraction_duration_seconds` (input, outcome);
+  - `memory_extraction_reasons_total` (outcome, reason);
+  - `memory_extraction_candidates_total` (kind: candidate status);
+  - `memory_extraction_rejected_proposals_total` (reason).
+  - The `extraction.<outcome>` event also carries the duration and the run summary.
+- **Status:** after a successful personal-path acceptance review, 8.4 is `VERIFIED` for the personal path. The document-derived path (criteria 7, 8 and 10, and its tests) is an owner-accepted deferral to after plan 8.12.

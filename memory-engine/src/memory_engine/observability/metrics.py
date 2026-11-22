@@ -28,6 +28,12 @@ HANDOFF_LATENCY = "memory_handoff_latency_seconds"  # kind: registration to conf
 OUTBOX_PENDING = "memory_outbox_pending"  # gauge
 OUTBOX_FAILED = "memory_outbox_failed"  # gauge
 OUTBOX_OLDEST_PENDING_AGE = "memory_outbox_oldest_pending_age_seconds"  # gauge
+# Extraction (plan 8.4; owner-approved, 8.4 step 6): one observation per handled message.
+EXTRACTION_RUNS = "memory_extraction_runs_total"  # input, outcome
+EXTRACTION_DURATION = "memory_extraction_duration_seconds"  # input, outcome
+EXTRACTION_REASONS = "memory_extraction_reasons_total"  # outcome, reason
+EXTRACTION_CANDIDATES = "memory_extraction_candidates_total"  # kind: candidate status
+EXTRACTION_REJECTED_PROPOSALS = "memory_extraction_rejected_proposals_total"  # reason
 
 LABEL_KEYS = frozenset({"input", "outcome", "reason", "kind"})
 _LABEL_VALUE = re.compile(r"(?=.{1,64}$)(?:[a-z]+(?:_[a-z]+)*|[A-Z][A-Z0-9_]*)")

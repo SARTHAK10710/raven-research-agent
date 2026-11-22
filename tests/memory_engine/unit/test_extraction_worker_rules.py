@@ -14,12 +14,22 @@ from memory_engine.domain.vocabulary import (
     CandidateStatus,
     ProcessingEventType,
     SourceProcessingStatus,
+    SourceType,
 )
 from memory_engine.infrastructure.messaging import retry_delay
+from memory_engine.observability.metrics import (
+    EXTRACTION_CANDIDATES,
+    EXTRACTION_DURATION,
+    EXTRACTION_REASONS,
+    EXTRACTION_REJECTED_PROPOSALS,
+    EXTRACTION_RUNS,
+    InMemoryMetrics,
+)
 from memory_engine.personal.application.extraction import (
     ExtractionOutcome,
     ExtractionReport,
     PipelineResult,
+    _record,
     parse_segments,
 )
 from memory_engine.personal.application.language import (
@@ -149,6 +159,7 @@ def test_reports_serialize_identifiers_and_codes_only() -> None:
         "validated": 0,
         "reason_code": "UNSUPPORTED_LANGUAGE",
         "error_code": None,
+        "outcome_summary": None,
     }
 
 
@@ -167,3 +178,55 @@ def test_language_policy_edges() -> None:
     result = assess(["the cat sat"], policy)
     assert result.english and result.function_word_share == pytest.approx(1 / 3)
     assert not assess(["gato perro casa mesa"], policy).english
+
+
+def test_run_metrics_map_the_summary_to_bounded_labels() -> None:
+    metrics = InMemoryMetrics()
+    report = ExtractionReport(
+        outcome=ExtractionOutcome.COMPLETED,
+        source_id=OWNER,
+        status=SourceProcessingStatus.EXTRACTED,
+        candidates=3,
+        validated=2,
+        outcome_summary={
+            "proposals": 5,
+            "validated": 2,
+            "needs_review": 1,
+            "deferred": 0,
+            "rejected": 2,
+            "rejected:LOW_IMPORTANCE": 1,
+            "rejected:OWNERSHIP_MISMATCH": 1,
+        },
+    )
+    _record(metrics, report, 0.25, SourceType.CONVERSATION)
+    assert metrics.count(EXTRACTION_RUNS, input="conversation", outcome="extracted") == 1
+    assert metrics.observations(EXTRACTION_DURATION, input="conversation", outcome="extracted") == [
+        0.25
+    ]
+    assert metrics.count(EXTRACTION_CANDIDATES, kind="validated") == 2
+    assert metrics.count(EXTRACTION_CANDIDATES, kind="needs_review") == 1
+    assert metrics.count(EXTRACTION_CANDIDATES, kind="deferred") == 0
+    assert metrics.count(EXTRACTION_REJECTED_PROPOSALS, reason="LOW_IMPORTANCE") == 1
+    assert metrics.count(EXTRACTION_REJECTED_PROPOSALS, reason="OWNERSHIP_MISMATCH") == 1
+
+
+def test_run_metrics_carry_reason_and_error_codes() -> None:
+    metrics = InMemoryMetrics()
+    deferred = ExtractionReport(
+        outcome=ExtractionOutcome.COMPLETED,
+        status=SourceProcessingStatus.DEFERRED,
+        reason_code="UNSUPPORTED_LANGUAGE",
+    )
+    failed = ExtractionReport(
+        outcome=ExtractionOutcome.COMPLETED,
+        status=SourceProcessingStatus.PROCESSING_FAILED,
+        error_code="EXTRACTION_FAILED",
+    )
+    _record(metrics, deferred, 0.1, SourceType.TEXT)
+    _record(metrics, failed, 0.1, None)
+    assert metrics.count(EXTRACTION_REASONS, outcome="deferred", reason="UNSUPPORTED_LANGUAGE") == 1
+    assert metrics.count(EXTRACTION_RUNS, outcome="processing_failed") == 1
+    assert (
+        metrics.count(EXTRACTION_REASONS, outcome="processing_failed", reason="EXTRACTION_FAILED")
+        == 1
+    )

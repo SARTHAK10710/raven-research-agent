@@ -6,8 +6,10 @@ with categories and metadata, their evaluation history, the run summary and
 the resolution handoff. Synthetic data only.
 """
 
+import logging
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 from sqlalchemy import Connection, select, text
@@ -42,6 +44,14 @@ from memory_engine.infrastructure.nlp import SpacySentenceAnalyzer
 from memory_engine.infrastructure.object_storage import InMemoryObjectStorage
 from memory_engine.infrastructure.persistence import SqlAlchemyPersonalUnitOfWorkFactory
 from memory_engine.infrastructure.persistence.outbox import OutboxRow
+from memory_engine.observability.metrics import (
+    EXTRACTION_CANDIDATES,
+    EXTRACTION_DURATION,
+    EXTRACTION_RUNS,
+    NO_METRICS,
+    InMemoryMetrics,
+    Metrics,
+)
 from memory_engine.personal.application.candidates import CandidateGenerator
 from memory_engine.personal.application.evaluation import EvaluationStage, ProposalEvaluator
 from memory_engine.personal.application.extraction import ExtractionOutcome, ExtractionService
@@ -87,7 +97,9 @@ def _relay(session_factory: sessionmaker[Session], publisher: _Publisher, minute
     ).relay_due()
 
 
-def _service(uow_factory: Uow, storage: InMemoryObjectStorage) -> ExtractionService:
+def _service(
+    uow_factory: Uow, storage: InMemoryObjectStorage, metrics: Metrics = NO_METRICS
+) -> ExtractionService:
     pipeline = GatedPipeline(
         RelevanceGate(ANALYZER, RelevancePolicy.from_settings(RelevanceSettings())),
         FactExtractionStage(
@@ -104,6 +116,7 @@ def _service(uow_factory: Uow, storage: InMemoryObjectStorage) -> ExtractionServ
         pipeline,
         language_policy(ExtractionSettings()),
         clock=lambda: T0 + timedelta(minutes=2),
+        metrics=metrics,
     )
 
 
@@ -113,6 +126,7 @@ def _extract(
     owner: OwnerScope,
     text: str,
     instruction: InstructionType = InstructionType.REMEMBER,
+    metrics: Metrics = NO_METRICS,
 ) -> tuple[uuid.UUID, OutboxMessage, ExtractionService, _Publisher]:
     storage = InMemoryObjectStorage()
     source_id = (
@@ -132,7 +146,7 @@ def _extract(
     publisher = _Publisher()
     _relay(session_factory, publisher, 1)
     [message] = [m for m in publisher.published if m.subject_id == source_id]
-    return source_id, message, _service(uow_factory, storage), publisher
+    return source_id, message, _service(uow_factory, storage, metrics), publisher
 
 
 def test_extraction_ends_in_validated_candidates_and_a_resolution_handoff(
@@ -323,3 +337,74 @@ def test_categories_and_metadata_are_insert_only_and_checked(
             {"id": candidate.id},
         )
     savepoint.rollback()
+
+
+# --- observability (8.4 step 6) ------------------------------------------------------
+
+
+class _BrokenMetrics(InMemoryMetrics):
+    def increment(self, name: str, labels: Any = None, amount: int = 1) -> None:
+        raise RuntimeError("synthetic: metrics backend down")
+
+
+def _extraction_events(caplog: pytest.LogCaptureFixture) -> list[logging.LogRecord]:
+    return [r for r in caplog.records if getattr(r, "event_type", "").startswith("extraction.")]
+
+
+def test_a_run_records_bounded_metrics_and_one_event(
+    uow_factory: Uow,
+    session_factory: sessionmaker[Session],
+    owner: OwnerScope,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    metrics = InMemoryMetrics()
+    text = "I want to learn Rust. My friend said he is moving to Canada."
+    source_id, message, service, _ = _extract(
+        uow_factory, session_factory, owner, text, metrics=metrics
+    )
+    caplog.set_level(logging.INFO, logger="raven.memory_engine")
+    service.handle(message.envelope.to_dict())
+    service.handle(message.envelope.to_dict())  # a duplicate delivery
+    assert metrics.count(EXTRACTION_RUNS, input="text", outcome="extracted") == 1
+    assert metrics.count(EXTRACTION_RUNS, input="text", outcome="already_handled") == 1
+    assert len(metrics.observations(EXTRACTION_DURATION, input="text", outcome="extracted")) == 1
+    assert metrics.count(EXTRACTION_CANDIDATES, kind="validated") == 1
+    assert metrics.count(EXTRACTION_CANDIDATES, kind="needs_review") == 1
+    labels = {value for values in metrics.label_values().values() for value in values}
+    assert str(owner.owner_id) not in labels and str(source_id) not in labels
+    [done, duplicate] = _extraction_events(caplog)
+    assert done.event_type == "extraction.extracted"  # type: ignore[attr-defined]
+    assert done.outcome_summary["validated"] == 1  # type: ignore[attr-defined]
+    assert done.user_scope == str(owner.owner_id)  # type: ignore[attr-defined]
+    assert done.duration_ms >= 0  # type: ignore[attr-defined]
+    assert duplicate.event_type == "extraction.already_handled"  # type: ignore[attr-defined]
+    logged = " ".join(repr(r.__dict__) for r in caplog.records)
+    assert "Rust" not in logged and "Canada" not in logged  # never content
+
+
+def test_an_invalid_message_is_counted_without_an_input(
+    uow_factory: Uow, session_factory: sessionmaker[Session], owner: OwnerScope
+) -> None:
+    metrics = InMemoryMetrics()
+    _, _, service, _ = _extract(
+        uow_factory, session_factory, owner, "I prefer tea.", metrics=metrics
+    )
+    service.handle({"schema_version": "0"})
+    assert metrics.count(EXTRACTION_RUNS, outcome="invalid_message") == 1
+
+
+def test_telemetry_failure_never_changes_the_outcome(
+    uow_factory: Uow,
+    session_factory: sessionmaker[Session],
+    owner: OwnerScope,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    source_id, message, service, _ = _extract(
+        uow_factory, session_factory, owner, "I prefer dark mode.", metrics=_BrokenMetrics()
+    )
+    caplog.set_level(logging.INFO, logger="raven.memory_engine")
+    report = service.handle(message.envelope.to_dict())
+    assert (report.outcome, report.validated) == (ExtractionOutcome.COMPLETED, 1)
+    with uow_factory() as uow:
+        assert len(uow.candidates.list_for_source(owner, source_id)) == 1
+    assert any(getattr(r, "event_type", None) == "observability.failure" for r in caplog.records)

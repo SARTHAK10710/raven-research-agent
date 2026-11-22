@@ -34,7 +34,9 @@ The two domains can share infrastructure (PostgreSQL, pgvector, object storage, 
 >
 > Phase 8.4 step 5 adds candidate generation and validation (`personal/application/candidates.py`, migration `0011`). Proposals that are not rejected become Memory Candidates with evidence-based categories and separate metadata. Each candidate's first evaluation (validated, needs review) is recorded as history. The run's counts and rejection codes are kept on the source's final event. A source with validated candidates gets one `personal_resolution` handoff in the outbox for memory resolution (plan 8.6).
 >
-> Not yet: candidate generation (8.4 step 5), parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking, and the deletion workflow.
+> Phase 8.4 step 6 adds extraction metrics (runs, durations, reason codes, candidates by status, rejected proposals by reason) through the `Metrics` port, and an end-to-end quality set scored for fact precision and recall. See the [8.4 acceptance review](../docs/project-context/PHASE-8-4-ACCEPTANCE-REVIEW.md); the document-derived extraction path follows plan 8.12.
+>
+> Not yet: memory resolution (8.6), document-derived extraction, parsing, chunking, embedding generation, entity resolution, consolidation, retrieval ranking, and the deletion workflow.
 
 ## Boundaries
 
