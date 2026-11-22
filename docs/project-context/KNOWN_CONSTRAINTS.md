@@ -45,7 +45,12 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
   - **No malware scanning**: no tool is approved, and the owner accepted the deferral on 2026-11-11. Content is never executed, DOCX macro parts are refused, and the parser (8.12) must treat files as hostile.
   - TXT must be UTF-8.
   - Upload limit: 25 MiB by default (configurable).
-- Candidate generation (8.4 step 5, uncommitted):
+- 8.4 acceptance (step 6, uncommitted; [review](PHASE-8-4-ACCEPTANCE-REVIEW.md)):
+  - 8.4 is verified for the personal path only; the document-derived path (plan 8.4 §4.2, §10–§11, criteria 7, 8 and 10) is deferred to after 8.12 and Decision 6 (D1);
+  - quality gates are uncalibrated: 0.85 per-dataset floors; end-to-end fact precision ≥ 0.80 and recall ≥ 0.70 (first run 0.962 and 0.926);
+  - end-to-end misses kept visible: an unresolved reported claim yields no candidate (e2e-012); transient trivia passes the gate (e2e-022); a reason clause stays inside its fact (e2e-026);
+  - extraction metrics are recorded per run only (no per-stage timing) and exported nowhere until monitoring is deployed.
+- Candidate generation (8.4 step 5, merged in PR #28):
   - candidate categories are rule-based proposals; they reach `pm_memory_category` only through resolution (8.6);
   - **no resolution consumer exists yet**: `personal_resolution` messages wait on `memory.personal.resolution` until plan 8.6 registers its task; a handoff whose candidates left `validated` before publication is abandoned (`SUBJECT_NOT_PENDING`);
   - rejected proposals leave only counts and reason codes (`outcome_summary`), so they cannot be reviewed later;

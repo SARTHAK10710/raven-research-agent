@@ -3,8 +3,8 @@
 ## Current position
 
 - **Phase:** 8 — Memory Engine Implementation
-- **Subphase:** 8.4 — Extraction and Evaluation ([plan](../implementation-plans/Phase-08-memory-engine/04-extraction-and-evaluation.md)), personal path: `IN_PROGRESS`. Steps 1–4 are merged (PRs #24–#27; `main` @ `b386d90`). Step 5 is implemented and tested, uncommitted on `feat/phase-8-4-candidates`. 8.1, 8.2 and 8.3 are `VERIFIED` and merged.
-- **Next approved action:** owner review of 8.4 step 5; commit and PR only with approval; then step 6, starting with its open questions.
+- **Subphase:** 8.4 — Extraction and Evaluation ([plan](../implementation-plans/Phase-08-memory-engine/04-extraction-and-evaluation.md)), personal path: `IN_PROGRESS`. Steps 1–5 are merged (PRs #24–#28; `main` @ `5386654`). Step 6 is implemented and tested, uncommitted on `feat/phase-8-4-acceptance`; the [acceptance review](PHASE-8-4-ACCEPTANCE-REVIEW.md) finds every personal-path criterion met. 8.1, 8.2 and 8.3 are `VERIFIED` and merged.
+- **Next approved action:** owner review of 8.4 step 6; commit and PR only with approval; after the merge, repeat the checks on `main` and mark 8.4 `VERIFIED` (personal path). 8.5 needs separate approval.
 - **Decision review:** [PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) analyses all 15 open decisions, with a deep review of the Phase 8.2 blockers.
 
 ## Prerequisites before Phase 8.2
@@ -49,8 +49,8 @@ Approved with 8.4 ([7.1 §25](../technical-decisions/01-baseline-technology-stac
 | 2 | **Relevance gate** (6.2.2): `PROCESS` / `DEFER` / `REJECT` with reason codes; protection rules | **Settled 2026-11-12** (7.1 §25.6): per-sentence decisions rolled up; `pm_relevance_assessment` (5.4 §17); weighted score over five optional signals plus rules; spaCy added. **Merged (PR #25)** |
 | 3 | **Atomic fact extraction** (6.2.3): segmentation, speaker attribution, statement classification, negation, conditions, time and quantities | **Settled 2026-11-12** (7.1 §25.7): in-memory proposals stored as candidates in step 5 (5.4 §18); dependency-parse rules; first-person references only; deductive confidence. **Merged (PR #26)** |
 | 4 | **Evaluation and classification** (6.2.4–6.2.5): independent importance and confidence; explicit, inferred or unresolved | **Settled 2026-11-12** (7.1 §25.8): rule tables; freshness classes without decay; explicit/unresolved origin (inferred supported, not generated); outcome policy without `defer`. **Merged (PR #27)** |
-| 5 | **Candidate generation** (6.2.6): validation, persistence with provenance and evaluation history, category assignment, handoff to resolution (8.6) | **Settled 2026-11-22** (7.1 §25.9): new candidate columns `categories` and `evaluation_metadata` plus the event's `outcome_summary` (migration `0011`; 5.4 §20); rule-based multi-label categories; one `personal_resolution` outbox message per source; rejected proposals counted, never stored. **Implemented and tested; uncommitted** |
-| 6 | **Observability and acceptance:** extraction events and metrics, dataset evaluation, the acceptance review against plan 8.4 §16 (personal path) | Quality thresholds for the dataset evaluation |
+| 5 | **Candidate generation** (6.2.6): validation, persistence with provenance and evaluation history, category assignment, handoff to resolution (8.6) | **Settled 2026-11-22** (7.1 §25.9): new candidate columns `categories` and `evaluation_metadata` plus the event's `outcome_summary` (migration `0011`; 5.4 §20); rule-based multi-label categories; one `personal_resolution` outbox message per source; rejected proposals counted, never stored. **Merged (PR #28)** |
+| 6 | **Observability and acceptance:** extraction events and metrics, dataset evaluation, the acceptance review against plan 8.4 §16 (personal path) | **Settled 2026-11-22** (7.1 §25.10): 0.85 floors kept; end-to-end set gated at precision ≥ 0.80, recall ≥ 0.70 (owner-reviewed labels; first run 0.962 / 0.926); per-run metrics; `VERIFIED` for the personal path. **Implemented and tested; uncommitted** ([review](PHASE-8-4-ACCEPTANCE-REVIEW.md)) |
 
 ## Approved 8.1 decisions (implemented)
 
@@ -97,44 +97,47 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 *Overwrite this section at the end of every session that changes the repository.*
 
 - **Date:** 2026-11-22
-- **Objective:** Phase 8.4 step 5, candidate generation and validation (6.2.6).
-  - Branch `feat/phase-8-4-candidates` from `main` @ `b386d90` (steps 1–4 merged, PRs #24–#27). Uncommitted.
-- **Decisions made (owner, 2026-11-22; 7.1 §25.9, 5.4 §20):**
-  - new candidate columns `categories` and `evaluation_metadata`, plus `outcome_summary` on the source event (migration `0011`);
-  - rule-based multi-label categories;
-  - one `personal_resolution` outbox message per source (queue `memory.personal.resolution`);
-  - rejected proposals counted by reason code, never stored.
+- **Objective:** Phase 8.4 step 6: observability, the end-to-end quality set and the personal-path acceptance review.
+  - Branch `feat/phase-8-4-acceptance` from `main` @ `5386654` (steps 1–5 merged, PRs #24–#28). Uncommitted.
+- **Decisions made (owner, 2026-11-22; 7.1 §25.10):**
+  - the 0.85 per-dataset floors stay as regression gates;
+  - a new end-to-end set is gated at fact precision ≥ 0.80 and recall ≥ 0.70 (uncalibrated);
+  - its labels were drafted, then owner-reviewed before the first run (approved as drafted);
+  - metrics are recorded per run;
+  - 8.4 is `VERIFIED` for the personal path after the review, with the document path deferred (D1).
 - **Work completed:**
-  - `personal/application/candidates.py`, a `CandidateGenerator` behind the `CandidateStage` port:
-    - categories come from evidence;
-    - validation covers ownership (reject), plus evidence, negation and condition (each sends the candidate to review);
-    - each candidate is inserted as `candidate` and gets one recorded evaluation (to validated or needs_review; `defer` keeps it `candidate`);
-    - the run gets a count summary;
-    - the source ends partially_extracted, extracted, or rejected with `NO_FACT_PROPOSALS` / `ALL_PROPOSALS_REJECTED`.
-  - `ExtractionService`: the same atomic transaction now records evaluations, adds the resolution handoff (extraction correlation id, `memory_engine.extraction` component) and stores the summary on the final event. Reports carry `validated`.
-  - Relay subject `_ExtractedSourceSubject`: a handoff is published only while the source is extracted and still has a validated candidate. The source does not move.
-  - Docs:
-    - 7.1 §25.9 and 5.4 §20;
-    - coding-standards patterns for step 5;
-    - KNOWN_CONSTRAINTS limitations;
-    - the README and status files.
+  - Five extraction metric names in `observability/metrics.py`. `ExtractionService` takes `metrics` (no-op default) and records, per handled message:
+    - runs and their duration (input, outcome);
+    - codes (outcome, reason);
+    - candidates (kind);
+    - rejected proposals (reason).
+  - The `extraction.<outcome>` event now carries `duration_ms` and `outcome_summary`. A telemetry failure never changes the outcome.
+  - End-to-end set `quality/data/end_to_end/v1.jsonl` (30 cases, 27 facts) and `test_end_to_end_quality.py`. The misses are recorded in the test (`KNOWN_EXTRAS`).
+  - `unit/test_dependency_policy.py`: no generative LLM package in `uv.lock`.
+  - [PHASE-8-4-ACCEPTANCE-REVIEW.md](PHASE-8-4-ACCEPTANCE-REVIEW.md); 7.1 §25.10; step 6 coding-standards patterns; KNOWN_CONSTRAINTS; README; status files.
 - **Tests and results:**
-  - `uv sync --locked` ok; ruff check and format clean (198 files); mypy strict clean (120 files);
-  - `uv run pytest --cov` with all three services: **952 passed** (732 unit and quality, 220 integration), 98% coverage, 3 green runs;
-  - the services-stopped run was not repeated;
-  - candidate dataset v1: 22 of 22. The first run scored 21 of 22, and cand-019 led to a rule change (project words in attributes), so that case is not independent.
-  - Note for this machine: run uv with `UV_PROJECT_ENVIRONMENT` set to a short path. The repo `.venv` path is too long for spaCy's DLLs.
-- **Implementation status:** 8.4 `IN_PROGRESS`; steps 1–4 merged; step 5 tested, uncommitted; step 6 to do.
+  - `uv sync --locked` ok; ruff and format clean (200 files); mypy strict clean (122 files);
+  - `uv run pytest --cov` with all three services: **962 passed** (739 unit and quality, 223 integration), 98% coverage, 3 green runs;
+  - services stopped: 740 passed, 222 skipped;
+  - end-to-end set, first run with no rule changed afterwards: precision 0.962 and recall 0.926. The misses:
+    - e2e-012: no candidate;
+    - e2e-022: an extra candidate;
+    - e2e-026: a granularity miss;
+    - e2e-005: a status difference.
+- **Implementation status:** 8.4 `IN_PROGRESS`. Steps 1–5 are merged; step 6 is tested and uncommitted. The acceptance review finds every in-scope criterion met.
 - **Unresolved:**
-  - step 6: observability (extraction events and metrics), held-out quality sets with thresholds, and the acceptance review against plan 8.4 §16;
-  - no resolution consumer until 8.6; no inference generator; no production pipeline assembled or deployed; deferred sources are not re-queued; no reconciliation sweep;
+  - R1: merge step 6;
+  - R2: repeat the checks on the merged `main`, then mark 8.4 `VERIFIED` (personal path);
+  - D1: the document-derived path after 8.12 and Decision 6;
+  - L1–L5 in the review: no inference generator; no resolution consumer or deployed pipeline; uncalibrated thresholds; end-to-end misses; English only and no re-queue of deferred sources;
   - from 8.3: no dead-letter queue or outbox cleanup; no encryption at rest in the development store; no malware scanning; test broker without TLS;
-  - Decisions 6, 12 and 15; the embedding model (Decision 3); ratio-label wording;
-  - on this machine: uv not on PATH, Docker Desktop must be started by hand after a reboot, the SeaweedFS image once needed a re-pull, and Python defaults to cp1252 (script doc edits with UTF-8).
+  - Decisions 6, 12 and 15; the embedding model (Decision 3).
+  - On this machine:
+    - Docker Desktop was not running at the end of this session; start it by hand before R2;
+    - uv is not on PATH;
+    - run uv with `UV_PROJECT_ENVIRONMENT` set to a short path, because spaCy's DLLs fail from the repo `.venv`.
 - **Next action:**
-  1. Owner review of step 5; commit, PR and merge only with approval.
-  2. Then step 6 (observability, dataset evaluation, acceptance review), starting with its open question: the quality thresholds.
-- **Read next session:**
-  - `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md` and this file;
-  - plan 8.4 §15–§16 with its amendment; 7.1 §25 and §24.4 (8.3 observability pattern); 5.4 §16–§20;
-  - `personal/application/{extraction,candidates}.py` and `observability/`.
+  1. Owner review of step 6; commit, PR and merge only with approval.
+  2. With Docker Desktop started, repeat the checks on `main` and record 8.4 `VERIFIED` (personal path).
+  3. 8.5 (entity and relationship management) needs separate approval.
+- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, [PHASE-8-4-ACCEPTANCE-REVIEW.md](PHASE-8-4-ACCEPTANCE-REVIEW.md), 7.1 §25; for 8.5, its plan in `docs/implementation-plans/Phase-08-memory-engine/`.

@@ -35,6 +35,7 @@ for the source to the outbox (consumer: plan 8.6).
 
 import json
 import logging
+import time
 import uuid
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -56,6 +57,7 @@ from memory_engine.domain.vocabulary import (
     InstructionType,
     ProcessingEventType,
     SourceProcessingStatus,
+    SourceType,
 )
 from memory_engine.exceptions import (
     ConcurrencyConflictError,
@@ -64,6 +66,15 @@ from memory_engine.exceptions import (
     PersistenceError,
 )
 from memory_engine.observability import get_logger
+from memory_engine.observability.metrics import (
+    EXTRACTION_CANDIDATES,
+    EXTRACTION_DURATION,
+    EXTRACTION_REASONS,
+    EXTRACTION_REJECTED_PROPOSALS,
+    EXTRACTION_RUNS,
+    NO_METRICS,
+    Metrics,
+)
 from memory_engine.personal.application.language import LanguagePolicy, assess
 from memory_engine.personal.application.ports import PersonalUnitOfWorkFactory
 from memory_engine.personal.domain import (
@@ -81,6 +92,9 @@ EXTRACTION_FAILED = "EXTRACTION_FAILED"
 TRANSIENT_ERRORS: tuple[type[Exception], ...] = (PersistenceError, ObjectStorageError)
 
 _logger = get_logger("extraction")
+
+# outcome_summary counters reported as candidates by status (kind label).
+_CANDIDATE_COUNTERS = frozenset({"validated", "needs_review", "deferred"})
 
 _PIPELINE_STATUSES = frozenset(
     {
@@ -177,6 +191,15 @@ class ExtractionReport:
     validated: int = 0
     reason_code: str | None = None
     error_code: str | None = None
+    # The run's counts and rejection codes (step 5); never content.
+    outcome_summary: Mapping[str, int] | None = None
+
+    @property
+    def metric_outcome(self) -> str:
+        """The final state for a completed run, otherwise why nothing was done."""
+        if self.outcome is ExtractionOutcome.COMPLETED and self.status is not None:
+            return self.status.value
+        return self.outcome.value
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -187,6 +210,9 @@ class ExtractionReport:
             "validated": self.validated,
             "reason_code": self.reason_code,
             "error_code": self.error_code,
+            "outcome_summary": (
+                None if self.outcome_summary is None else dict(self.outcome_summary)
+            ),
         }
 
 
@@ -255,38 +281,48 @@ class ExtractionService:
         language: LanguagePolicy,
         *,
         clock: Callable[[], datetime] = _utc_now,
+        metrics: Metrics = NO_METRICS,
     ) -> None:
         self._uow_factory = uow_factory
         self._storage = storage
         self._pipeline = pipeline
         self._language = language
         self._clock = clock
+        self._metrics = metrics
 
     def handle(self, message: Mapping[str, Any], *, attempt: int = 1) -> ExtractionReport:
         """Process one handoff. Transient infrastructure errors propagate (retry)."""
+        started = time.perf_counter()
         envelope = _envelope(message)
         if envelope is None:
-            return _report(ExtractionReport(outcome=ExtractionOutcome.INVALID_MESSAGE))
+            return self._report(
+                ExtractionReport(outcome=ExtractionOutcome.INVALID_MESSAGE), started
+            )
         scope = OwnerScope(envelope.user_id)
         source_id = envelope.task_id
         with self._uow_factory() as uow:
             source = uow.sources.get(scope, source_id)
         if source is None:
-            return _report(ExtractionReport(outcome=ExtractionOutcome.SOURCE_MISSING), scope)
+            report = ExtractionReport(outcome=ExtractionOutcome.SOURCE_MISSING)
+            return self._report(report, started, scope)
         if source.instruction_type is InstructionType.FORGET:
-            return _report(_refused(source), scope)
+            return self._report(_refused(source), started, scope, source)
         if source.processing_status is not SourceProcessingStatus.QUEUED:
-            return _report(_already(source), scope)
+            return self._report(_already(source), started, scope, source)
         outcome = self._run(scope, source)
-        return self._complete(scope, source, outcome, attempt, envelope.correlation_id)
+        report = self._complete(scope, source, outcome, attempt, envelope.correlation_id)
+        return self._report(report, started, scope, source)
 
     def mark_failed(
         self, message: Mapping[str, Any], error_code: str, *, attempt: int
     ) -> ExtractionReport:
         """Retries ran out: ``queued`` -> ``processing_failed`` (visible, reprocessable)."""
+        started = time.perf_counter()
         envelope = _envelope(message)
         if envelope is None:
-            return _report(ExtractionReport(outcome=ExtractionOutcome.INVALID_MESSAGE))
+            return self._report(
+                ExtractionReport(outcome=ExtractionOutcome.INVALID_MESSAGE), started
+            )
         scope = OwnerScope(envelope.user_id)
         try:
             with self._uow_factory() as uow:
@@ -302,19 +338,21 @@ class ExtractionService:
                     ),
                 )
         except ConcurrencyConflictError:
-            return _report(
+            return self._report(
                 ExtractionReport(
                     outcome=ExtractionOutcome.ALREADY_HANDLED, source_id=envelope.task_id
                 ),
+                started,
                 scope,
             )
-        return _report(
+        return self._report(
             ExtractionReport(
                 outcome=ExtractionOutcome.COMPLETED,
                 source_id=envelope.task_id,
                 status=SourceProcessingStatus.PROCESSING_FAILED,
                 error_code=error_code,
             ),
+            started,
             scope,
         )
 
@@ -431,19 +469,36 @@ class ExtractionService:
                     ),
                 )
         except ConcurrencyConflictError:  # another delivery finished it first
-            return _report(_already(source), scope)
-        return _report(
-            ExtractionReport(
-                outcome=ExtractionOutcome.COMPLETED,
-                source_id=source.id,
-                status=outcome.status,
-                candidates=len(outcome.candidates),
-                validated=outcome.validated,
-                reason_code=outcome.reason_code,
-                error_code=outcome.error_code,
-            ),
-            scope,
+            return _already(source)
+        return ExtractionReport(
+            outcome=ExtractionOutcome.COMPLETED,
+            source_id=source.id,
+            status=outcome.status,
+            candidates=len(outcome.candidates),
+            validated=outcome.validated,
+            reason_code=outcome.reason_code,
+            error_code=outcome.error_code,
+            outcome_summary=outcome.outcome_summary,
         )
+
+    def _report(
+        self,
+        report: ExtractionReport,
+        started: float,
+        scope: OwnerScope | None = None,
+        source: MemorySource | None = None,
+    ) -> ExtractionReport:
+        """Record the metrics and log one event for a handled message."""
+        elapsed = time.perf_counter() - started
+        try:
+            _record(self._metrics, report, elapsed, None if source is None else source.source_type)
+        except Exception as err:
+            # Telemetry must never change an extraction's outcome (8.3 step 5 pattern).
+            _logger.warning(
+                "extraction telemetry failed",
+                extra={"event_type": "observability.failure", "error_type": type(err).__name__},
+            )
+        return _log(report, scope, elapsed)
 
     def _resolution(
         self,
@@ -525,16 +580,34 @@ def _refused(source: MemorySource) -> ExtractionReport:
     )
 
 
-def _report(report: ExtractionReport, scope: OwnerScope | None = None) -> ExtractionReport:
-    # Identifiers, states and codes only; never the content (7.7 section 18).
-    if report.outcome is ExtractionOutcome.COMPLETED and report.status is not None:
-        event_type = f"extraction.{report.status.value}"
-    else:
-        event_type = f"extraction.{report.outcome.value}"
+def _record(
+    metrics: Metrics, report: ExtractionReport, elapsed: float, input_type: SourceType | None
+) -> None:
+    """Bounded labels only: states, codes and candidate statuses, never identifiers."""
+    outcome = report.metric_outcome
+    labels = {"outcome": outcome}
+    if input_type is not None:
+        labels["input"] = input_type.value
+    metrics.increment(EXTRACTION_RUNS, labels)
+    metrics.observe(EXTRACTION_DURATION, elapsed, labels)
+    code = report.reason_code or report.error_code
+    if code is not None:
+        metrics.increment(EXTRACTION_REASONS, {"outcome": outcome, "reason": code})
+    for key, count in (report.outcome_summary or {}).items():
+        name, _, reason = key.partition(":")
+        if count and name in _CANDIDATE_COUNTERS and not reason:
+            metrics.increment(EXTRACTION_CANDIDATES, {"kind": name}, count)
+        elif count and name == "rejected" and reason:
+            metrics.increment(EXTRACTION_REJECTED_PROPOSALS, {"reason": reason}, count)
+
+
+def _log(report: ExtractionReport, scope: OwnerScope | None, elapsed: float) -> ExtractionReport:
+    # Identifiers, states, codes and counts only; never the content (7.7 section 18).
     warn = report.status in _FAILURE_STATUSES or report.outcome in _UNUSUAL
     extra: dict[str, Any] = {
-        "event_type": event_type,
+        "event_type": f"extraction.{report.metric_outcome}",
         **{k: v for k, v in report.as_dict().items() if v is not None},
+        "duration_ms": round(elapsed * 1000, 3),
     }
     if scope is not None:
         extra["user_scope"] = str(scope.owner_id)
