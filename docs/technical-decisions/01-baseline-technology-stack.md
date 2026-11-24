@@ -963,3 +963,64 @@ Each step settles its own open questions with the owner at its start.
   - `memory_extraction_rejected_proposals_total` (reason).
   - The `extraction.<outcome>` event also carries the duration and the run summary.
 - **Status:** after a successful personal-path acceptance review, 8.4 is `VERIFIED` for the personal path. The document-derived path (criteria 7, 8 and 10, and its tests) is an owner-accepted deferral to after plan 8.12.
+
+---
+
+## 26. Approved Phase 8.5 Decisions
+
+**Status:** Phase 8.5 (Entity and Relationship Management, [plan](../implementation-plans/Phase-08-memory-engine/05-entity-and-relationship-management.md)) approved by the project owner on 2026-11-24, with these decisions.
+
+### 26.1 Where entity identification runs
+
+- Entity identification is the **first stage of the resolution worker**: the consumer of `memory.personal.resolution`, whose handoff 8.4 already writes for every source with validated candidates (§25.9).
+- 8.6 later adds memory resolution after this stage. No new queue or outbox kind is created.
+- Processing is idempotent per candidate. This follows 6.3.4, which treats entity resolution as part of memory resolution.
+
+### 26.2 Memory-level links
+
+- The existing `pm_memory_entity` and `pm_memory_relationship` tables reference Atomic Memories, which only exist once 8.6 promotes candidates.
+- 8.5 therefore links entities to candidates through mentions (`pm_entity_mention.candidate_id`).
+- 8.5 also builds the memory-association and memory-relationship services, tested on synthetic memories, for 8.6 to call on promotion.
+- There is no schema change for memory links.
+
+### 26.3 Identity and relationship rule
+
+- **Entities:** only named mentions (proper nouns or NER names) create or match entities. Matching uses the exact normalized name or alias with a compatible type:
+  - one match: `matched_existing`;
+  - no match: `created_new`;
+  - several matches: `ambiguous`, left for 8.6.
+- **Descriptive references** ("my brother", "the company") stay unresolved mentions without an entity.
+- **No fuzzy matching.** Every decision is recorded in `pm_entity_resolution` with its evidence.
+- **Relationships:** an entity relationship is stored only when one fact links two named entities with a predicate that maps to an approved type (5.4 Phase 8.2 amendment §3). Co-occurrence is never a relationship.
+- **The user is not an entity.** Facts about the user stay in the memory itself.
+
+### 26.4 Phase 8.5 steps
+
+1. **Entity identification and classification:** named mentions in validated candidates, with offsets and type (approved `EntityType` vocabulary; `unknown` when unsure), through the existing `SentenceAnalyzer` port. Includes a quality dataset.
+2. **Registry, aliases and matching:** entity creation, alias registration and lookup, the exact-match policy, mention persistence and resolution history.
+3. **Resolution worker, stage 1:** the Celery consumer for `memory.personal.resolution`, with envelope validation, idempotency, failure and retry handling.
+4. **Entity relationships:** explicit predicate mapping, provenance and temporal context.
+5. **Memory association and memory relationship services** for 8.6, tested on synthetic memories.
+6. **Observability, quality evaluation and the acceptance review** (plan 8.5 §12–§13).
+
+Each step settles its own open questions with the owner at its start.
+
+### 26.5 Phase 8.5 step 1 — Entity identification and classification
+
+**Status:** Approved by the project owner on 2026-11-24, at the start of 8.5 step 1 (all four recommended options).
+
+- **Detection and type:**
+  - Names are detected from NER spans plus proper-noun runs (dates, numbers and titles are not names).
+  - The type comes from the fact's own wording first, for example:
+    - "works at / joined X" gives organization;
+    - "lives in / moved to X" gives place;
+    - "building / working on X" gives project;
+    - "uses / switched to X" gives technology;
+    - "bought X" gives product;
+    - "attending X" gives event;
+    - "meeting with X" gives person.
+  - The spaCy NER label is used only where it agrees with the wording. Otherwise the type is `unknown`: world knowledge is not evidence.
+  - The probe on 2026-11-24 showed why: `en_core_web_sm` tags PostgreSQL and Flutter as places and Docker as a person, and misses Python. No new model or dependency is added.
+- **Text analysed:** the candidate's stored proposition. Offsets are relative to it, and each mention keeps the evidence location (segment, sentence). There are no object-storage reads, and first-person words are never mentions.
+- **Candidates processed:** `validated` only (plan 8.5 §5). Needs-review candidates get entities once review validates them.
+- **Quality dataset:** labels are drafted, then reviewed by the owner before the identifier runs against them (as in 8.4 step 6).

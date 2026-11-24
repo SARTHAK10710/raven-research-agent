@@ -27,6 +27,7 @@ from memory_engine.personal.domain.evaluation import (
     ProposalEvaluation,
 )
 from memory_engine.personal.domain.facts import FactProposal
+from memory_engine.personal.domain.identification import IdentifiedMention, TypeBasis
 from memory_engine.personal.domain.lifecycle import (
     CandidateEvaluation,
     CorrectionRequest,
@@ -65,6 +66,7 @@ __all__ = [
     "EpisodeMembership",
     "EvaluatedProposal",
     "FactProposal",
+    "IdentifiedMention",
     "MemoryCandidate",
     "MemoryEmbedding",
     "MemoryEntityAssociation",
@@ -79,6 +81,7 @@ __all__ = [
     "ProvenanceRecord",
     "RelevanceAssessment",
     "SourceProcessingEvent",
+    "TypeBasis",
     "UnitAssessment",
     "ordered_pair",
 ]

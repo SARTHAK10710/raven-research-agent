@@ -3,8 +3,8 @@
 ## Current position
 
 - **Phase:** 8 — Memory Engine Implementation
-- **Subphase:** 8.4 — Extraction and Evaluation ([plan](../implementation-plans/Phase-08-memory-engine/04-extraction-and-evaluation.md)), personal path: `IN_PROGRESS`. Steps 1–5 are merged (PRs #24–#28; `main` @ `5386654`). Step 6 is implemented and tested, uncommitted on `feat/phase-8-4-acceptance`; the [acceptance review](PHASE-8-4-ACCEPTANCE-REVIEW.md) finds every personal-path criterion met. 8.1, 8.2 and 8.3 are `VERIFIED` and merged.
-- **Next approved action:** owner review of 8.4 step 6; commit and PR only with approval; after the merge, repeat the checks on `main` and mark 8.4 `VERIFIED` (personal path). 8.5 needs separate approval.
+- **Subphase:** 8.4 — Extraction and Evaluation ([plan](../implementation-plans/Phase-08-memory-engine/04-extraction-and-evaluation.md)), personal path: **`VERIFIED` 2026-11-24**. All six steps are merged (PRs #24–#29; `main` @ `71adeb9`); see the [acceptance review](PHASE-8-4-ACCEPTANCE-REVIEW.md). The document-derived path follows 8.12 (D1). 8.1, 8.2 and 8.3 are `VERIFIED` and merged.
+- **Next action:** Phase 8.5 (Entity and Relationship Management, [plan](../implementation-plans/Phase-08-memory-engine/05-entity-and-relationship-management.md)) was approved on 2026-11-24 ([7.1 §26](../technical-decisions/01-baseline-technology-stack.md)); step 1 (entity identification) starts with its open questions.
 - **Decision review:** [PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md](PHASE-8-2-ARCHITECTURE-DECISION-REVIEW.md) analyses all 15 open decisions, with a deep review of the Phase 8.2 blockers.
 
 ## Prerequisites before Phase 8.2
@@ -50,7 +50,20 @@ Approved with 8.4 ([7.1 §25](../technical-decisions/01-baseline-technology-stac
 | 3 | **Atomic fact extraction** (6.2.3): segmentation, speaker attribution, statement classification, negation, conditions, time and quantities | **Settled 2026-11-12** (7.1 §25.7): in-memory proposals stored as candidates in step 5 (5.4 §18); dependency-parse rules; first-person references only; deductive confidence. **Merged (PR #26)** |
 | 4 | **Evaluation and classification** (6.2.4–6.2.5): independent importance and confidence; explicit, inferred or unresolved | **Settled 2026-11-12** (7.1 §25.8): rule tables; freshness classes without decay; explicit/unresolved origin (inferred supported, not generated); outcome policy without `defer`. **Merged (PR #27)** |
 | 5 | **Candidate generation** (6.2.6): validation, persistence with provenance and evaluation history, category assignment, handoff to resolution (8.6) | **Settled 2026-11-22** (7.1 §25.9): new candidate columns `categories` and `evaluation_metadata` plus the event's `outcome_summary` (migration `0011`; 5.4 §20); rule-based multi-label categories; one `personal_resolution` outbox message per source; rejected proposals counted, never stored. **Merged (PR #28)** |
-| 6 | **Observability and acceptance:** extraction events and metrics, dataset evaluation, the acceptance review against plan 8.4 §16 (personal path) | **Settled 2026-11-22** (7.1 §25.10): 0.85 floors kept; end-to-end set gated at precision ≥ 0.80, recall ≥ 0.70 (owner-reviewed labels; first run 0.962 / 0.926); per-run metrics; `VERIFIED` for the personal path. **Implemented and tested; uncommitted** ([review](PHASE-8-4-ACCEPTANCE-REVIEW.md)) |
+| 6 | **Observability and acceptance:** extraction events and metrics, dataset evaluation, the acceptance review against plan 8.4 §16 (personal path) | **Settled 2026-11-22** (7.1 §25.10): 0.85 floors kept; end-to-end set gated at precision ≥ 0.80, recall ≥ 0.70 (owner-reviewed labels; first run 0.962 / 0.926); per-run metrics; `VERIFIED` for the personal path. **Merged (PR #29)**; 8.4 `VERIFIED` (personal path) ([review](PHASE-8-4-ACCEPTANCE-REVIEW.md)) |
+
+## Phase 8.5 steps (approved 2026-11-24)
+
+Approved with 8.5 ([7.1 §26](../technical-decisions/01-baseline-technology-stack.md)): entity identification is stage 1 of the resolution worker on `memory.personal.resolution`; entities link to candidates through mentions, and the memory-level services are built for 8.6; named mentions only, exact matching, explicit relationships, the user is not an entity.
+
+| Step | Scope | Open questions to settle at the start of the step |
+|---|---|---|
+| 1 | **Entity identification and classification:** named mentions in validated candidates, offsets, `EntityType` (with `unknown`), through the `SentenceAnalyzer` port; quality dataset | **Settled 2026-11-24** (7.1 §26.5): names from NER spans plus proper nouns; type from the fact's wording first, NER only where it agrees, else `unknown`; the proposition is analysed; validated candidates only; labels owner-reviewed before the first run (approved as drafted). **Implemented and tested; uncommitted** (first run 26/30, accuracy 0.867) |
+| 2 | **Registry, aliases and matching:** creation, alias registration and lookup, exact-match policy with type compatibility, mention persistence, resolution history | Name normalization rules; when a new name becomes an alias; type compatibility (for example organization and institution) |
+| 3 | **Resolution worker, stage 1:** Celery consumer, envelope validation, idempotency, failures and retries | Where per-source progress is recorded; what the stage does with a source whose candidates changed state |
+| 4 | **Entity relationships:** predicate-to-type mapping, provenance, temporal context | The predicate mapping table; explicit versus inferred origin |
+| 5 | **Memory association and memory relationship services** for 8.6 | Service contracts; which relationship types 8.5 may create |
+| 6 | **Observability, quality evaluation and acceptance review** (plan 8.5 §12–§13) | Quality thresholds |
 
 ## Approved 8.1 decisions (implemented)
 
@@ -96,48 +109,44 @@ From the Memory Engine implementation-readiness review (2026-11-11). ⚑ = needs
 
 *Overwrite this section at the end of every session that changes the repository.*
 
-- **Date:** 2026-11-22
-- **Objective:** Phase 8.4 step 6: observability, the end-to-end quality set and the personal-path acceptance review.
-  - Branch `feat/phase-8-4-acceptance` from `main` @ `5386654` (steps 1–5 merged, PRs #24–#28). Uncommitted.
-- **Decisions made (owner, 2026-11-22; 7.1 §25.10):**
-  - the 0.85 per-dataset floors stay as regression gates;
-  - a new end-to-end set is gated at fact precision ≥ 0.80 and recall ≥ 0.70 (uncalibrated);
-  - its labels were drafted, then owner-reviewed before the first run (approved as drafted);
-  - metrics are recorded per run;
-  - 8.4 is `VERIFIED` for the personal path after the review, with the document path deferred (D1).
+- **Date:** 2026-11-24
+- **Objective:** close 8.4 (personal path) and start Phase 8.5 with step 1 (entity identification and classification).
+  - Branch `docs/phase-8-4-verified` from `main` @ `71adeb9`. Uncommitted.
+  - The branch name predates the step 1 code it now also holds; rename it or split it at commit time if preferred.
 - **Work completed:**
-  - Five extraction metric names in `observability/metrics.py`. `ExtractionService` takes `metrics` (no-op default) and records, per handled message:
-    - runs and their duration (input, outcome);
-    - codes (outcome, reason);
-    - candidates (kind);
-    - rejected proposals (reason).
-  - The `extraction.<outcome>` event now carries `duration_ms` and `outcome_summary`. A telemetry failure never changes the outcome.
-  - End-to-end set `quality/data/end_to_end/v1.jsonl` (30 cases, 27 facts) and `test_end_to_end_quality.py`. The misses are recorded in the test (`KNOWN_EXTRAS`).
-  - `unit/test_dependency_policy.py`: no generative LLM package in `uv.lock`.
-  - [PHASE-8-4-ACCEPTANCE-REVIEW.md](PHASE-8-4-ACCEPTANCE-REVIEW.md); 7.1 §25.10; step 6 coding-standards patterns; KNOWN_CONSTRAINTS; README; status files.
+  - **8.4 R2 on `main` @ `71adeb9`:** 962 passed (3 runs), Ruff and mypy clean. 8.4 is recorded as `VERIFIED` for the personal path (review, status files, `CLAUDE.md`).
+  - **8.5 approved (7.1 §26).** Entity identification is stage 1 of the resolution worker. Entities link to candidates through mentions, and the memory-level services are built for 8.6. Named mentions only, exact matching, explicit relationships; the user is not an entity.
+  - **Step 1 decisions (7.1 §26.5).** Owner-approved entity labels (`quality/data/entities/v1.jsonl`, 30 cases).
+  - **Step 1 code:**
+    - `personal/domain/identification.py`: `IdentifiedMention` and `TypeBasis`, with invariants.
+    - `personal/application/identification.py`: `EntityIdentifier`.
+      - Name runs come from proper nouns and NER content words, with "of" and a trailing number; dates, calendar words, titles and "the user" are excluded.
+      - Types come from context rules (governing verb or preposition, through conjuncts, and "with" back to the verb), then name keywords, then named relations.
+      - NER is recorded with agreement but never decides alone; validated candidates only; offsets are rebuilt from tokens.
+  - **Tests:** `unit/test_entity_identification.py` (23, fake analyzer) and `quality/test_entity_quality.py`.
+  - **Docs:** 7.1 §26.5, step 1 coding-standards patterns, KNOWN_CONSTRAINTS, status files.
 - **Tests and results:**
-  - `uv sync --locked` ok; ruff and format clean (200 files); mypy strict clean (122 files);
-  - `uv run pytest --cov` with all three services: **962 passed** (739 unit and quality, 223 integration), 98% coverage, 3 green runs;
-  - services stopped: 740 passed, 222 skipped;
-  - end-to-end set, first run with no rule changed afterwards: precision 0.962 and recall 0.926. The misses:
-    - e2e-012: no candidate;
-    - e2e-022: an extra candidate;
-    - e2e-026: a granularity miss;
-    - e2e-005: a status difference.
-- **Implementation status:** 8.4 `IN_PROGRESS`. Steps 1–5 are merged; step 6 is tested and uncommitted. The acceptance review finds every in-scope criterion met.
+  - `uv sync --locked` ok; Ruff check and format clean (205 files); mypy strict clean (126 files);
+  - `uv run pytest --cov` with all three services: **987 passed** (764 unit and quality, 223 integration), 98% coverage, 3 green runs.
+  - **Entity dataset v1, first and only run:** 26/30 (accuracy 0.867, floor 0.85), mention precision 0.938, recall 0.882. Misses are recorded, no rule changed afterwards:
+    - ent-003: Raven not found;
+    - ent-015: Sarah `unknown`;
+    - ent-016: FastAPI not found;
+    - ent-024: AWS `unknown`.
+- **Implementation status:** 8.4 `VERIFIED` (personal path). 8.5 `IN_PROGRESS`: step 1 tested and uncommitted; steps 2–6 to do.
 - **Unresolved:**
-  - R1: merge step 6;
-  - R2: repeat the checks on the merged `main`, then mark 8.4 `VERIFIED` (personal path);
-  - D1: the document-derived path after 8.12 and Decision 6;
-  - L1–L5 in the review: no inference generator; no resolution consumer or deployed pipeline; uncalibrated thresholds; end-to-end misses; English only and no re-queue of deferred sources;
-  - from 8.3: no dead-letter queue or outbox cleanup; no encryption at rest in the development store; no malware scanning; test broker without TLS;
-  - Decisions 6, 12 and 15; the embedding model (Decision 3).
+  - commit and PR (needs approval);
+  - step 2 open questions: name normalization, when a new name becomes an alias, type compatibility for matching;
+  - 8.4 L1–L5 and D1; Decisions 3, 6, 12 and 15.
   - On this machine:
-    - Docker Desktop was not running at the end of this session; start it by hand before R2;
-    - uv is not on PATH;
-    - run uv with `UV_PROJECT_ENVIRONMENT` set to a short path, because spaCy's DLLs fail from the repo `.venv`.
+    - start Docker Desktop after a reboot; the test broker may need a second `docker start` (`.erlang.cookie` `eacces` race);
+    - Windows can reserve ports 55432 and 55672;
+    - the `%TEMP%` short-path virtualenv loses its `py.typed` files after a reboot; repair it with `uv sync --locked --reinstall`.
 - **Next action:**
-  1. Owner review of step 6; commit, PR and merge only with approval.
-  2. With Docker Desktop started, repeat the checks on `main` and record 8.4 `VERIFIED` (personal path).
-  3. 8.5 (entity and relationship management) needs separate approval.
-- **Read next session:** `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md`, this file, [PHASE-8-4-ACCEPTANCE-REVIEW.md](PHASE-8-4-ACCEPTANCE-REVIEW.md), 7.1 §25; for 8.5, its plan in `docs/implementation-plans/Phase-08-memory-engine/`.
+  1. Owner review of the 8.4 `VERIFIED` record, the 8.5 approval docs and 8.5 step 1.
+  2. Commit and PR only with approval.
+  3. Then 8.5 step 2 (registry, aliases and matching), starting with its open questions.
+- **Read next session:**
+  - `CLAUDE.md`, `PROJECT_STATUS.md`, `KNOWN_CONSTRAINTS.md` and this file;
+  - plan 8.5 §4.3–§6 and §9; 7.1 §26; 5.4 §6 (entities) and its Phase 8.2 amendment §2–§3; algorithm 6.3.4;
+  - `persistence/personal/entity_{models,repositories}.py`, `personal/domain/{entities,identification}.py`, `personal/application/identification.py`.
