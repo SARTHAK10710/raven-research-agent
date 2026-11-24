@@ -21,6 +21,8 @@ The owner decided on 2026-11-22 (step 6) that 8.4 becomes **`VERIFIED` for the p
 - step 6 is merged (R1);
 - the checks pass on the merged `main` (R2; section 7).
 
+**Update (2026-11-24): 8.4 is `VERIFIED` for the personal path.** Step 6 is merged ([PR #29](https://github.com/SARTHAK10710/raven-research-agent/pull/29), `71adeb9`; R1), and the checks passed on that `main` (R2; section 7).
+
 ## 1. Checks run
 
 | Command | Result |
@@ -117,7 +119,7 @@ Evidence:
   - e2e-005: went to review for a pronoun.
 - **L5:** English only (G6). Deferred sources are not re-queued, and there is no reconciliation sweep.
 
-## 7. Items before `VERIFIED`
+## 7. Items before `VERIFIED` (resolved)
 
-- **R1:** merge step 6.
-- **R2:** repeat the checks on the merged `main`.
+- **R1:** merge step 6. Done: [PR #29](https://github.com/SARTHAK10710/raven-research-agent/pull/29), merge commit `71adeb9`.
+- **R2:** repeat the checks on the merged `main`. Done 2026-11-24 on `main` @ `71adeb9`: `uv sync --locked` ok; Ruff check and format clean; mypy strict clean (122 files); `uv run pytest --cov` with all three services **962 passed** (739 unit and quality, 223 integration), 98% coverage, 3 green runs.

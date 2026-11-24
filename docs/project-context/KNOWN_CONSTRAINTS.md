@@ -45,7 +45,12 @@ Not decided. Do not guess them or treat them as approved. Full list in [TECHNOLO
   - **No malware scanning**: no tool is approved, and the owner accepted the deferral on 2026-11-11. Content is never executed, DOCX macro parts are refused, and the parser (8.12) must treat files as hostile.
   - TXT must be UTF-8.
   - Upload limit: 25 MiB by default (configurable).
-- 8.4 acceptance (step 6, uncommitted; [review](PHASE-8-4-ACCEPTANCE-REVIEW.md)):
+- Entity identification (8.5 step 1, uncommitted):
+  - types come only from the fact's wording (a fixed rule table, name keywords, named relations); world knowledge is not used, so many real names stay `unknown` (for example products someone prefers);
+  - `en_core_web_sm` misses or mislabels many technology and product names; NER is recorded but never decides a type;
+  - entity dataset v1 (owner-reviewed labels), first run 26/30: Raven (ent-003) and FastAPI (ent-016) were not found; "meeting with" (ent-015) and "deploy on" (ent-024) did not match their rules;
+  - identification is not yet persisted or run by a worker (steps 2–3).
+- 8.4 acceptance (step 6, merged in PR #29; `VERIFIED` for the personal path; [review](PHASE-8-4-ACCEPTANCE-REVIEW.md)):
   - 8.4 is verified for the personal path only; the document-derived path (plan 8.4 §4.2, §10–§11, criteria 7, 8 and 10) is deferred to after 8.12 and Decision 6 (D1);
   - quality gates are uncalibrated: 0.85 per-dataset floors; end-to-end fact precision ≥ 0.80 and recall ≥ 0.70 (first run 0.962 and 0.926);
   - end-to-end misses kept visible: an unresolved reported claim yields no candidate (e2e-012); transient trivia passes the gate (e2e-022); a reason clause stays inside its fact (e2e-026);

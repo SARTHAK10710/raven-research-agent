@@ -13,8 +13,8 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 | 8.1 Foundation and project setup | `VERIFIED` | `5a0d6e5`, merged in `6efd72d` (PR #3) |
 | 8.2 Database and persistence | `VERIFIED` (2026-11-11) | Steps 1–2 `d2346b6`, `e7fc443` (PR #8); step 3 `7a62cd4` (PR #9); step 4 `38411e1` (PR #10, `977c3b7`); step 5 `42b35c3` and review fixes `1b58b77` (PR #11, `423b6fd`) |
 | 8.3 Ingestion pipeline | **`VERIFIED`** (2026-11-12) | Step 1 `206bc2f` (PR #16); step 2 `894da0f` (PR #17, `1e93dbd`); step 3 `15d752f` (PR #18, `d51039b`); step 4 `2fed5cb` (PR #19, `db13113`); step 5 `d08ae20` (PR #21, `1851f53`) |
-| 8.4 Extraction and evaluation | `IN_PROGRESS` (approved 2026-11-12; personal path; steps 1–5 merged; step 6 tested, uncommitted; acceptance review: every in-scope criterion met) | Step 1 `203ce2d` (PR #24, `27fa245`); step 2 `520c31d` (PR #25, `7e1b441`); step 3 `bb85b8a` (PR #26, `abf8cdb`); step 4 `ef9ce27` (PR #27, `b386d90`); step 5 `5f38b28` (PR #28, `5386654`) |
-| 8.5 Entity and relationship management | `NOT_STARTED` | — |
+| 8.4 Extraction and evaluation | **`VERIFIED`** for the personal path (2026-11-24; document path deferred, D1) | Step 1 `203ce2d` (PR #24, `27fa245`); step 2 `520c31d` (PR #25, `7e1b441`); step 3 `bb85b8a` (PR #26, `abf8cdb`); step 4 `ef9ce27` (PR #27, `b386d90`); step 5 `5f38b28` (PR #28, `5386654`); step 6 `fbfe64c` (PR #29, `71adeb9`) |
+| 8.5 Entity and relationship management | `IN_PROGRESS` (approved 2026-11-24; step 1 implemented and tested, uncommitted) | — |
 | 8.6 Memory resolution | `NOT_STARTED` | — |
 | 8.7 Memory storage and indexing | `NOT_STARTED` | — |
 | 8.8 Memory retrieval | `NOT_STARTED` | — |
@@ -183,7 +183,9 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 
 | Field | Value |
 |---|---|
-| Status | `IN_PROGRESS`: approved 2026-11-12. Steps 1–5 merged (PRs #24–#28; `main` @ `5386654`). **Step 6 (observability, end-to-end quality set, acceptance review) implemented and tested, uncommitted** on `feat/phase-8-4-acceptance`. [Acceptance review](PHASE-8-4-ACCEPTANCE-REVIEW.md): every personal-path criterion met, D1 deferred; `VERIFIED` (personal path) after R1–R2 |
+| Status | **`VERIFIED` for the personal path (2026-11-24).** All six steps merged (PRs #24–#29; `main` @ `71adeb9`). [Acceptance review](PHASE-8-4-ACCEPTANCE-REVIEW.md): every in-scope criterion met; D1 (document path) deferred; R1–R2 resolved |
+| Verification on `main` (R2) | `main` @ `71adeb9`: `uv sync --locked` ok; Ruff check and format clean; mypy strict clean (122 files); `uv run pytest --cov` with all three services **962 passed** (739 unit and quality, 223 integration), 98% coverage, 3 green runs |
+| Commit (step 6) | `fbfe64c`, merged through PR #29 (`71adeb9`) |
 | Step 6 decisions (owner, 2026-11-22; [7.1 §25.10](../technical-decisions/01-baseline-technology-stack.md)) | 0.85 floors kept; end-to-end set gated at precision ≥ 0.80 and recall ≥ 0.70; labels drafted, then owner-reviewed before the first run (approved as drafted); per-run metrics; `VERIFIED` for the personal path after the review |
 | Files created (step 6) | `docs/project-context/PHASE-8-4-ACCEPTANCE-REVIEW.md`; `tests/memory_engine/quality/{test_end_to_end_quality.py,data/end_to_end/v1.jsonl}`; `unit/test_dependency_policy.py` |
 | Files modified (step 6) | `observability/metrics.py` (five extraction metric names); `personal/application/extraction.py` (`metrics`, per-run recording, `duration_ms` and `outcome_summary` on the event, `ExtractionReport.outcome_summary` and `metric_outcome`). Tests: `unit/test_extraction_worker_rules.py`, `integration/test_candidates.py`. Docs: 7.1 §25.10, coding standards, status files. No migration; no new dependencies |
@@ -221,7 +223,18 @@ Status values: `NOT_STARTED` · `INSPECTION` · `IN_PROGRESS` · `IMPLEMENTED` �
 | Approval decisions (owner, 2026-11-12; [7.1 §25](../technical-decisions/01-baseline-technology-stack.md)) | Decision 7: personal path now, document path after 8.12 (with Decision 6), 8.11 last. G6: English first. Decision 14: spaCy 3.8 + `en_core_web_sm` 3.8.0. Six steps |
 | Out of scope for now | The document-derived path (plan 8.4 §4.2, §10–§11), its tests and acceptance criteria 7, 8 and 10. Resolution (8.6), entities (8.5) and deletion (8.10) remain their own plans |
 
-## 8.5–8.12
+## 8.5 — Entity and relationship management
+
+| Field | Value |
+|---|---|
+| Status | `IN_PROGRESS`: approved 2026-11-24 ([7.1 §26](../technical-decisions/01-baseline-technology-stack.md)). **Step 1 (entity identification and classification) implemented and tested, uncommitted** on `docs/phase-8-4-verified` together with the 8.4 `VERIFIED` record. Steps 2–6 to do |
+| Step 1 decisions (owner, 2026-11-24; 7.1 §26.5) | Names from NER spans plus proper nouns; type from the fact's wording (context rules, name keywords, named relations), NER recorded but never deciding alone, else `unknown`; the proposition is analysed; validated candidates only; labels owner-reviewed before the first run |
+| Files created (step 1) | `personal/domain/identification.py` (`IdentifiedMention`, `TypeBasis`); `personal/application/identification.py` (`EntityIdentifier`); `tests/memory_engine/quality/{test_entity_quality.py,data/entities/v1.jsonl}`. Tests: `unit/test_entity_identification.py` |
+| Files modified (step 1) | `personal/domain/__init__.py`. Docs: 7.1 §26–§26.5, coding standards, status files. No migration; no new dependency (the `SentenceAnalyzer` port already carries NER labels) |
+| Tests (step 1) | **987 passed, 0 failed** (764 unit and quality, 223 integration), 98% coverage, 3 green runs; Ruff clean; mypy strict clean (126 files). Entity dataset v1 (owner-reviewed labels), first run: 26/30, accuracy 0.867 (floor 0.85), mention precision 0.938, recall 0.882 |
+| What step 1 does not do | Nothing is persisted and nothing runs in a worker yet: registry, aliases and matching are step 2, the resolution worker is step 3 |
+
+## 8.6–8.12
 
 `NOT_STARTED`. No files, dependencies or tests.
 

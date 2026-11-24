@@ -86,6 +86,10 @@ Phase 8.1 created the foundation code (`memory-engine/src/memory_engine/`: `conf
   - A worker records one observation per handled message through the `Metrics` port: runs and duration by input and outcome, codes by outcome, and counts from the run summary. A completed run's outcome is its final state; otherwise it is why nothing was done.
   - A held-out quality set is labelled, reviewed by the owner and only then run. Its misses are recorded in the test and in KNOWN_CONSTRAINTS, never tuned away; a test that pins a known miss names it (`KNOWN_EXTRAS`).
   - A project-wide constraint that a test can check is tested (for example, no generative LLM package in `uv.lock`).
+- Established in 8.5 step 1 (entity identification):
+  - A classification records what decided it (`TypeBasis`, and the rule key from a fixed table). A model label is evidence to record, never a decision on its own; without evidence in the text the value is `unknown`.
+  - Offsets are rebuilt from the analyzer's token text and whitespace, and a mention whose text does not line up is skipped, never guessed.
+  - Unit tests for NLP rules use a hand-built fake analyzer (tokens with POS, dependency, head and NER label); the real model runs only in quality tests.
 - Established in 8.3 step 5 (observability):
   - Record metrics only through the `Metrics` port (`memory_engine.observability.metrics`), injected with a no-op default; tests use `InMemoryMetrics`. Labels are limited to `input`, `outcome`, `reason` and `kind`, with word or code values: identifiers belong in logs, never in labels.
   - Log events set `event_type` (`<area>.<outcome>`) and carry ids, codes and durations, plus `user_scope` (the opaque owner id); never content, filenames or caller-supplied keys.
